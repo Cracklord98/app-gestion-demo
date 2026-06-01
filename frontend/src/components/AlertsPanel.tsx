@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { resolveAlert, runAlertEngine, type AppAlert } from "../services/api";
+import { resolveAlert, type AppAlert } from "../services/api";
 
 type AlertGroup = {
   key: string;
