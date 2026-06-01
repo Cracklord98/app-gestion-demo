@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -30,8 +30,12 @@ export function useToastController() {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  // Register globally so useToast() works from anywhere
-  _showToast = show;
+  useEffect(() => {
+    _showToast = show;
+    return () => {
+      if (_showToast === show) _showToast = null;
+    };
+  }, [show]);
 
   return { toasts, show, dismiss };
 }

@@ -1,4 +1,5 @@
 const baseUrl = process.env.API_BASE_URL || "http://localhost:4000";
+const bearerToken = process.env.SMOKE_BEARER_TOKEN || "";
 
 function randomSuffix() {
   return Math.random().toString(36).slice(2, 8);
@@ -8,6 +9,7 @@ async function http(path, options = {}) {
   const response = await fetch(`${baseUrl}${path}`, {
     headers: {
       "Content-Type": "application/json",
+      ...(bearerToken ? { Authorization: `Bearer ${bearerToken}` } : {}),
       ...(options.headers || {}),
     },
     ...options,
@@ -100,7 +102,8 @@ async function main() {
     body: JSON.stringify({
       projectId: project.id,
       consultantId: consultant.id,
-      period: "2026-Q2",
+      startDate: "2026-04-01",
+      endDate: "2026-06-30",
       hoursProjected: 20,
       hourlyRate: 45,
       note: "Smoke forecast",

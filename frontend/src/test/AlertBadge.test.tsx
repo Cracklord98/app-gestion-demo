@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
-import { AlertBadge } from '../features/dashboard/DashboardTab';
+import { AlertBadge } from '../features/dashboard/AlertBadge';
 
 describe('AlertBadge', () => {
   it('renders "OK" for level "ok"', () => {

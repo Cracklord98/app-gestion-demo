@@ -23,9 +23,12 @@
 - `npm run build`
 - `npm run start` (serves built files using `server.mjs`)
 
-## Railway
-- Configure `VITE_API_URL` with backend public domain.
-- Redeploy frontend after changing `VITE_API_URL`.
-- If using Dockerfile builder:
-   - Dockerfile path: `frontend/Dockerfile`
-   - Ensure `VITE_API_URL` is available at build time.
+## Vercel
+- Root directory: `frontend`
+- Install command: `npm ci`
+- Build command: `npm run build`
+- Output directory: `dist`
+- Configure `VITE_API_URL` with the Render backend public URL.
+- Configure `VITE_FORCE_LOCAL_AUTH=true` for demo mode, or `false` for Microsoft Entra auth.
+- `vercel.json` rewrites SPA routes like `/home` back to `index.html`.
+- `public/env.js` provides an empty runtime config fallback so the static Vercel build does not 404 on `/env.js`.

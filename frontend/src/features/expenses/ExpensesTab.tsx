@@ -11,7 +11,7 @@ import {
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { downloadCsv } from "../../utils/csv";
-import type { DateRange } from "../../components/DateRangePicker";
+import type { DateRange } from "../../components/dateRangeUtils";
 import { numberish } from "./gastosUtils";
 import { useGastosGrouped, type GroupBy } from "./useGastosGrouped";
 import { GastosKPIStrip } from "./GastosKPIStrip";

@@ -1,6 +1,0 @@
-[variables]
-NIXPACKS_NODE_VERSION = "20.19.0"
-NPM_CONFIG_INCLUDE = "optional"
-
-[phases.setup]
-nixPkgs = ["nodejs_20"]

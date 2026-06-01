@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcEVM } from '../features/dashboard/DashboardTab';
+import { calcEVM } from '../features/dashboard/dashboardUtils';
 
 describe('calcEVM', () => {
   it('computes EAC and VAC when CPI is provided', () => {

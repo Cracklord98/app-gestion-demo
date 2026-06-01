@@ -6,7 +6,7 @@ App Gestion Demo es una aplicacion web para control de proyectos, consultores, h
 La solucion tiene:
 - Frontend: React + TypeScript + Vite
 - Backend: Fastify + Prisma + PostgreSQL
-- Deploy: Railway (servicios separados para frontend y backend)
+- Deploy objetivo demo: Vercel (frontend) + Render (backend) + Supabase PostgreSQL
 
 Tambien incluye:
 - Modo autenticado con Microsoft (en proceso de estabilizacion)
@@ -234,6 +234,7 @@ Para presentacion sin login:
 
 ### 5.2 Backend
 - `DATABASE_URL`
+- `DIRECT_URL`
 - `CORS_ORIGIN`
 - `AUTH_ENABLED`
 - `AUTH_DEMO_BYPASS`

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, Fragment } from "react";
 import type { Expense, FxConfig } from "../../services/api";
 import type { GroupBy, GroupedGasto, GastoTotals } from "./useGastosGrouped";
 import { GastosDetailRow } from "./GastosDetailRow";
@@ -101,7 +101,7 @@ export function GastosSummaryTable({
           {groups.map((group) => {
             const isOpen = expanded.has(group.key);
             return (
-              <>
+              <Fragment key={group.key}>
                 {/* Summary row */}
                 <tr
                   key={`sum-${group.key}`}
@@ -170,7 +170,7 @@ export function GastosSummaryTable({
                     onDelete={onDelete}
                   />
                 )}
-              </>
+              </Fragment>
             );
           })}
         </tbody>

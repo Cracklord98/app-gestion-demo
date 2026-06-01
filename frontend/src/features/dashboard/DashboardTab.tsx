@@ -1,22 +1,18 @@
 import { useMemo, useState } from "react";
 import {
   getStatsOverview,
-  type Consultant, type Expense, type FxConfig, type Forecast,
+  type Expense, type FxConfig, type Forecast,
   type Project, type StatsOverview, type TimeEntry,
 } from "../../services/api";
-import { DateRangePicker, readPersistedRange, type DateRange } from "../../components/DateRangePicker";
+import { DateRangePicker } from "../../components/DateRangePicker";
+import { readPersistedRange, type DateRange } from "../../components/dateRangeUtils";
 import type { TabId } from "../../types";
 import { formatISODateRange } from "../../utils/periodUtils";
 import { backendHealthToResult, HEALTH_CRITERIA_TOOLTIP } from "../../utils/projectHealth";
+import { AlertBadge } from "./AlertBadge";
+import { calcDelta, calcEVM, fmt, type DeltaResult } from "./dashboardUtils";
 
 // ── Formatting helpers ───────────────────────────────────────────────────────
-
-/** Format a number as currency using Intl.NumberFormat */
-export function fmt(value: number, currency = "USD") {
-  return new Intl.NumberFormat("es-CO", {
-    style: "currency", currency, maximumFractionDigits: 0,
-  }).format(value);
-}
 
 function numberish(value: string | null | undefined) {
   if (!value) return 0;
@@ -62,30 +58,6 @@ function prevPeriod(from: string, to: string): { from: string; to: string } {
 }
 
 // ── Delta calculation ────────────────────────────────────────────────────────
-
-export type DeltaResult = { pct: number; dir: "up" | "down" | "flat" } | null;
-
-export function calcDelta(current: number, previous: number): DeltaResult {
-  if (previous === 0) return null;
-  const raw = ((current - previous) / Math.abs(previous)) * 100;
-  const dir = raw > 0.5 ? "up" : raw < -0.5 ? "down" : "flat";
-  return { pct: Math.abs(raw), dir };
-}
-
-// ── EVM helpers ──────────────────────────────────────────────────────────────
-
-export function calcEVM(budget: number, ev: number, spent: number, cpi: number | null | undefined) {
-  const bac = budget;
-  const ac = spent;
-  const effectiveCpi = cpi ?? (ac > 0 ? ev / ac : null);
-  const eac = effectiveCpi && effectiveCpi > 0 ? bac / effectiveCpi : null;
-  const vac = eac != null ? bac - eac : null;
-  // CV = EV - AC (negativo = sobrecosto)
-  const cv = ev - ac;
-  // TCPI = (BAC - EV) / (BAC - AC) — trabajo restante / presupuesto restante
-  const tcpi = (bac - ac) > 0 ? (bac - ev) / (bac - ac) : null;
-  return { bac, ev, ac, eac, vac, cv, tcpi };
-}
 
 // ── Budget Chart ─────────────────────────────────────────────────────────────
 
@@ -188,27 +160,6 @@ function DashboardKpi({
   );
 }
 
-// ── Alert badge component ────────────────────────────────────────────────────
-
-export function AlertBadge({ level }: { level: "ok" | "warning" | "exceeded" }) {
-  const map = {
-    exceeded: { bg: "#fee2e2", color: "#991b1b", icon: "🔴", text: "Superado" },
-    warning:  { bg: "#fef9c3", color: "#92400e", icon: "🟡", text: `Cerca límite` },
-    ok:       { bg: "#dcfce7", color: "#166534", icon: "🟢", text: "OK" },
-  };
-  const s = map[level];
-  return (
-    <span style={{
-      display: "inline-flex", alignItems: "center", gap: "0.25rem",
-      background: s.bg, color: s.color,
-      borderRadius: "9999px", padding: "0.2rem 0.6rem",
-      fontSize: "0.72rem", fontWeight: 700,
-    }}>
-      {s.icon} {s.text}
-    </span>
-  );
-}
-
 // ── Saved Views ──────────────────────────────────────────────────────────────
 
 const VIEWS_KEY = "dashboardSavedViews";
@@ -224,14 +175,39 @@ function saveViews(views: SavedView[]) {
 
 // ── Main component ───────────────────────────────────────────────────────────
 
-const SORT_FIELDS = ["budget", "spent", "remainingBudget", "revenueRecognized", "grossMarginActual", "projectedTotal", "projectedPct", "alertLevel"] as const;
-type SortField = typeof SORT_FIELDS[number];
+type SortField = "budget" | "spent" | "remainingBudget" | "revenueRecognized" | "grossMarginActual" | "projectedTotal" | "projectedPct" | "alertLevel";
 
 const PAGE_SIZE = 15;
 
+function DashboardSortTh({
+  field,
+  label,
+  sticky,
+  sortField,
+  sortDir,
+  onSort,
+}: {
+  field: SortField;
+  label: string;
+  sticky?: string;
+  sortField: SortField;
+  sortDir: "asc" | "desc";
+  onSort: (field: SortField) => void;
+}) {
+  const active = sortField === field;
+  return (
+    <th
+      className={`sortable${sticky ? ` ${sticky}` : ""}`}
+      onClick={() => onSort(field)}
+      aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      {label} <span aria-hidden="true">{active ? (sortDir === "asc" ? "↑" : "↓") : "⇅"}</span>
+    </th>
+  );
+}
+
 export function DashboardTab({
   projects,
-  consultants: _consultants,
   timeEntries,
   expenses,
   forecasts,
@@ -242,7 +218,6 @@ export function DashboardTab({
   onDrillTo,
 }: {
   projects: Project[];
-  consultants: Consultant[];
   timeEntries: TimeEntry[];
   expenses: Expense[];
   forecasts: Forecast[];
@@ -478,7 +453,7 @@ export function DashboardTab({
     );
   }, [displayProjects, tableSearch]);
 
-  const alertOrder = { exceeded: 0, warning: 1, ok: 2 };
+  const alertOrder = useMemo(() => ({ exceeded: 0, warning: 1, ok: 2 }), []);
 
   const sortedProjects = useMemo(() => {
     return [...filteredProjects].sort((a, b) => {
@@ -491,7 +466,7 @@ export function DashboardTab({
       }
       return sortDir === "asc" ? av - bv : bv - av;
     });
-  }, [filteredProjects, sortField, sortDir]);
+  }, [alertOrder, filteredProjects, sortField, sortDir]);
 
   const totalPages = Math.max(1, Math.ceil(sortedProjects.length / PAGE_SIZE));
   const pagedProjects = sortedProjects.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE);
@@ -500,19 +475,6 @@ export function DashboardTab({
     if (sortField === field) setSortDir((d) => d === "asc" ? "desc" : "asc");
     else { setSortField(field); setSortDir("desc"); }
     setTablePage(1);
-  }
-
-  function SortTh({ field, label, sticky }: { field: SortField; label: string; sticky?: string }) {
-    const active = sortField === field;
-    return (
-      <th
-        className={`sortable${sticky ? ` ${sticky}` : ""}`}
-        onClick={() => toggleSort(field)}
-        aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
-      >
-        {label} <span aria-hidden="true">{active ? (sortDir === "asc" ? "↑" : "↓") : "⇅"}</span>
-      </th>
-    );
   }
 
   // ── Saved views ──────────────────────────────────────────────────────────
@@ -949,13 +911,13 @@ export function DashboardTab({
                 <th className="sticky-0" style={{ width: "42px" }}>Salud</th>
                 <th className="sticky-1" style={{ width: "112px" }}>Empresa</th>
                 <th className="sticky-2" style={{ minWidth: "130px" }}>Proyecto</th>
-                <SortTh field="budget" label="Presupuesto" />
-                <SortTh field="spent" label="Gasto real" />
-                <SortTh field="remainingBudget" label="Disponible" />
-                <SortTh field="revenueRecognized" label="Ingresos" />
-                <SortTh field="grossMarginActual" label="Margen bruto" />
-                <SortTh field="projectedTotal" label="Total proyectado" />
-                <SortTh field="alertLevel" label="Alerta" />
+                <DashboardSortTh field="budget" label="Presupuesto" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
+                <DashboardSortTh field="spent" label="Gasto real" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
+                <DashboardSortTh field="remainingBudget" label="Disponible" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
+                <DashboardSortTh field="revenueRecognized" label="Ingresos" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
+                <DashboardSortTh field="grossMarginActual" label="Margen bruto" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
+                <DashboardSortTh field="projectedTotal" label="Total proyectado" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
+                <DashboardSortTh field="alertLevel" label="Alerta" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
               </tr>
             </thead>
             <tbody>

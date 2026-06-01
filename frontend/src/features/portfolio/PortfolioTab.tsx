@@ -75,6 +75,31 @@ function BudgetBar({ pct }: { pct: number }) {
 type SortField = "healthStatus" | "usedBudgetPercent" | "completionPct" | "grossMarginActualPct" | "openHighRisks";
 type SortDir = "asc" | "desc";
 
+function PortfolioSortTh({
+  field,
+  label,
+  sortField,
+  sortDir,
+  onSort,
+}: {
+  field: SortField;
+  label: string;
+  sortField: SortField;
+  sortDir: SortDir;
+  onSort: (field: SortField) => void;
+}) {
+  const active = sortField === field;
+  return (
+    <th
+      style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
+      onClick={() => onSort(field)}
+      aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+    >
+      {label} {active ? (sortDir === "asc" ? "↑" : "↓") : "⇅"}
+    </th>
+  );
+}
+
 export function PortfolioTab({
   onOpenProject,
 }: {
@@ -150,18 +175,6 @@ export function PortfolioTab({
     a.download = `portafolio-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-  }
-
-  function SortTh({ field, label }: { field: SortField; label: string }) {
-    const active = sortField === field;
-    return (
-      <th
-        style={{ cursor: "pointer", userSelect: "none", whiteSpace: "nowrap" }}
-        onClick={() => toggleSort(field)}
-      >
-        {label} {active ? (sortDir === "asc" ? "↑" : "↓") : "⇅"}
-      </th>
-    );
   }
 
   // Critical projects
@@ -251,17 +264,17 @@ export function PortfolioTab({
         <table>
           <thead>
             <tr>
-              <SortTh field="healthStatus" label="Salud" />
+              <PortfolioSortTh field="healthStatus" label="Salud" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
               <th>Proyecto</th>
               <th>Empresa</th>
               <th>Tipo</th>
               <th>Estado</th>
-              <SortTh field="usedBudgetPercent" label="Uso presupuesto" />
-              <SortTh field="completionPct" label="Avance" />
+              <PortfolioSortTh field="usedBudgetPercent" label="Uso presupuesto" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
+              <PortfolioSortTh field="completionPct" label="Avance" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
               <th>CPI</th>
               <th>SPI</th>
-              <SortTh field="grossMarginActualPct" label="Margen %" />
-              <SortTh field="openHighRisks" label="Riesgos altos" />
+              <PortfolioSortTh field="grossMarginActualPct" label="Margen %" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
+              <PortfolioSortTh field="openHighRisks" label="Riesgos altos" sortField={sortField} sortDir={sortDir} onSort={toggleSort} />
               <th>Incidentes abiertos</th>
               <th>Acciones</th>
             </tr>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { env } from "./config/env";
 import { apiTokenRequest, loginRequest } from "./auth/msal";
@@ -31,6 +31,7 @@ import { AuditTab } from "./features/audit/AuditTab";
 import { CapacityTab } from "./features/capacity/CapacityTab";
 import { PortfolioTab } from "./features/portfolio/PortfolioTab";
 import { AlertsPanel } from "./components/AlertsPanel";
+import { AlertsTab } from "./features/alerts/AlertsTab";
 import { ToastContainer } from "./components/Toast";
 import type { TabId } from "./types";
 import "./App.css";
@@ -59,6 +60,7 @@ const SIDEBAR_GROUPS: {
       { id: "portfolio",  label: "Portafolio",  icon: "◈",  permission: "stats:read" },
       { id: "projects",   label: "Proyectos",   icon: "◻",  permission: "projects:read" },
       { id: "capacity",   label: "Capacidad",   icon: "◉",  permission: "capacity:read" },
+      { id: "alerts",     label: "Alertas PMO", icon: "🔔", permission: "stats:read" },
     ],
   },
   {
@@ -210,8 +212,8 @@ function App() {
 
   const { toasts, show: showToast, dismiss } = useToastController();
 
-  const permissions = authUser?.permissions ?? [];
-  const can = (p: string) => permissions.includes(p);
+  const permissions = useMemo(() => authUser?.permissions ?? [], [authUser?.permissions]);
+  const can = useCallback((p: string) => permissions.includes(p), [permissions]);
 
   // Domain hooks
   const projectsHook    = useProjects(!!authUser && can("projects:read"));
@@ -235,11 +237,11 @@ function App() {
 
   const allVisibleTabs = useMemo(() => visibleGroups.flatMap((g) => g.tabs), [visibleGroups]);
 
-  function goTo(path: "/login" | "/home", replace = false) {
+  const goTo = useCallback((path: "/login" | "/home", replace = false) => {
     if (replace) window.history.replaceState({}, "", path);
     else window.history.pushState({}, "", path);
     setCurrentPath(path);
-  }
+  }, []);
 
   useEffect(() => {
     const onPopState = () => setCurrentPath((window.location.pathname || "/").toLowerCase());
@@ -251,7 +253,7 @@ function App() {
     if (currentPath !== "/login" && currentPath !== "/home") {
       goTo(authUser ? "/home" : "/login", true);
     }
-  }, [currentPath, authUser]);
+  }, [currentPath, authUser, goTo]);
 
   useEffect(() => {
     if (!allVisibleTabs.some((t) => t.id === activeTab)) {
@@ -259,7 +261,7 @@ function App() {
     }
   }, [allVisibleTabs, activeTab]);
 
-  async function bootstrap() {
+  const bootstrap = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -287,9 +289,9 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [accounts, authWithMicrosoftEnabled, currentPath, goTo, instance, isAuthenticated]);
 
-  useEffect(() => { void bootstrap(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [microsoftConfigured, isAuthenticated, accounts.length, currentPath]);
+  useEffect(() => { void bootstrap(); }, [bootstrap, microsoftConfigured]);
 
   async function logout() {
     setApiAccessToken(null);
@@ -371,6 +373,15 @@ function App() {
       {/* Header */}
       <header className="hero">
         <div className="hero-left">
+          <button
+            type="button"
+            className="mobile-menu-toggle"
+            onClick={() => setSidebarCollapsed((c) => !c)}
+            aria-label="Menú principal"
+            title="Menú principal"
+          >
+            ☰
+          </button>
           <div className="logo-slot"><PyramidLogo /></div>
           <div>
             <h1>App Gestion Demo</h1>
@@ -459,7 +470,6 @@ function App() {
           {!loading && activeTab === "dashboard" && (
             <DashboardTab
               projects={projectsHook.projects}
-              consultants={consultantsHook.consultants}
               timeEntries={timeEntriesHook.timeEntries}
               expenses={expensesHook.expenses}
               forecasts={forecastsHook.forecasts}
@@ -586,6 +596,17 @@ function App() {
           )}
 
           {!loading && activeTab === "audit" && <AuditTab onError={handleError} />}
+
+          {!loading && activeTab === "alerts" && (
+            <AlertsTab
+              alerts={alertsHook.alerts}
+              unreadCount={alertsHook.unreadCount}
+              loading={alertsHook.loading}
+              canRun={can("users:manage")}
+              onReload={alertsHook.reload}
+              onError={handleError}
+            />
+          )}
         </main>
       </div>
 

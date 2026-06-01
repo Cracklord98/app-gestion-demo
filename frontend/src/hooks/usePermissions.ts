@@ -1,8 +1,8 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import type { AuthUser } from "../services/api";
 
 export function usePermissions(authUser: AuthUser | null) {
-  const permissions = authUser?.permissions ?? [];
+  const permissions = useMemo(() => authUser?.permissions ?? [], [authUser?.permissions]);
 
   const can = useCallback(
     (permission: string) => permissions.includes(permission),

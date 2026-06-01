@@ -3,7 +3,7 @@
 ## Stack
 - Fastify
 - Prisma
-- PostgreSQL (Railway)
+- PostgreSQL (Supabase)
 
 ## Functional modules
 - Projects (`/api/projects`)
@@ -16,11 +16,14 @@
 ## Local quick start
 1. Install dependencies:
    - `npm install`
-2. Set `DATABASE_URL` in `.env` with a reachable Postgres URL
+2. Set `DATABASE_URL` and `DIRECT_URL` in `.env` with reachable Postgres URLs
+   - Port 5432 example: `.env.local.example`
+   - Port 5433 example: `.env.local.5433.example`
 3. Generate Prisma client:
    - `npm run prisma:generate`
-4. Sync schema to database:
-   - `npm run prisma:push`
+4. Apply schema to a local/demo database:
+   - `npm run prisma:deploy`
+   - For throwaway local experiments only, `npm run prisma:push`
 5. (Optional) Seed demo data:
    - `npm run prisma:seed`
 6. Start API:
@@ -31,26 +34,35 @@
 - Currency fields require 3-letter ISO format (example: `USD`).
 - Time entries can only move from `PENDING` to `APPROVED` or `REJECTED`.
 - Rejection requires a note.
-- Forecast period must use `YYYY-Qn` format.
+- Forecast ranges must use `YYYY-MM-DD` in `startDate` and `endDate`.
 - Stats endpoint validates date ranges (`to` cannot be before `from`).
 
-## Railway deploy (API)
+## Render deploy (API)
 1. Root directory:
    - `backend`
 2. Build command:
-   - `npm run build`
+   - `npm ci && npm run build`
 3. Start command:
-   - `npm run railway:start`
+   - `npm run start`
 4. Variables:
    - `NODE_ENV=production`
    - `CORS_ORIGIN=https://<frontend-domain>,https://<optional-custom-domain>`
-   - `DATABASE_URL=<railway-postgres-url>`
+   - `DATABASE_URL=<supabase-pooled-url>`
+   - `DIRECT_URL=<supabase-direct-url>`
+   - `AUTH_ENABLED=false`
+   - `AUTH_DEMO_BYPASS=true`
+   - `ADMIN_EMAIL=<demo-admin-email>`
 
-`railway:start` now runs Prisma client generation + `prisma db push` and then starts the API.
-This ensures required tables are created in Railway before serving traffic.
+For a Microsoft Entra production-style flow, set:
+- `AUTH_ENABLED=true`
+- `AUTH_DEMO_BYPASS=false`
+- `AZURE_AD_TENANT_ID=<entra-tenant-id>`
+- `AZURE_AD_AUDIENCE=<api-audience>`
 
-If you need to apply migrations in Railway, run:
-- `npm run railway:migrate`
+Apply migrations before or during deployment with:
+- `npm run prisma:deploy`
+
+Do not run `prisma db push --accept-data-loss` as part of a production start command.
 
 ## Health and readiness
 - `GET /health`:
@@ -58,15 +70,19 @@ If you need to apply migrations in Railway, run:
    - Returns `503` when DB is down.
 
 ## Notes
-- The repository deploys backend from root using `railway.toml` + `Dockerfile`.
-- Frontend deploy is a separate Railway service using root directory `frontend`.
+- `render.yaml` in the repository root documents the expected Render Web Service.
+- The health check path is `/health`.
+- Render provides the `PORT` variable automatically.
 
 ## Smoke test (E2E-lite)
 With API running locally or deployed, execute:
 - `npm run smoke`
 
-To run against Railway:
-- `API_BASE_URL=https://<your-backend-domain>.up.railway.app npm run smoke`
+To run against Render:
+- `API_BASE_URL=https://<your-backend-domain>.onrender.com npm run smoke`
+
+If authentication is enabled, provide a token:
+- `SMOKE_BEARER_TOKEN=<access-token> API_BASE_URL=https://<your-backend-domain>.onrender.com npm run smoke`
 
 ## Available scripts
 - `npm run dev`
@@ -78,5 +94,4 @@ To run against Railway:
 - `npm run prisma:seed`
 - `npm run prisma:deploy`
 - `npm run prisma:studio`
-- `npm run railway:start`
 - `npm run smoke`

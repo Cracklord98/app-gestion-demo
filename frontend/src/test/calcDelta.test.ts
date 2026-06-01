@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { calcDelta } from '../features/dashboard/DashboardTab';
+import { calcDelta } from '../features/dashboard/dashboardUtils';
 
 describe('calcDelta', () => {
   it('returns null when previous is 0', () => {
