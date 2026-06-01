@@ -60,7 +60,6 @@ const SIDEBAR_GROUPS: {
       { id: "portfolio",  label: "Portafolio",  icon: "◈",  permission: "stats:read" },
       { id: "projects",   label: "Proyectos",   icon: "◻",  permission: "projects:read" },
       { id: "capacity",   label: "Capacidad",   icon: "◉",  permission: "capacity:read" },
-      { id: "alerts",     label: "Alertas PMO", icon: "🔔", permission: "stats:read" },
     ],
   },
   {
@@ -430,17 +429,36 @@ function App() {
 
       {/* Body */}
       <div className="app-body">
+        {/* Mobile sidebar backdrop */}
+        {!sidebarCollapsed && (
+          <div
+            className="sidebar-backdrop"
+            aria-hidden="true"
+            onClick={() => setSidebarCollapsed(true)}
+          />
+        )}
+
         {/* Sidebar */}
         <nav className={`sidebar${sidebarCollapsed ? " collapsed" : ""}`} aria-label="Navegación principal">
-          <button
-            type="button"
-            className="sidebar-toggle"
-            onClick={() => setSidebarCollapsed((c) => !c)}
-            aria-label={sidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
-            title={sidebarCollapsed ? "Expandir" : "Colapsar"}
-          >
-            {sidebarCollapsed ? "→" : "←"}
-          </button>
+          <div className="sidebar-header">
+            <button
+              type="button"
+              className="sidebar-toggle"
+              onClick={() => setSidebarCollapsed((c) => !c)}
+              aria-label={sidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
+              title={sidebarCollapsed ? "Expandir" : "Colapsar"}
+            >
+              {sidebarCollapsed ? "→" : "←"}
+            </button>
+            <button
+              type="button"
+              className="sidebar-close-mobile"
+              onClick={() => setSidebarCollapsed(true)}
+              aria-label="Cerrar menú"
+            >
+              ✕
+            </button>
+          </div>
 
           {visibleGroups.map((group) => (
             <div className="sidebar-group" key={group.label}>
@@ -450,7 +468,7 @@ function App() {
                   key={tab.id}
                   type="button"
                   className={`sidebar-tab${activeTab === tab.id ? " active" : ""}`}
-                  onClick={() => { setActiveTab(tab.id); if (tab.id !== "projects") setOpenProjectId(null); }}
+                  onClick={() => { setActiveTab(tab.id); setSidebarCollapsed(true); if (tab.id !== "projects") setOpenProjectId(null); }}
                   title={tab.label}
                   aria-current={activeTab === tab.id ? "page" : undefined}
                 >

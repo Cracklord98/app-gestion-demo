@@ -67,10 +67,9 @@ export function AlertsPanel({
   async function handleRun() {
     setRunning(true);
     try {
-      await runAlertEngine();
       await onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "Error al ejecutar el motor de alertas");
+      onError(err instanceof Error ? err.message : "Error al actualizar alertas");
     } finally {
       setRunning(false);
     }
