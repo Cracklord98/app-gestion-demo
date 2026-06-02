@@ -45,8 +45,9 @@ export async function buildApp() {
     }
 
     app.log.error({ err: error }, "Unhandled error");
-    const detail = env.NODE_ENV !== "production" ? (error instanceof Error ? error.message : String(error)) : undefined;
-    return reply.status(500).send({ message: "Internal server error", detail });
+    const detail = error instanceof Error ? error.message : String(error);
+    const stack = error instanceof Error ? error.stack : undefined;
+    return reply.status(500).send({ message: "Internal server error", detail, stack });
   });
 
   app.setNotFoundHandler((_request, reply) => {
