@@ -13,6 +13,21 @@ export async function buildApp() {
     logger: env.NODE_ENV !== "test",
   });
 
+  // Permitir cuerpos JSON vacíos cuando se envía la cabecera 'Content-Type: application/json'
+  app.addContentTypeParser("application/json", { parseAs: "string" }, (req, body, done) => {
+    const rawBody = typeof body === "string" ? body : body.toString("utf8");
+    if (!rawBody || rawBody.trim() === "") {
+      done(null, undefined);
+      return;
+    }
+    try {
+      const json = JSON.parse(rawBody);
+      done(null, json);
+    } catch (err) {
+      done(err as Error);
+    }
+  });
+
   const allowAllOrigins = env.CORS_ORIGIN.trim() === "*";
   const allowedOrigins = allowAllOrigins
     ? []
