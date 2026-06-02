@@ -173,15 +173,23 @@ export async function forecastsRoutes(app: FastifyInstance) {
       preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM])],
     },
     async (request, reply) => {
-    const { id } = idParamsSchema.parse(request.params);
+      const { id } = idParamsSchema.parse(request.params);
 
-    const existing = await prisma.forecast.findUnique({ where: { id } });
-    if (!existing) {
-      return reply.status(404).send({ message: "Forecast not found" });
-    }
+      const existing = await prisma.forecast.findUnique({ where: { id } });
+      if (!existing) {
+        return reply.status(404).send({ message: "Forecast not found" });
+      }
 
-      await prisma.forecast.delete({ where: { id } });
-      return reply.status(204).send();
+      try {
+        await prisma.forecast.delete({ where: { id } });
+        return reply.status(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede eliminar el forecast: tiene registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 }

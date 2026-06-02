@@ -95,8 +95,16 @@ export async function fxRoutes(app: FastifyInstance) {
         return reply.status(404).send({ message: "Tasa de cambio no encontrada" });
       }
 
-      await prisma.fxConfig.delete({ where: { id } });
-      return reply.status(204).send();
+      try {
+        await prisma.fxConfig.delete({ where: { id } });
+        return reply.status(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede eliminar la tasa de cambio: tiene registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 

@@ -72,8 +72,21 @@ export async function revenueRoutes(app: FastifyInstance) {
         return reply.status(404).send({ message: "Ingreso no encontrado" });
       }
 
-      const entry = await prisma.revenueEntry.update({ where: { id }, data: payload });
-      return { data: entry };
+      const project = await prisma.project.findUnique({ where: { id: payload.projectId } });
+      if (!project) {
+        return reply.status(400).send({ message: "Proyecto no encontrado" });
+      }
+
+      try {
+        const entry = await prisma.revenueEntry.update({ where: { id }, data: payload });
+        return { data: entry };
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede actualizar el ingreso debido a un conflicto de registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 
@@ -91,8 +104,16 @@ export async function revenueRoutes(app: FastifyInstance) {
         return reply.status(404).send({ message: "Ingreso no encontrado" });
       }
 
-      await prisma.revenueEntry.delete({ where: { id } });
-      return reply.status(204).send();
+      try {
+        await prisma.revenueEntry.delete({ where: { id } });
+        return reply.status(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede eliminar el ingreso: tiene otros registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 }

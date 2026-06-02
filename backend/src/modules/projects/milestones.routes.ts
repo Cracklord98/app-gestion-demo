@@ -55,8 +55,30 @@ export async function milestonesRoutes(app: FastifyInstance) {
       const payload = milestonePayloadSchema.parse(request.body);
       const existing = await prisma.milestone.findFirst({ where: { id, projectId } });
       if (!existing) return reply.status(404).send({ message: "Hito no encontrado" });
-      const milestone = await prisma.milestone.update({ where: { id }, data: payload });
-      return { data: milestone };
+      
+      try {
+        const milestone = await prisma.milestone.update({ where: { id }, data: payload });
+
+        // Recalculate project completionPct after update
+        const remaining = await prisma.milestone.findMany({ where: { projectId } });
+        const totalWeight = remaining.reduce((s, m) => s + Number(m.weight), 0);
+        if (totalWeight > 0) {
+          const completedWeight = remaining
+            .filter((m) => m.status === "COMPLETED")
+            .reduce((s, m) => s + Number(m.weight), 0);
+          await prisma.project.update({ where: { id: projectId }, data: { completionPct: (completedWeight / totalWeight) * 100 } });
+        } else {
+          await prisma.project.update({ where: { id: projectId }, data: { completionPct: 0 } });
+        }
+
+        return { data: milestone };
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede actualizar el hito debido a un conflicto de registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 
@@ -122,22 +144,31 @@ export async function milestonesRoutes(app: FastifyInstance) {
       const { projectId, id } = idSchema.parse(request.params);
       const existing = await prisma.milestone.findFirst({ where: { id, projectId } });
       if (!existing) return reply.status(404).send({ message: "Hito no encontrado" });
-      await prisma.milestone.delete({ where: { id } });
+      
+      try {
+        await prisma.milestone.delete({ where: { id } });
 
-      // Recalculate completionPct after deletion
-      const remaining = await prisma.milestone.findMany({ where: { projectId } });
-      const totalWeight = remaining.reduce((s, m) => s + Number(m.weight), 0);
-      if (totalWeight > 0) {
-        const completedWeight = remaining
-          .filter((m) => m.status === "COMPLETED")
-          .reduce((s, m) => s + Number(m.weight), 0);
-        await prisma.project.update({ where: { id: projectId }, data: { completionPct: (completedWeight / totalWeight) * 100 } });
-      } else if (remaining.length === 0) {
-        // No milestones left — reset to 0
-        await prisma.project.update({ where: { id: projectId }, data: { completionPct: 0 } });
+        // Recalculate completionPct after deletion
+        const remaining = await prisma.milestone.findMany({ where: { projectId } });
+        const totalWeight = remaining.reduce((s, m) => s + Number(m.weight), 0);
+        if (totalWeight > 0) {
+          const completedWeight = remaining
+            .filter((m) => m.status === "COMPLETED")
+            .reduce((s, m) => s + Number(m.weight), 0);
+          await prisma.project.update({ where: { id: projectId }, data: { completionPct: (completedWeight / totalWeight) * 100 } });
+        } else if (remaining.length === 0) {
+          // No milestones left — reset to 0
+          await prisma.project.update({ where: { id: projectId }, data: { completionPct: 0 } });
+        }
+
+        return reply.status(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede eliminar el hito: tiene otros registros relacionados" });
+        }
+        throw err;
       }
-
-      return reply.status(204).send();
     },
   );
 }

@@ -81,8 +81,17 @@ export async function issuesRoutes(app: FastifyInstance) {
       const { projectId, id } = idSchema.parse(request.params);
       const existing = await prisma.issue.findFirst({ where: { id, projectId } });
       if (!existing) return reply.status(404).send({ message: "Issue no encontrado" });
-      await prisma.issue.delete({ where: { id } });
-      return reply.status(204).send();
+      
+      try {
+        await prisma.issue.delete({ where: { id } });
+        return reply.status(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede eliminar el incidente: tiene registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 }

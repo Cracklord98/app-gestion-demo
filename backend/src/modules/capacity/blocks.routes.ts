@@ -63,8 +63,16 @@ export async function blocksRoutes(app: FastifyInstance) {
       const block = await prisma.consultantBlock.findFirst({ where: { id: blockId, consultantId } });
       if (!block) return reply.status(404).send({ message: "Bloqueo no encontrado" });
 
-      await prisma.consultantBlock.delete({ where: { id: blockId } });
-      return reply.status(204).send();
+      try {
+        await prisma.consultantBlock.delete({ where: { id: blockId } });
+        return reply.status(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede eliminar el bloqueo: tiene otros registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 }

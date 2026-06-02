@@ -95,33 +95,46 @@ export async function consultantsRoutes(app: FastifyInstance) {
       preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM])],
     },
     async (request, reply) => {
-    const { id } = consultantParamsSchema.parse(request.params);
+      const { id } = consultantParamsSchema.parse(request.params);
 
-    const existing = await prisma.consultant.findUnique({ where: { id } });
-    if (!existing) {
-      return reply.status(404).send({ message: "Consultant not found" });
-    }
-
-    const linkedTimeEntries = await prisma.timeEntry.count({ where: { consultantId: id } });
-    const linkedForecasts = await prisma.forecast.count({ where: { consultantId: id } });
-    const linkedAssignments = await prisma.assignment.count({ where: { consultantId: id } });
-
-    if (linkedTimeEntries > 0 || linkedForecasts > 0 || linkedAssignments > 0) {
-      return reply
-        .status(409)
-        .send({ message: "Cannot delete consultant with related time entries, forecasts or assignments" });
-    }
-
-    try {
-      await prisma.consultant.delete({ where: { id } });
-      return reply.status(204).send();
-    } catch (err: unknown) {
-      const code = (err as { code?: string })?.code;
-      if (code === "P2003" || code === "P2014") {
-        return reply.status(409).send({ message: "Cannot delete consultant: it has related records" });
+      const existing = await prisma.consultant.findUnique({ where: { id } });
+      if (!existing) {
+        return reply.status(404).send({ message: "Consultant not found" });
       }
-      throw err;
-    }
+
+      // Pre-check RESTRICT relations (TimeEntry, Forecast, Assignment)
+      const [linkedTimeEntries, linkedForecasts, linkedAssignments] = await Promise.all([
+        prisma.timeEntry.count({ where: { consultantId: id } }),
+        prisma.forecast.count({ where: { consultantId: id } }),
+        prisma.assignment.count({ where: { consultantId: id } }),
+      ]);
+
+      if (linkedTimeEntries > 0 || linkedForecasts > 0 || linkedAssignments > 0) {
+        const parts: string[] = [];
+        if (linkedTimeEntries > 0) parts.push(`${linkedTimeEntries} registro(s) de horas`);
+        if (linkedForecasts > 0) parts.push(`${linkedForecasts} forecast(s)`);
+        if (linkedAssignments > 0) parts.push(`${linkedAssignments} asignación(es)`);
+        return reply
+          .status(409)
+          .send({ message: `No se puede eliminar el consultor porque tiene: ${parts.join(", ")}` });
+      }
+
+      try {
+        // Explicitly delete CASCADE children in a transaction to avoid any edge-case issues
+        await prisma.$transaction([
+          prisma.alert.deleteMany({ where: { consultantId: id } }),
+          prisma.consultantBlock.deleteMany({ where: { consultantId: id } }),
+          prisma.capacityConfig.deleteMany({ where: { consultantId: id } }),
+          prisma.consultant.delete({ where: { id } }),
+        ]);
+        return reply.status(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede eliminar el consultor: tiene registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 
@@ -137,28 +150,41 @@ export async function consultantsRoutes(app: FastifyInstance) {
         where: { fullName: { equals: name, mode: "insensitive" } },
       });
       if (!existing) {
-        return reply.status(404).send({ message: "Consultant not found" });
+        return reply.status(404).send({ message: "Consultor no encontrado" });
       }
 
       const { id } = existing;
 
-      const linkedTimeEntries = await prisma.timeEntry.count({ where: { consultantId: id } });
-      const linkedForecasts = await prisma.forecast.count({ where: { consultantId: id } });
-      const linkedAssignments = await prisma.assignment.count({ where: { consultantId: id } });
+      // Pre-check RESTRICT relations (TimeEntry, Forecast, Assignment)
+      const [linkedTimeEntries, linkedForecasts, linkedAssignments] = await Promise.all([
+        prisma.timeEntry.count({ where: { consultantId: id } }),
+        prisma.forecast.count({ where: { consultantId: id } }),
+        prisma.assignment.count({ where: { consultantId: id } }),
+      ]);
 
       if (linkedTimeEntries > 0 || linkedForecasts > 0 || linkedAssignments > 0) {
+        const parts: string[] = [];
+        if (linkedTimeEntries > 0) parts.push(`${linkedTimeEntries} registro(s) de horas`);
+        if (linkedForecasts > 0) parts.push(`${linkedForecasts} forecast(s)`);
+        if (linkedAssignments > 0) parts.push(`${linkedAssignments} asignación(es)`);
         return reply
           .status(409)
-          .send({ message: "Cannot delete consultant with related time entries, forecasts or assignments" });
+          .send({ message: `No se puede eliminar el consultor porque tiene: ${parts.join(", ")}` });
       }
 
       try {
-        await prisma.consultant.delete({ where: { id } });
+        // Explicitly delete CASCADE children in a transaction to avoid any edge-case issues
+        await prisma.$transaction([
+          prisma.alert.deleteMany({ where: { consultantId: id } }),
+          prisma.consultantBlock.deleteMany({ where: { consultantId: id } }),
+          prisma.capacityConfig.deleteMany({ where: { consultantId: id } }),
+          prisma.consultant.delete({ where: { id } }),
+        ]);
         return reply.status(204).send();
       } catch (err: unknown) {
         const code = (err as { code?: string })?.code;
         if (code === "P2003" || code === "P2014") {
-          return reply.status(409).send({ message: "Cannot delete consultant: it has related records" });
+          return reply.status(409).send({ message: "No se puede eliminar el consultor: tiene registros relacionados" });
         }
         throw err;
       }

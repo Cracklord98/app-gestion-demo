@@ -83,8 +83,17 @@ export async function risksRoutes(app: FastifyInstance) {
       const { projectId, id } = idSchema.parse(request.params);
       const existing = await prisma.risk.findFirst({ where: { id, projectId } });
       if (!existing) return reply.status(404).send({ message: "Riesgo no encontrado" });
-      await prisma.risk.delete({ where: { id } });
-      return reply.status(204).send();
+      
+      try {
+        await prisma.risk.delete({ where: { id } });
+        return reply.status(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede eliminar el riesgo: tiene registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 }

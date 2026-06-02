@@ -166,26 +166,66 @@ export async function assignmentsRoutes(app: FastifyInstance) {
         return reply.status(409).send({ message: "No se puede editar una asignación completada o cancelada" });
       }
 
-      const assignment = await prisma.assignment.update({
-        where: { id },
-        data: payload,
-        include: {
-          project: { select: { id: true, name: true } },
-          consultant: { select: { id: true, fullName: true } },
-        },
-      });
+      const [project, consultant] = await Promise.all([
+        prisma.project.findUnique({ where: { id: payload.projectId } }),
+        prisma.consultant.findUnique({ where: { id: payload.consultantId } }),
+      ]);
 
-      await writeAudit(prisma, {
-        entity: "assignment",
-        entityId: id,
-        action: "UPDATE",
-        changedBy: performedBy,
-        before: existing as Record<string, unknown>,
-        after: assignment as Record<string, unknown>,
-        request,
-      });
+      if (!project) return reply.status(400).send({ message: "Proyecto no encontrado" });
+      if (!consultant) return reply.status(400).send({ message: "Consultor no encontrado" });
 
-      return { data: assignment };
+      // Validar si el consultor está activo (a menos que siga siendo el mismo y no se cambie)
+      if (!consultant.active && existing.consultantId !== payload.consultantId) {
+        return reply.status(400).send({ message: "El consultor no está activo" });
+      }
+
+      // Validar sobrecarga excluyendo la propia asignación
+      if (payload.allocationMode === "PERCENTAGE" && payload.allocationPct) {
+        const otherAssignments = await prisma.assignment.findMany({
+          where: {
+            consultantId: payload.consultantId,
+            id: { not: id },
+            status: { in: ["ACTIVE", "PARTIAL", "PLANNED"] },
+            startDate: { lte: payload.endDate },
+            endDate: { gte: payload.startDate },
+          },
+        });
+        const totalPct = otherAssignments.reduce((s, a) => s + Number(a.allocationPct ?? 0), 0);
+        if (totalPct + payload.allocationPct > 110) {
+          return reply.status(409).send({
+            message: `El consultor ya tiene ${totalPct}% asignado en ese período. Nueva asignación de ${payload.allocationPct}% supera el límite de 110%.`,
+          });
+        }
+      }
+
+      try {
+        const assignment = await prisma.assignment.update({
+          where: { id },
+          data: payload,
+          include: {
+            project: { select: { id: true, name: true } },
+            consultant: { select: { id: true, fullName: true } },
+          },
+        });
+
+        await writeAudit(prisma, {
+          entity: "assignment",
+          entityId: id,
+          action: "UPDATE",
+          changedBy: performedBy,
+          before: existing as Record<string, unknown>,
+          after: assignment as Record<string, unknown>,
+          request,
+        });
+
+        return { data: assignment };
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede actualizar la asignación debido a restricciones de clave foránea" });
+        }
+        throw err;
+      }
     },
   );
 
@@ -260,18 +300,26 @@ export async function assignmentsRoutes(app: FastifyInstance) {
         return reply.status(409).send({ message: "Solo se pueden eliminar asignaciones en estado PLANNED o CANCELLED" });
       }
 
-      await prisma.assignment.delete({ where: { id } });
+      try {
+        await prisma.assignment.delete({ where: { id } });
 
-      await writeAudit(prisma, {
-        entity: "assignment",
-        entityId: id,
-        action: "DELETE",
-        changedBy: request.authUser!.email,
-        before: existing as Record<string, unknown>,
-        request,
-      });
+        await writeAudit(prisma, {
+          entity: "assignment",
+          entityId: id,
+          action: "DELETE",
+          changedBy: request.authUser!.email,
+          before: existing as Record<string, unknown>,
+          request,
+        });
 
-      return reply.status(204).send();
+        return reply.status(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede eliminar la asignación: tiene otros registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 }

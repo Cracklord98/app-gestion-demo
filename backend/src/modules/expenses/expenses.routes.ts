@@ -90,15 +90,23 @@ export async function expensesRoutes(app: FastifyInstance) {
       preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.FINANCE])],
     },
     async (request, reply) => {
-    const { id } = idParamsSchema.parse(request.params);
+      const { id } = idParamsSchema.parse(request.params);
 
-    const existing = await prisma.expense.findUnique({ where: { id } });
-    if (!existing) {
-      return reply.status(404).send({ message: "Expense not found" });
-    }
+      const existing = await prisma.expense.findUnique({ where: { id } });
+      if (!existing) {
+        return reply.status(404).send({ message: "Expense not found" });
+      }
 
-      await prisma.expense.delete({ where: { id } });
-      return reply.status(204).send();
+      try {
+        await prisma.expense.delete({ where: { id } });
+        return reply.status(204).send();
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code === "P2003" || code === "P2014") {
+          return reply.status(409).send({ message: "No se puede eliminar el gasto: tiene registros relacionados" });
+        }
+        throw err;
+      }
     },
   );
 }
