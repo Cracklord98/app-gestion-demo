@@ -193,7 +193,17 @@ export async function projectsRoutes(app: FastifyInstance) {
       return reply.status(404).send({ message: "Project not found" });
     }
 
-    await prisma.project.delete({ where: { id } });
+    try {
+      await prisma.project.delete({ where: { id } });
+    } catch (err: unknown) {
+      const code = (err as { code?: string })?.code;
+      if (code === "P2003" || code === "P2014") {
+        return reply.status(409).send({
+          message: "Cannot delete project: it has related records that prevent deletion",
+        });
+      }
+      throw err;
+    }
 
     await writeAudit(prisma, {
       entity: "Project",

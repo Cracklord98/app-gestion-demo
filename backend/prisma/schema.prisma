@@ -423,7 +423,7 @@ model MonthlySnapshot {
   closedAt          DateTime @default(now())
   createdAt         DateTime @default(now())
 
-  project Project @relation(fields: [projectId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@unique([projectId, year, month])
   @@index([year, month])
