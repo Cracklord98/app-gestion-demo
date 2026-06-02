@@ -133,7 +133,11 @@ export async function consultantsRoutes(app: FastifyInstance) {
         if (code === "P2003" || code === "P2014") {
           return reply.status(409).send({ message: "No se puede eliminar el consultor: tiene registros relacionados" });
         }
-        throw err;
+        return reply.status(500).send({
+          message: "Error interno del servidor al eliminar consultor",
+          detail: err instanceof Error ? err.message : String(err),
+          code
+        });
       }
     },
   );
@@ -186,7 +190,11 @@ export async function consultantsRoutes(app: FastifyInstance) {
         if (code === "P2003" || code === "P2014") {
           return reply.status(409).send({ message: "No se puede eliminar el consultor: tiene registros relacionados" });
         }
-        throw err;
+        return reply.status(500).send({
+          message: "Error interno del servidor al eliminar consultor por nombre",
+          detail: err instanceof Error ? err.message : String(err),
+          code
+        });
       }
     },
   );
