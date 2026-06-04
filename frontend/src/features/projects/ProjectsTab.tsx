@@ -15,6 +15,8 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SectionLayout } from "../../components/SectionLayout";
 import { downloadCsv } from "../../utils/csv";
 import { backendHealthToResult, HEALTH_CRITERIA_TOOLTIP } from "../../utils/projectHealth";
+import { ValidationErrorBox, isValidationError } from "../../components/ValidationErrorBox";
+import { CurrencyInput } from "../../components/CurrencyInput";
 
 function RagBadge({ status }: { status: HealthStatus | undefined }) {
   if (!status) return <span style={{ color: "#888", fontSize: "0.75rem" }}>—</span>;
@@ -84,7 +86,7 @@ const emptyForm = {
   name: "",
   company: "",
   country: "",
-  currency: "USD",
+  currency: "",
   budget: "",
   startDate: "",
   endDate: "",
@@ -116,8 +118,10 @@ export function ProjectsTab({
   const [healthFilter, setHealthFilter] = useState<HealthStatus | "">("");
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
 
   const statsMap = new Map<string, StatsProjectRowEnriched>(
@@ -136,6 +140,7 @@ export function ProjectsTab({
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
+    setFormError("");
     setSubmitting(true);
     try {
       await createProject({
@@ -146,7 +151,12 @@ export function ProjectsTab({
       setForm(emptyForm);
       await onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "No se pudo crear proyecto");
+      const msg = err instanceof Error ? err.message : "No se pudo crear proyecto";
+      if (isValidationError(msg)) {
+        setFormError(msg);
+      } else {
+        onError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -155,6 +165,7 @@ export function ProjectsTab({
   async function handleUpdate(e: FormEvent) {
     e.preventDefault();
     if (!editForm) return;
+    setEditError("");
     setEditSubmitting(true);
     try {
       await updateProject(editForm.id, {
@@ -174,7 +185,12 @@ export function ProjectsTab({
       setEditForm(null);
       await onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "No se pudo actualizar proyecto");
+      const msg = err instanceof Error ? err.message : "No se pudo actualizar proyecto";
+      if (isValidationError(msg)) {
+        setEditError(msg);
+      } else {
+        onError(msg);
+      }
     } finally {
       setEditSubmitting(false);
     }
@@ -214,9 +230,10 @@ export function ProjectsTab({
 
   async function handleDelete() {
     if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
     try {
-      await deleteProject(deleteTarget.id);
-      setDeleteTarget(null);
+      await deleteProject(id);
       await onReload();
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo eliminar proyecto");
@@ -233,13 +250,21 @@ export function ProjectsTab({
         exportDisabled={filtered.length === 0}
         form={
           <form onSubmit={(e) => void handleCreate(e)} className="form-inline">
+            <ValidationErrorBox message={formError} />
             <input placeholder="Nombre" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} required />
             <input placeholder="Empresa" value={form.company} onChange={(e) => setForm((p) => ({ ...p, company: e.target.value }))} required />
             <input placeholder="País" value={form.country} onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))} required />
             <select value={form.currency} onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))} required>
+              <option value="" disabled hidden>Selecciona moneda...</option>
               {currencyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <input type="number" placeholder="Presupuesto (costo)" value={form.budget} onChange={(e) => setForm((p) => ({ ...p, budget: e.target.value }))} required />
+            <CurrencyInput
+              currency={form.currency || "USD"}
+              placeholder="Presupuesto (costo)"
+              value={form.budget}
+              onChange={(v) => setForm((p) => ({ ...p, budget: v }))}
+              required
+            />
             <select value={form.projectType} onChange={(e) => setForm((p) => ({ ...p, projectType: e.target.value as ProjectType }))}>
               <option value="TIME_AND_MATERIAL">Tiempo y Material</option>
               <option value="FIXED_PRICE">Precio Fijo</option>
@@ -250,7 +275,12 @@ export function ProjectsTab({
               <option value="PAUSED">Pausado</option>
               <option value="CLOSED">Cerrado</option>
             </select>
-            <input type="number" step="0.01" placeholder="Precio de venta (opcional)" value={form.sellPrice} onChange={(e) => setForm((p) => ({ ...p, sellPrice: e.target.value }))} />
+            <CurrencyInput
+              currency={form.sellCurrency || "USD"}
+              placeholder="Precio de venta (opcional)"
+              value={form.sellPrice}
+              onChange={(v) => setForm((p) => ({ ...p, sellPrice: v }))}
+            />
             <select value={form.sellCurrency} onChange={(e) => setForm((p) => ({ ...p, sellCurrency: e.target.value }))}>
               {currencyOptions.map((c) => <option key={`sell-${c}`} value={c}>{`Venta: ${c}`}</option>)}
             </select>
@@ -385,20 +415,28 @@ export function ProjectsTab({
       />
 
       {editForm && (
-        <div className="modal-overlay" onClick={() => setEditForm(null)}>
+        <div className="modal-overlay" onClick={() => { setEditForm(null); setEditError(""); }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Editar proyecto</h3>
-              <button type="button" className="ghost" onClick={() => setEditForm(null)}>Cerrar</button>
+              <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cerrar</button>
             </div>
             <form className="form-grid" onSubmit={(e) => void handleUpdate(e)}>
+              <ValidationErrorBox message={editError} />
               <input value={editForm.name} onChange={(e) => setEditForm((p) => p && { ...p, name: e.target.value })} placeholder="Nombre" required />
               <input value={editForm.company} onChange={(e) => setEditForm((p) => p && { ...p, company: e.target.value })} placeholder="Empresa" required />
               <input value={editForm.country} onChange={(e) => setEditForm((p) => p && { ...p, country: e.target.value })} placeholder="País" required />
               <select value={editForm.currency} onChange={(e) => setEditForm((p) => p && { ...p, currency: e.target.value })} required>
+                <option value="" disabled hidden>Selecciona moneda...</option>
                 {currencyOptions.map((c) => <option key={`edit-${c}`} value={c}>{c}</option>)}
               </select>
-              <input type="number" value={editForm.budget} onChange={(e) => setEditForm((p) => p && { ...p, budget: e.target.value })} placeholder="Presupuesto (costo)" required />
+              <CurrencyInput
+                currency={editForm.currency || "USD"}
+                value={editForm.budget}
+                onChange={(v) => setEditForm((p) => p && { ...p, budget: v })}
+                placeholder="Presupuesto (costo)"
+                required
+              />
               <select value={editForm.projectType} onChange={(e) => setEditForm((p) => p && { ...p, projectType: e.target.value as ProjectType })}>
                 <option value="TIME_AND_MATERIAL">Tiempo y Material</option>
                 <option value="FIXED_PRICE">Precio Fijo</option>
@@ -409,7 +447,12 @@ export function ProjectsTab({
                 <option value="PAUSED">Pausado</option>
                 <option value="CLOSED">Cerrado</option>
               </select>
-              <input type="number" step="0.01" value={editForm.sellPrice} onChange={(e) => setEditForm((p) => p && { ...p, sellPrice: e.target.value })} placeholder="Precio de venta (opcional)" />
+              <CurrencyInput
+                currency={editForm.sellCurrency || "USD"}
+                value={editForm.sellPrice}
+                onChange={(v) => setEditForm((p) => p && { ...p, sellPrice: v })}
+                placeholder="Precio de venta (opcional)"
+              />
               <select value={editForm.sellCurrency} onChange={(e) => setEditForm((p) => p && { ...p, sellCurrency: e.target.value })}>
                 {currencyOptions.map((c) => <option key={`edit-sell-${c}`} value={c}>{`Moneda venta: ${c}`}</option>)}
               </select>
@@ -418,7 +461,7 @@ export function ProjectsTab({
               <textarea value={editForm.description} onChange={(e) => setEditForm((p) => p && { ...p, description: e.target.value })} placeholder="Descripción" />
               <div className="modal-actions">
                 <button type="submit" disabled={editSubmitting}>{editSubmitting ? "Guardando…" : "Guardar cambios"}</button>
-                <button type="button" className="ghost" onClick={() => setEditForm(null)}>Cancelar</button>
+                <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cancelar</button>
               </div>
             </form>
           </div>

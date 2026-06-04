@@ -50,6 +50,7 @@ export async function buildApp() {
 
   app.setErrorHandler((error, _request, reply) => {
     if (error instanceof ZodError) {
+      console.error("Zod Validation Error:", JSON.stringify(error.issues, null, 2));
       return reply.status(400).send({
         message: "Validation error",
         issues: error.issues.map((issue) => ({

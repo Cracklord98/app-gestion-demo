@@ -17,6 +17,8 @@ import { useGastosGrouped, type GroupBy } from "./useGastosGrouped";
 import { GastosKPIStrip } from "./GastosKPIStrip";
 import { GastosFilters } from "./GastosFilters";
 import { GastosSummaryTable } from "./GastosSummaryTable";
+import { ValidationErrorBox, isValidationError } from "../../components/ValidationErrorBox";
+import { CurrencyInput } from "../../components/CurrencyInput";
 
 const currencyOptions = ["COP", "USD", "EUR", "MXN", "PEN", "CLP"];
 const categoryOptions = ["Viajes", "Alojamiento", "Alimentacion", "Transporte", "Software", "Servicios", "Otros"];
@@ -68,8 +70,10 @@ export function ExpensesTab({
   // ── Form / modal state ────────────────────────────────────────────────────
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [createError, setCreateError] = useState("");
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null);
   const [showNewForm, setShowNewForm] = useState(false);
 
@@ -160,6 +164,7 @@ export function ExpensesTab({
   // ── CRUD handlers ─────────────────────────────────────────────────────────
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
+    setCreateError("");
     setSubmitting(true);
     try {
       await createExpense({
@@ -174,7 +179,12 @@ export function ExpensesTab({
       setShowNewForm(false);
       await onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "No se pudo registrar gasto");
+      const msg = err instanceof Error ? err.message : "No se pudo registrar gasto";
+      if (isValidationError(msg)) {
+        setCreateError(msg);
+      } else {
+        onError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -183,6 +193,7 @@ export function ExpensesTab({
   async function handleUpdate(e: FormEvent) {
     e.preventDefault();
     if (!editForm) return;
+    setEditError("");
     setEditSubmitting(true);
     try {
       await updateExpense(editForm.id, {
@@ -196,7 +207,12 @@ export function ExpensesTab({
       setEditForm(null);
       await onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "No se pudo actualizar gasto");
+      const msg = err instanceof Error ? err.message : "No se pudo actualizar gasto";
+      if (isValidationError(msg)) {
+        setEditError(msg);
+      } else {
+        onError(msg);
+      }
     } finally {
       setEditSubmitting(false);
     }
@@ -204,9 +220,10 @@ export function ExpensesTab({
 
   async function handleDelete() {
     if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
     try {
-      await deleteExpense(deleteTarget.id);
-      setDeleteTarget(null);
+      await deleteExpense(id);
       await onReload();
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo eliminar gasto");
@@ -336,29 +353,36 @@ export function ExpensesTab({
 
       {/* New expense modal */}
       {showNewForm && canWrite && (
-        <div className="modal-overlay" onClick={() => setShowNewForm(false)}>
+        <div className="modal-overlay" onClick={() => { setShowNewForm(false); setCreateError(""); }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Registrar gasto</h3>
-              <button type="button" className="ghost" onClick={() => setShowNewForm(false)}>Cerrar</button>
+              <button type="button" className="ghost" onClick={() => { setShowNewForm(false); setCreateError(""); }}>Cerrar</button>
             </div>
             <form onSubmit={(e) => void handleCreate(e)} className="form-grid">
+              <ValidationErrorBox message={createError} />
               <select value={form.projectId} onChange={(e) => setForm((p) => ({ ...p, projectId: e.target.value }))} required>
-                <option value="">Proyecto</option>
+                <option value="" disabled hidden>Selecciona proyecto...</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <input type="date" value={form.expenseDate} onChange={(e) => setForm((p) => ({ ...p, expenseDate: e.target.value }))} required />
               <select value={form.category} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} required>
                 {categoryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
-              <input type="number" step="0.01" placeholder="Valor" value={form.amount} onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))} required />
+              <CurrencyInput
+                currency={form.currency}
+                placeholder="Valor"
+                value={form.amount}
+                onChange={(v) => setForm((p) => ({ ...p, amount: v }))}
+                required
+              />
               <select value={form.currency} onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))} required>
                 {currencyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
               <textarea placeholder="Descripción" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
               <div className="modal-actions">
                 <button type="submit" disabled={submitting}>{submitting ? "Registrando…" : "Registrar gasto"}</button>
-                <button type="button" className="ghost" onClick={() => setShowNewForm(false)}>Cancelar</button>
+                <button type="button" className="ghost" onClick={() => { setShowNewForm(false); setCreateError(""); }}>Cancelar</button>
               </div>
             </form>
           </div>
@@ -367,28 +391,35 @@ export function ExpensesTab({
 
       {/* Edit modal */}
       {editForm && (
-        <div className="modal-overlay" onClick={() => setEditForm(null)}>
+        <div className="modal-overlay" onClick={() => { setEditForm(null); setEditError(""); }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Editar gasto</h3>
-              <button type="button" className="ghost" onClick={() => setEditForm(null)}>Cerrar</button>
+              <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cerrar</button>
             </div>
             <form className="form-grid" onSubmit={(e) => void handleUpdate(e)}>
+              <ValidationErrorBox message={editError} />
               <select value={editForm.projectId} onChange={(e) => setEditForm((p) => p && { ...p, projectId: e.target.value })} required>
+                <option value="" disabled hidden>Selecciona proyecto...</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <input type="date" value={editForm.expenseDate} onChange={(e) => setEditForm((p) => p && { ...p, expenseDate: e.target.value })} required />
               <select value={editForm.category} onChange={(e) => setEditForm((p) => p && { ...p, category: e.target.value })} required>
                 {categoryOptions.map((c) => <option key={`edit-cat-${c}`} value={c}>{c}</option>)}
               </select>
-              <input type="number" step="0.01" value={editForm.amount} onChange={(e) => setEditForm((p) => p && { ...p, amount: e.target.value })} required />
+              <CurrencyInput
+                currency={editForm.currency}
+                value={editForm.amount}
+                onChange={(v) => setEditForm((p) => p && { ...p, amount: v })}
+                required
+              />
               <select value={editForm.currency} onChange={(e) => setEditForm((p) => p && { ...p, currency: e.target.value })} required>
                 {currencyOptions.map((c) => <option key={`edit-cur-${c}`} value={c}>{c}</option>)}
               </select>
               <textarea value={editForm.description} onChange={(e) => setEditForm((p) => p && { ...p, description: e.target.value })} placeholder="Descripción" />
               <div className="modal-actions">
                 <button type="submit" disabled={editSubmitting}>{editSubmitting ? "Guardando…" : "Guardar cambios"}</button>
-                <button type="button" className="ghost" onClick={() => setEditForm(null)}>Cancelar</button>
+                <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cancelar</button>
               </div>
             </form>
           </div>

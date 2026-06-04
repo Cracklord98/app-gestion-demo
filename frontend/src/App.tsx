@@ -33,6 +33,7 @@ import { PortfolioTab } from "./features/portfolio/PortfolioTab";
 import { AlertsPanel } from "./components/AlertsPanel";
 import { AlertsTab } from "./features/alerts/AlertsTab";
 import { ToastContainer } from "./components/Toast";
+import { AppFooter } from "./components/AppFooter";
 import type { TabId } from "./types";
 import "./App.css";
 
@@ -260,6 +261,10 @@ function App() {
     }
   }, [allVisibleTabs, activeTab]);
 
+  useEffect(() => {
+    setError(null);
+  }, [activeTab, openProjectId]);
+
   const bootstrap = useCallback(async () => {
     try {
       setLoading(true);
@@ -482,7 +487,27 @@ function App() {
 
         {/* Main content */}
         <main className="main-content">
-          {error && <p className="error-banner">{error}</p>}
+          {error && (
+            <div className="error-banner" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "1rem" }}>
+              <span>{error}</span>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setError(null)}
+                style={{
+                  padding: "0.15rem 0.45rem",
+                  fontSize: "0.75rem",
+                  color: "#b91c1c",
+                  borderColor: "#fecaca",
+                  background: "#fff1f2",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
           {loading && <p className="loading">Cargando datos…</p>}
 
           {!loading && activeTab === "dashboard" && (
@@ -627,6 +652,13 @@ function App() {
           )}
         </main>
       </div>
+
+      <AppFooter
+        onNavigate={setActiveTab}
+        backendOk={health?.ok === true}
+        appVersion="1.0.0"
+        environment={import.meta.env.MODE === "production" ? "Producción" : "Demo"}
+      />
 
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </div>

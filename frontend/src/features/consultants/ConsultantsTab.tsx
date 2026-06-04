@@ -9,6 +9,8 @@ import {
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SectionLayout } from "../../components/SectionLayout";
 import { downloadCsv } from "../../utils/csv";
+import { ValidationErrorBox, isValidationError } from "../../components/ValidationErrorBox";
+import { CurrencyInput } from "../../components/CurrencyInput";
 
 const currencyOptions = ["COP", "USD", "EUR", "MXN", "PEN", "CLP"];
 const roleOptions = ["Analista", "Desarrollador", "QA", "Arquitecto", "PM", "Data Engineer"];
@@ -36,7 +38,7 @@ type EditForm = {
 const emptyForm = {
   fullName: "",
   email: "",
-  role: roleOptions[0],
+  role: "",
   hourlyRate: "",
   rateCurrency: "USD",
   active: true,
@@ -57,8 +59,10 @@ export function ConsultantsTab({
 }) {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState("");
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Consultant | null>(null);
   const [fxRates, setFxRates] = useState<Record<string, number>>({});
   const [fxLoading, setFxLoading] = useState(false);
@@ -107,6 +111,7 @@ export function ConsultantsTab({
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
+    setFormError("");
     setSubmitting(true);
     try {
       await createConsultant({
@@ -120,7 +125,12 @@ export function ConsultantsTab({
       setForm(emptyForm);
       await onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "No se pudo crear consultor");
+      const msg = err instanceof Error ? err.message : "No se pudo crear consultor";
+      if (isValidationError(msg)) {
+        setFormError(msg);
+      } else {
+        onError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -129,6 +139,7 @@ export function ConsultantsTab({
   async function handleUpdate(e: FormEvent) {
     e.preventDefault();
     if (!editForm) return;
+    setEditError("");
     setEditSubmitting(true);
     try {
       await updateConsultant(editForm.id, {
@@ -142,7 +153,12 @@ export function ConsultantsTab({
       setEditForm(null);
       await onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "No se pudo actualizar consultor");
+      const msg = err instanceof Error ? err.message : "No se pudo actualizar consultor";
+      if (isValidationError(msg)) {
+        setEditError(msg);
+      } else {
+        onError(msg);
+      }
     } finally {
       setEditSubmitting(false);
     }
@@ -166,9 +182,10 @@ export function ConsultantsTab({
 
   async function handleDelete() {
     if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
     try {
-      await deleteConsultant(deleteTarget.id);
-      setDeleteTarget(null);
+      await deleteConsultant(id);
       await onReload();
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo eliminar consultor");
@@ -185,15 +202,22 @@ export function ConsultantsTab({
         exportDisabled={consultants.length === 0}
         form={
           <form onSubmit={(e) => void handleCreate(e)} className="form-inline">
+            <ValidationErrorBox message={formError} />
             <input placeholder="Nombre completo" value={form.fullName} onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} required />
-            <input placeholder="Correo" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+            <input type="email" placeholder="Correo" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
             <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} required>
+              <option value="" disabled hidden>Selecciona un rol...</option>
               {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
             </select>
             <select value={form.rateCurrency} onChange={(e) => setForm((p) => ({ ...p, rateCurrency: e.target.value }))}>
               {currencyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
-            <input type="number" placeholder={`Tarifa/h (${form.rateCurrency})`} value={form.hourlyRate} onChange={(e) => setForm((p) => ({ ...p, hourlyRate: e.target.value }))} />
+            <CurrencyInput
+              currency={form.rateCurrency}
+              placeholder={`Tarifa/h (${form.rateCurrency})`}
+              value={form.hourlyRate}
+              onChange={(v) => setForm((p) => ({ ...p, hourlyRate: v }))}
+            />
             <label className="check">
               <input type="checkbox" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
               Activo
@@ -265,29 +289,36 @@ export function ConsultantsTab({
       />
 
       {editForm && (
-        <div className="modal-overlay" onClick={() => setEditForm(null)}>
+        <div className="modal-overlay" onClick={() => { setEditForm(null); setEditError(""); }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Editar consultor</h3>
-              <button type="button" className="ghost" onClick={() => setEditForm(null)}>Cerrar</button>
+              <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cerrar</button>
             </div>
             <form className="form-grid" onSubmit={(e) => void handleUpdate(e)}>
+              <ValidationErrorBox message={editError} />
               <input value={editForm.fullName} onChange={(e) => setEditForm((p) => p && { ...p, fullName: e.target.value })} placeholder="Nombre completo" required />
-              <input value={editForm.email} onChange={(e) => setEditForm((p) => p && { ...p, email: e.target.value })} placeholder="Correo" />
+              <input type="email" value={editForm.email} onChange={(e) => setEditForm((p) => p && { ...p, email: e.target.value })} placeholder="Correo" />
               <select value={editForm.role} onChange={(e) => setEditForm((p) => p && { ...p, role: e.target.value })} required>
+                <option value="" disabled hidden>Selecciona un rol...</option>
                 {roleOptions.map((r) => <option key={`edit-${r}`} value={r}>{r}</option>)}
               </select>
               <select value={editForm.rateCurrency} onChange={(e) => setEditForm((p) => p && { ...p, rateCurrency: e.target.value })}>
                 {currencyOptions.map((c) => <option key={`edit-cur-${c}`} value={c}>{`Moneda tarifa: ${c}`}</option>)}
               </select>
-              <input type="number" value={editForm.hourlyRate} onChange={(e) => setEditForm((p) => p && { ...p, hourlyRate: e.target.value })} placeholder={`Tarifa/hora (${editForm.rateCurrency})`} />
+              <CurrencyInput
+                currency={editForm.rateCurrency}
+                value={editForm.hourlyRate}
+                onChange={(v) => setEditForm((p) => p && { ...p, hourlyRate: v })}
+                placeholder={`Tarifa/hora (${editForm.rateCurrency})`}
+              />
               <label className="check">
                 <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm((p) => p && { ...p, active: e.target.checked })} />
                 Activo
               </label>
               <div className="modal-actions">
                 <button type="submit" disabled={editSubmitting}>{editSubmitting ? "Guardando…" : "Guardar cambios"}</button>
-                <button type="button" className="ghost" onClick={() => setEditForm(null)}>Cancelar</button>
+                <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cancelar</button>
               </div>
             </form>
           </div>

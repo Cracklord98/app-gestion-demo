@@ -71,7 +71,7 @@ export function ToastContainer({
             >
               {ICONS[toast.type]}
             </span>
-            <span style={{ flex: 1, fontSize: "0.875rem", color: "#374151", lineHeight: 1.4 }}>
+            <span style={{ flex: 1, fontSize: "0.875rem", color: "#374151", lineHeight: 1.4, whiteSpace: "pre-line" }}>
               {toast.message}
             </span>
             <button

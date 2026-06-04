@@ -234,8 +234,92 @@ async function request<T>(path: string, method: HttpMethod = "GET", body?: unkno
     let errorMessage = fallbackMessage;
 
     try {
-      const errorBody = (await response.json()) as { message?: string };
-      errorMessage = errorBody.message || fallbackMessage;
+      const errorBody = (await response.json()) as {
+        message?: string;
+        issues?: { path: string; message: string }[];
+      };
+
+      if (errorBody.message === "Validation error" && Array.isArray(errorBody.issues)) {
+        const FIELD_MAP: Record<string, string> = {
+          fullName: "Nombre completo",
+          email: "Correo electrónico",
+          role: "Rol",
+          hourlyRate: "Tarifa por hora",
+          rateCurrency: "Moneda de la tarifa",
+          active: "Activo",
+          name: "Nombre",
+          company: "Empresa",
+          country: "País",
+          currency: "Moneda",
+          budget: "Presupuesto",
+          startDate: "Fecha de inicio",
+          endDate: "Fecha de fin",
+          description: "Descripción",
+          projectType: "Tipo de proyecto",
+          sellPrice: "Precio de venta",
+          sellCurrency: "Moneda de venta",
+          category: "Categoría",
+          amount: "Monto",
+          expenseDate: "Fecha del gasto",
+          entryDate: "Fecha del ingreso",
+          projectId: "Proyecto",
+          consultantId: "Consultor",
+          hoursProjected: "Horas proyectadas",
+          sellRate: "Tarifa de venta",
+          hours: "Horas",
+          workDate: "Fecha",
+          baseCode: "Moneda origen",
+          quoteCode: "Moneda destino",
+          rate: "Tasa",
+          note: "Nota",
+          displayName: "Nombre para mostrar",
+          roles: "Roles",
+          allocationMode: "Modo de asignación",
+          allocationPct: "Porcentaje de asignación",
+          hoursPerPeriod: "Horas por periodo",
+          periodUnit: "Unidad del periodo",
+          title: "Título",
+          severity: "Gravedad",
+          owner: "Responsable",
+          plannedDate: "Fecha planificada",
+          actualDate: "Fecha real",
+          weight: "Peso",
+          deliverable: "Entregable",
+          acceptedBy: "Aceptado por",
+          probability: "Probabilidad",
+          impact: "Impacto",
+          mitigationPlan: "Plan de mitigación",
+          contingencyPlan: "Plan de contingencia",
+          resolution: "Resolución",
+          type: "Tipo",
+        };
+
+        const translateMessage = (msg: string): string => {
+          const m = msg.toLowerCase();
+          if (m.includes("required") || m.includes("is required")) return "es obligatorio.";
+          if (m.includes("invalid email")) return "debe tener un formato de correo válido.";
+          if (m.includes("greater than or equal to 0") || m.includes("nonnegative")) return "debe ser mayor o igual a 0.";
+          if (m.includes("must be positive")) return "debe ser un valor positivo.";
+          if (m.includes("invalid datetime") || m.includes("invalid date")) return "debe ser una fecha válida.";
+          if (m.includes("must contain at least 1 character")) return "no puede estar vacío.";
+          if (m.includes("expected number") || m.includes("nan")) return "debe ser un número válido.";
+          if (m.includes("expected string")) return "debe ser un texto válido.";
+          return `presenta el siguiente problema: ${msg}`;
+        };
+
+        const bullets = errorBody.issues
+          .map((issue) => {
+            const fieldKey = issue.path.split(".").pop() || issue.path;
+            const fieldName = FIELD_MAP[fieldKey] || fieldKey;
+            const cleanMsg = translateMessage(issue.message);
+            return `• ! El campo "${fieldName}" ${cleanMsg}`;
+          })
+          .join("\n");
+
+        errorMessage = `Error de validación:\n${bullets}`;
+      } else {
+        errorMessage = errorBody.message || fallbackMessage;
+      }
     } catch {
       errorMessage = fallbackMessage;
     }

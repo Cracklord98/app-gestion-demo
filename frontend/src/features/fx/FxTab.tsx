@@ -67,9 +67,10 @@ export function FxTab({
 
   async function handleDelete() {
     if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
     try {
-      await deleteFxRate(deleteTarget.id);
-      setDeleteTarget(null);
+      await deleteFxRate(id);
       await onReload();
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo eliminar la tasa");

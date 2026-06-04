@@ -647,9 +647,10 @@ function AssignmentsPanel({
 
   async function handleCancel() {
     if (!cancelTarget) return;
+    const id = cancelTarget.id;
+    setCancelTarget(null);
     try {
-      await cancelAssignment(cancelTarget.id);
-      setCancelTarget(null);
+      await cancelAssignment(id);
       await reload();
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo cancelar la asignación");
@@ -658,9 +659,10 @@ function AssignmentsPanel({
 
   async function handleComplete() {
     if (!completeTarget) return;
+    const id = completeTarget.id;
+    setCompleteTarget(null);
     try {
-      await completeAssignment(completeTarget.id);
-      setCompleteTarget(null);
+      await completeAssignment(id);
       await reload();
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo completar la asignación");
@@ -669,9 +671,10 @@ function AssignmentsPanel({
 
   async function handleDelete() {
     if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
     try {
-      await deleteAssignment(deleteTarget.id);
-      setDeleteTarget(null);
+      await deleteAssignment(id);
       await reload();
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo eliminar la asignación");
@@ -685,11 +688,11 @@ function AssignmentsPanel({
           <h3>Nueva asignación</h3>
           <form onSubmit={(e) => void handleCreate(e)} className="form-grid">
             <select value={form.projectId} onChange={(e) => setForm((p) => ({ ...p, projectId: e.target.value }))} required>
-              <option value="">Proyecto</option>
+              <option value="" disabled hidden>Selecciona proyecto...</option>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             <select value={form.consultantId} onChange={(e) => setForm((p) => ({ ...p, consultantId: e.target.value }))} required>
-              <option value="">Consultor</option>
+              <option value="" disabled hidden>Selecciona consultor...</option>
               {consultants.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.fullName} — {c.role}</option>)}
             </select>
             <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} required />
@@ -880,9 +883,11 @@ function BlocksPanel({
 
   async function handleDelete() {
     if (!deleteTarget) return;
+    const blockId = deleteTarget.id;
+    const consultantId = deleteTarget.consultantId;
+    setDeleteTarget(null);
     try {
-      await deleteConsultantBlock(deleteTarget.consultantId, deleteTarget.id);
-      setDeleteTarget(null);
+      await deleteConsultantBlock(consultantId, blockId);
       await reload(filterConsultant);
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo eliminar el bloqueo");

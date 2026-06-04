@@ -11,6 +11,8 @@ import {
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SectionLayout } from "../../components/SectionLayout";
 import { downloadCsv } from "../../utils/csv";
+import { ValidationErrorBox, isValidationError } from "../../components/ValidationErrorBox";
+import { CurrencyInput } from "../../components/CurrencyInput";
 import {
   describeDuration,
   todayISO,
@@ -124,8 +126,10 @@ export function ForecastsTab({
 }) {
   const [form, setForm] = useState(makeEmptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [createError, setCreateError] = useState("");
   const [editForm, setEditForm] = useState<EditForm | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<Forecast | null>(null);
   const [filterProject, setFilterProject] = useState("");
   const [filterConsultant, setFilterConsultant] = useState("");
@@ -138,18 +142,6 @@ export function ForecastsTab({
       ? "La fecha fin debe ser igual o posterior a la fecha inicio."
       : "";
 
-  const rangeWarning = (() => {
-    if (rangeError) return "";
-    const today = todayISO();
-    const from = form.dateFrom;
-    const to = form.dateTo;
-    const [fy, fm] = from.split("-").map(Number);
-    const [ty, tm] = to.split("-").map(Number);
-    const spanMonths = (ty - fy) * 12 + (tm - fm) + 1;
-    if (spanMonths > 24) return `Rango de ${spanMonths} meses (> 24). Considera dividir en proyecciones más cortas.`;
-    if (from < today) return "La fecha inicio está en el pasado.";
-    return "";
-  })();
 
   const hoursNum = Number(form.hoursProjected);
   const hoursError = form.hoursProjected
@@ -195,6 +187,7 @@ export function ForecastsTab({
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
     if (rangeError || hoursError) return;
+    setCreateError("");
     setSubmitting(true);
     try {
       await createForecast({
@@ -211,7 +204,12 @@ export function ForecastsTab({
       setForm(makeEmptyForm());
       await onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "No se pudo crear proyección");
+      const msg = err instanceof Error ? err.message : "No se pudo crear proyección";
+      if (isValidationError(msg)) {
+        setCreateError(msg);
+      } else {
+        onError(msg);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -220,6 +218,7 @@ export function ForecastsTab({
   async function handleUpdate(e: FormEvent) {
     e.preventDefault();
     if (!editForm) return;
+    setEditError("");
     setEditSubmitting(true);
     try {
       await updateForecast(editForm.id, {
@@ -236,7 +235,12 @@ export function ForecastsTab({
       setEditForm(null);
       await onReload();
     } catch (err) {
-      onError(err instanceof Error ? err.message : "No se pudo actualizar proyección");
+      const msg = err instanceof Error ? err.message : "No se pudo actualizar proyección";
+      if (isValidationError(msg)) {
+        setEditError(msg);
+      } else {
+        onError(msg);
+      }
     } finally {
       setEditSubmitting(false);
     }
@@ -244,9 +248,10 @@ export function ForecastsTab({
 
   async function handleDelete() {
     if (!deleteTarget) return;
+    const id = deleteTarget.id;
+    setDeleteTarget(null);
     try {
-      await deleteForecast(deleteTarget.id);
-      setDeleteTarget(null);
+      await deleteForecast(id);
       await onReload();
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo eliminar proyección");
@@ -321,143 +326,126 @@ export function ForecastsTab({
               ))}
             </div>
 
-            <form onSubmit={(e) => void handleCreate(e)} className="form-inline">
-              <select
-                value={form.projectId}
-                onChange={(e) => setForm((p) => ({ ...p, projectId: e.target.value }))}
-                required
-              >
-                <option value="">Proyecto</option>
-                {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
+            <form onSubmit={(e) => void handleCreate(e)} className="form-grid" style={{ background: "#ffffff", padding: "1.25rem", borderRadius: "10px", border: "1px solid #f4d4b6" }}>
+              {createError && <ValidationErrorBox message={createError} />}
+              
+              {/* Linea 1: Proyecto y Consultor */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.7rem" }}>
+                <select value={form.projectId} onChange={(e) => setForm((p) => ({ ...p, projectId: e.target.value }))} required>
+                  <option value="" disabled hidden>Selecciona proyecto *</option>
+                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
 
-              <select
-                value={form.consultantId}
-                onChange={(e) => {
-                  const id = e.target.value;
-                  const consultant = consultants.find((c) => c.id === id);
-                  setForm((p) => ({
-                    ...p,
-                    consultantId: id,
-                    hourlyRate: consultant?.hourlyRate ? String(Number(consultant.hourlyRate)) : p.hourlyRate,
-                    currency: consultant?.rateCurrency || p.currency,
-                  }));
-                }}
-                required
-              >
-                <option value="">Consultor</option>
-                {consultants.map((c) => <option key={c.id} value={c.id}>{c.fullName}</option>)}
-              </select>
-
-              <div>
-                <label htmlFor="form-date-from" style={{ display: "block", fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.2rem" }}>
-                  Fecha inicio
-                </label>
-                <input
-                  id="form-date-from"
-                  type="date"
-                  value={form.dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
+                <select
+                  value={form.consultantId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    const consultant = consultants.find((c) => c.id === id);
+                    setForm((p) => ({
+                      ...p,
+                      consultantId: id,
+                      hourlyRate: consultant?.hourlyRate ? String(Number(consultant.hourlyRate)) : p.hourlyRate,
+                      currency: consultant?.rateCurrency || p.currency,
+                    }));
+                  }}
                   required
-                  style={{ width: "100%" }}
-                />
+                >
+                  <option value="" disabled hidden>Selecciona consultor *</option>
+                  {consultants.map((c) => <option key={c.id} value={c.id}>{c.fullName}</option>)}
+                </select>
               </div>
 
-              <div>
-                <label htmlFor="form-date-to" style={{ display: "block", fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.2rem" }}>
-                  Fecha fin
-                </label>
+              {/* Linea 2: Fechas y Horas */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.7rem", alignItems: "start" }}>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <label htmlFor="form-date-from" style={{ fontSize: "0.75rem", color: "#9a4f0f", fontWeight: 700, marginBottom: "0.2rem" }}>Fecha inicio *</label>
+                  <input id="form-date-from" type="date" value={form.dateFrom} onChange={(e) => setDateFrom(e.target.value)} required />
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <label htmlFor="form-date-to" style={{ fontSize: "0.75rem", color: "#9a4f0f", fontWeight: 700, marginBottom: "0.2rem" }}>Fecha fin *</label>
+                  <input id="form-date-to" type="date" value={form.dateTo} min={form.dateFrom} onChange={(e) => setForm((p) => ({ ...p, dateTo: e.target.value }))} required />
+                  {durationLabel && !rangeError && (
+                    <span style={{ fontSize: "0.72rem", color: "#9a4f0f", fontWeight: 500, marginTop: "0.25rem" }}>
+                      📅 Duración: {durationLabel}
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <label htmlFor="form-hours" style={{ fontSize: "0.75rem", color: "#9a4f0f", fontWeight: 700, marginBottom: "0.2rem" }}>Horas proyectadas *</label>
+                  <input
+                    id="form-hours"
+                    type="number"
+                    step="0.5"
+                    min={MIN_HORAS}
+                    max={MAX_HORAS_PERIODO}
+                    placeholder={`Horas (${MIN_HORAS}–${MAX_HORAS_PERIODO})`}
+                    value={form.hoursProjected}
+                    onChange={(e) => setForm((p) => ({ ...p, hoursProjected: e.target.value }))}
+                    required
+                  />
+                  {hoursError && (
+                    <span style={{ fontSize: "0.72rem", color: "#dc2626", fontWeight: 600, marginTop: "0.25rem" }}>
+                      ⚠ {hoursError}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Linea 3: Moneda y Tarifas */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "0.7rem", alignItems: "start" }}>
+                <select value={form.currency} onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))}>
+                  {currencyOptions.map((c) => <option key={`fc-${c}`} value={c}>{c}</option>)}
+                </select>
+
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <CurrencyInput
+                    currency={form.currency}
+                    placeholder={`Costo/h (${form.currency})`}
+                    value={form.hourlyRate}
+                    onChange={(v) => setForm((p) => ({ ...p, hourlyRate: v }))}
+                  />
+                  {budgetWarning && (
+                    <span style={{
+                      fontSize: "0.72rem",
+                      color: budgetWarning.startsWith("⚠") ? "#dc2626" : "#d97706",
+                      fontWeight: budgetWarning.startsWith("⚠") ? 600 : 400,
+                      marginTop: "0.25rem"
+                    }}>
+                      {budgetWarning}
+                    </span>
+                  )}
+                </div>
+
+                <CurrencyInput
+                  currency={form.currency}
+                  placeholder={`Venta/h (${form.currency})`}
+                  value={form.sellRate}
+                  onChange={(v) => setForm((p) => ({ ...p, sellRate: v }))}
+                />
+
                 <input
-                  id="form-date-to"
-                  type="date"
-                  value={form.dateTo}
-                  min={form.dateFrom}
-                  onChange={(e) => setForm((p) => ({ ...p, dateTo: e.target.value }))}
-                  required
-                  style={{ width: "100%" }}
+                  type="text"
+                  placeholder="Nota (opcional)"
+                  value={form.note}
+                  onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
                 />
-                {durationLabel && !rangeError && (
-                  <p style={{ margin: "0.25rem 0 0", fontSize: "0.72rem", color: "#6b7280" }}>
-                    📅 Duración: {durationLabel}
-                  </p>
-                )}
               </div>
 
-              {rangeError && (
-                <p className="span-all" style={{ margin: "0.1rem 0", color: "#dc2626", fontSize: "0.75rem", fontWeight: 600 }}>
-                  ⚠ {rangeError}
-                </p>
-              )}
-              {!rangeError && rangeWarning && (
-                <p className="span-all" style={{ margin: "0.1rem 0", color: "#d97706", fontSize: "0.75rem" }}>
-                  ℹ {rangeWarning}
-                </p>
-              )}
-
-              <div>
-                <input
-                  type="number"
-                  step="0.5"
-                  min={MIN_HORAS}
-                  max={MAX_HORAS_PERIODO}
-                  placeholder={`Horas proyectadas (${MIN_HORAS}–${MAX_HORAS_PERIODO})`}
-                  value={form.hoursProjected}
-                  onChange={(e) => setForm((p) => ({ ...p, hoursProjected: e.target.value }))}
-                  required
-                  style={{ width: "100%" }}
-                />
-                {hoursError && (
-                  <p style={{ margin: "0.2rem 0 0", fontSize: "0.72rem", color: "#dc2626", fontWeight: 600 }}>
-                    ⚠ {hoursError}
-                  </p>
-                )}
+              {/* Submit Line */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f5ddc9", paddingTop: "0.75rem", marginTop: "0.25rem" }}>
+                <div style={{ flex: 1 }}>
+                  {rangeError && (
+                    <p style={{ margin: 0, color: "#dc2626", fontSize: "0.78rem", fontWeight: 600 }}>
+                      ⚠ {rangeError}
+                    </p>
+                  )}
+                </div>
+                <button type="submit" disabled={submitting || !!rangeError || !!hoursError}>
+                  {submitting ? "Guardando…" : "Guardar proyección"}
+                </button>
               </div>
-
-              <select
-                value={form.currency}
-                onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))}
-              >
-                {currencyOptions.map((c) => <option key={`fc-${c}`} value={c}>{`Moneda tarifa: ${c}`}</option>)}
-              </select>
-
-              <div>
-                <input
-                  type="number"
-                  step="0.01"
-                  placeholder={`Tarifa costo/hora (${form.currency})`}
-                  value={form.hourlyRate}
-                  onChange={(e) => setForm((p) => ({ ...p, hourlyRate: e.target.value }))}
-                  style={{ width: "100%" }}
-                />
-                {budgetWarning && (
-                  <p style={{
-                    margin: "0.2rem 0 0",
-                    fontSize: "0.72rem",
-                    color: budgetWarning.startsWith("⚠") ? "#dc2626" : "#d97706",
-                    fontWeight: budgetWarning.startsWith("⚠") ? 600 : 400,
-                  }}>
-                    {budgetWarning}
-                  </p>
-                )}
-              </div>
-
-              <input
-                type="number"
-                step="0.01"
-                placeholder={`Tarifa venta/hora (${form.currency})`}
-                value={form.sellRate}
-                onChange={(e) => setForm((p) => ({ ...p, sellRate: e.target.value }))}
-              />
-
-              <textarea
-                placeholder="Nota"
-                value={form.note}
-                onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))}
-              />
-
-              <button type="submit" disabled={submitting || !!rangeError || !!hoursError}>
-                {submitting ? "Guardando…" : "Guardar proyección"}
-              </button>
             </form>
           </>
         }
@@ -569,18 +557,20 @@ export function ForecastsTab({
 
       {/* Edit modal */}
       {editForm && (
-        <div className="modal-overlay" onClick={() => setEditForm(null)}>
+        <div className="modal-overlay" onClick={() => { setEditForm(null); setEditError(""); }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
               <h3>Editar proyección</h3>
-              <button type="button" className="ghost" onClick={() => setEditForm(null)}>Cerrar</button>
+              <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cerrar</button>
             </div>
             <form className="form-grid" onSubmit={(e) => void handleUpdate(e)}>
+              <ValidationErrorBox message={editError} />
               <select
                 value={editForm.projectId}
                 onChange={(e) => setEditForm((p) => p && { ...p, projectId: e.target.value })}
                 required
               >
+                <option value="" disabled hidden>Selecciona proyecto...</option>
                 {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
               <select
@@ -588,6 +578,7 @@ export function ForecastsTab({
                 onChange={(e) => setEditForm((p) => p && { ...p, consultantId: e.target.value })}
                 required
               >
+                <option value="" disabled hidden>Selecciona consultor...</option>
                 {consultants.map((c) => <option key={c.id} value={c.id}>{c.fullName}</option>)}
               </select>
               <div>
@@ -648,18 +639,16 @@ export function ForecastsTab({
               >
                 {currencyOptions.map((c) => <option key={`edit-fc-${c}`} value={c}>{`Moneda tarifa: ${c}`}</option>)}
               </select>
-              <input
-                type="number"
-                step="0.01"
+              <CurrencyInput
+                currency={editForm.currency}
                 value={editForm.hourlyRate}
-                onChange={(e) => setEditForm((p) => p && { ...p, hourlyRate: e.target.value })}
+                onChange={(v) => setEditForm((p) => p && { ...p, hourlyRate: v })}
                 placeholder={`Tarifa costo/hora (${editForm.currency})`}
               />
-              <input
-                type="number"
-                step="0.01"
+              <CurrencyInput
+                currency={editForm.currency}
                 value={editForm.sellRate}
-                onChange={(e) => setEditForm((p) => p && { ...p, sellRate: e.target.value })}
+                onChange={(v) => setEditForm((p) => p && { ...p, sellRate: v })}
                 placeholder={`Tarifa venta/hora (${editForm.currency})`}
               />
               <textarea
@@ -671,7 +660,7 @@ export function ForecastsTab({
                 <button type="submit" disabled={editSubmitting}>
                   {editSubmitting ? "Guardando…" : "Guardar cambios"}
                 </button>
-                <button type="button" className="ghost" onClick={() => setEditForm(null)}>Cancelar</button>
+                <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cancelar</button>
               </div>
             </form>
           </div>
