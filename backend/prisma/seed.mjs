@@ -48,6 +48,9 @@ async function main() {
     },
   });
 
+  await prisma.extraHourEntry.deleteMany();
+  await prisma.extraHoursConfig.deleteMany();
+  await prisma.estimation.deleteMany();
   await prisma.timeEntry.deleteMany();
   await prisma.expense.deleteMany();
   await prisma.forecast.deleteMany();
@@ -65,6 +68,7 @@ async function main() {
       startDate: new Date("2026-01-10"),
       endDate: new Date("2026-08-30"),
       description: "Proyecto de transformacion digital con alcance regional.",
+      allowExtraHours: true,
     },
   });
 
@@ -77,6 +81,21 @@ async function main() {
       budget: 54000,
       startDate: new Date("2026-02-01"),
       endDate: new Date("2026-09-15"),
+      allowExtraHours: true,
+    },
+  });
+
+  const projectC = await prisma.project.create({
+    data: {
+      name: "Soporte Operativo",
+      company: "Synaptica",
+      country: "Colombia",
+      currency: "USD",
+      budget: 20000,
+      startDate: new Date("2026-01-01"),
+      endDate: new Date("2026-12-31"),
+      description: "Mantenimiento y soporte (horas extra deshabilitadas).",
+      allowExtraHours: false,
     },
   });
 
@@ -87,6 +106,8 @@ async function main() {
       role: "Project Manager",
       hourlyRate: 65,
       active: true,
+      country: "Colombia",
+      identification: "1020304050",
     },
   });
 
@@ -97,6 +118,20 @@ async function main() {
       role: "Senior Developer",
       hourlyRate: 52,
       active: true,
+      country: "Colombia",
+      identification: "1098765432",
+    },
+  });
+
+  const consultantC = await prisma.consultant.create({
+    data: {
+      fullName: "Mateo Silva",
+      email: "mateo.silva@example.com",
+      role: "Mid Developer",
+      hourlyRate: 35,
+      active: true,
+      country: "Peru",
+      identification: "PD-9876543",
     },
   });
 
@@ -191,6 +226,112 @@ async function main() {
       baseCode: "USD",
       quoteCode: "COP",
       rate: 4000,
+    },
+  });
+
+  // Seed default extra hours configuration
+  await prisma.extraHoursConfig.create({
+    data: {
+      weeklyExtraHoursLimit: 12,
+      diurnalMultiplier: 1.25,
+      nocturnalMultiplier: 1.75,
+      diurnalHolidayMultiplier: 2.00,
+      nocturnalHolidayMultiplier: 2.50,
+      diurnalStart: "06:00:00",
+      diurnalEnd: "21:00:00",
+    },
+  });
+
+  // Seed extra hours entries
+  await prisma.extraHourEntry.createMany({
+    data: [
+      {
+        consultantId: consultantB.id,
+        projectId: projectA.id,
+        date: new Date("2026-05-15"), // Un día normal de semana en 2026 (viernes)
+        startTime: "18:00:00",
+        endTime: "22:00:00",
+        diurnal: 3,
+        nocturnal: 1,
+        diurnalHoliday: 0,
+        nocturnalHoliday: 0,
+        totalHours: 4,
+        diurnalAmount: 195, // 3 * 52 * 1.25
+        nocturnalAmount: 91, // 1 * 52 * 1.75
+        diurnalHolidayAmount: 0,
+        nocturnalHolidayAmount: 0,
+        totalAmount: 286,
+        observations: "Despliegue de producción del ERP",
+        status: "APPROVED",
+        approvedBy: adminEmail,
+        approvedAt: new Date("2026-05-16"),
+      },
+      {
+        consultantId: consultantB.id,
+        projectId: projectA.id,
+        date: new Date("2026-05-17"), // Domingo festivo en 2026
+        startTime: "08:00:00",
+        endTime: "12:00:00",
+        diurnal: 0,
+        nocturnal: 0,
+        diurnalHoliday: 4,
+        nocturnalHoliday: 0,
+        totalHours: 4,
+        diurnalAmount: 0,
+        nocturnalAmount: 0,
+        diurnalHolidayAmount: 416, // 4 * 52 * 2.00
+        nocturnalHolidayAmount: 0,
+        totalAmount: 416,
+        observations: "Soporte crítico de base de datos",
+        status: "PENDING_PM",
+      },
+    ],
+  });
+
+  // Seed estimations
+  await prisma.estimation.create({
+    data: {
+      projectId: projectA.id,
+      projectName: "Implementacion ERP - Fase 2",
+      totalIdealHours: 40,
+      totalAdjustedHours: 85.5,
+      bufferPercentage: 10,
+      riskLevel: "medium",
+      confidenceLevel: 80,
+      rawDataJson: JSON.stringify({
+        tasks: [
+          {
+            id: 1,
+            name: "Modelado de base de datos",
+            idealHours: 16,
+            complexity: "known_unknowns",
+            experience: "senior",
+            techDebt: "clean",
+            dependencies: "none",
+            hasCodeReview: true,
+            hasTesting: true,
+            hasDocumentation: true,
+          },
+          {
+            id: 2,
+            name: "API endpoints e integración",
+            idealHours: 24,
+            complexity: "routine",
+            experience: "mid",
+            techDebt: "moderate",
+            dependencies: "internal",
+            hasCodeReview: true,
+            hasTesting: true,
+            hasDocumentation: false,
+          },
+        ],
+        globalConfig: {
+          hoursPerDay: 8,
+          sprintDays: 10,
+          bufferPercentage: 10,
+          includeWeekends: false,
+        },
+      }),
     },
   });
 }

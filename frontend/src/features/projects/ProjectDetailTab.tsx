@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import { CHANGE_REQUEST_STATUS_LABELS, CHANGE_REQUEST_TYPE_LABELS, RISK_STATUS_LABELS, ASSIGNMENT_STATUS_LABELS, ISSUE_SEVERITY_LABELS, ISSUE_STATUS_LABELS, label } from "../../utils/statusLabels";
 import {
   getProjectDetail,
@@ -828,19 +829,19 @@ export function ProjectDetailTab({
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem", flexWrap: "wrap" }}>
-        <button type="button" className="ghost" onClick={onBack} style={{ fontSize: "0.8rem", padding: "0.3rem 0.7rem" }}>
-          ← Volver
-        </button>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.2rem" }}>{detail.project.name}</h2>
-          <div style={{ fontSize: "0.75rem", color: "#6b7280" }}>{detail.project.company} · {detail.project.projectType}</div>
-        </div>
-        <div style={{ marginLeft: "auto" }}>
-          <RagDot status={detail.project.healthStatus} />
-        </div>
-      </div>
+      <PageHeader
+        icon="📁"
+        title={detail.project.name}
+        description={`${detail.project.company} · Tipo: ${detail.project.projectType} · Fase: ${detail.project.phase ?? "Sin definir"}`}
+        actions={
+          <>
+            <button type="button" className="ghost" onClick={onBack} style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px" }}>
+              ← Volver
+            </button>
+            <RagDot status={detail.project.healthStatus} />
+          </>
+        }
+      />
 
       {/* Sub-tabs nav */}
       <nav style={{ display: "flex", gap: "0.25rem", borderBottom: "2px solid #e5e7eb", paddingBottom: "0" }}>

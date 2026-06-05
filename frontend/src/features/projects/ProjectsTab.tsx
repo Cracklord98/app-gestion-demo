@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import { PROJECT_STATUS_LABELS, label } from "../../utils/statusLabels";
 import {
   createProject,
@@ -15,7 +16,8 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SectionLayout } from "../../components/SectionLayout";
 import { downloadCsv } from "../../utils/csv";
 import { backendHealthToResult, HEALTH_CRITERIA_TOOLTIP } from "../../utils/projectHealth";
-import { ValidationErrorBox, isValidationError } from "../../components/ValidationErrorBox";
+import { ValidationErrorBox } from "../../components/ValidationErrorBox";
+import { isValidationError } from "../../utils/validation";
 import { CurrencyInput } from "../../components/CurrencyInput";
 
 function RagBadge({ status }: { status: HealthStatus | undefined }) {
@@ -80,6 +82,7 @@ type EditForm = {
   status: ProjectStatus;
   sellPrice: string;
   sellCurrency: string;
+  allowExtraHours: boolean;
 };
 
 const emptyForm = {
@@ -95,6 +98,7 @@ const emptyForm = {
   status: "ACTIVE" as ProjectStatus,
   sellPrice: "",
   sellCurrency: "USD",
+  allowExtraHours: true,
 };
 
 export function ProjectsTab({
@@ -181,6 +185,7 @@ export function ProjectsTab({
         status: editForm.status,
         sellPrice: editForm.sellPrice ? Number(editForm.sellPrice) : undefined,
         sellCurrency: editForm.sellCurrency,
+        allowExtraHours: editForm.allowExtraHours,
       });
       setEditForm(null);
       await onReload();
@@ -241,7 +246,12 @@ export function ProjectsTab({
   }
 
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="◻"
+        title="Gestión de Proyectos"
+        description="Crea, edita y administra proyectos, presupuestos, fechas límites y configuraciones de horas extras."
+      />
       <SectionLayout
         title="Proyectos"
         newLabel="+ Nuevo proyecto"
@@ -287,6 +297,15 @@ export function ProjectsTab({
             <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} required />
             <input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} required />
             <textarea placeholder="Descripción" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+            <label style={{ display: "inline-flex", alignItems: "center", gap: "0.25rem", fontSize: "0.85rem", color: "var(--text-soft)", cursor: "pointer", whiteSpace: "nowrap" }}>
+              <input
+                type="checkbox"
+                checked={form.allowExtraHours}
+                onChange={(e) => setForm((p) => ({ ...p, allowExtraHours: e.target.checked }))}
+                style={{ width: "auto", height: "auto", margin: 0 }}
+              />
+              HE Habilitadas
+            </label>
             <button type="submit" disabled={submitting}>{submitting ? "Creando…" : "Crear proyecto"}</button>
           </form>
         }
@@ -391,6 +410,7 @@ export function ProjectsTab({
                                         status: project.status ?? "ACTIVE",
                                         sellPrice: project.sellPrice ? String(numberish(project.sellPrice)) : "",
                                         sellCurrency: project.sellCurrency ?? "USD",
+                                        allowExtraHours: project.allowExtraHours !== false,
                                       })
                                     }
                                   >
@@ -459,6 +479,18 @@ export function ProjectsTab({
               <input type="date" value={editForm.startDate} onChange={(e) => setEditForm((p) => p && { ...p, startDate: e.target.value })} required />
               <input type="date" value={editForm.endDate} onChange={(e) => setEditForm((p) => p && { ...p, endDate: e.target.value })} required />
               <textarea value={editForm.description} onChange={(e) => setEditForm((p) => p && { ...p, description: e.target.value })} placeholder="Descripción" />
+              <div style={{ gridColumn: "span 2", display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.25rem 0" }}>
+                <input
+                  type="checkbox"
+                  id="editAllowExtraHours"
+                  checked={editForm.allowExtraHours}
+                  onChange={(e) => setEditForm((p) => p && { ...p, allowExtraHours: e.target.checked })}
+                  style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                />
+                <label htmlFor="editAllowExtraHours" style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-soft)", cursor: "pointer" }}>
+                  Habilitar Horas Extras para este proyecto
+                </label>
+              </div>
               <div className="modal-actions">
                 <button type="submit" disabled={editSubmitting}>{editSubmitting ? "Guardando…" : "Guardar cambios"}</button>
                 <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cancelar</button>
@@ -477,6 +509,6 @@ export function ProjectsTab({
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
-    </>
+    </div>
   );
 }

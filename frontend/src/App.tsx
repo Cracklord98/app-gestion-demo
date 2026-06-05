@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { env } from "./config/env";
 import { apiTokenRequest, loginRequest } from "./auth/msal";
@@ -34,6 +34,10 @@ import { AlertsPanel } from "./components/AlertsPanel";
 import { AlertsTab } from "./features/alerts/AlertsTab";
 import { ToastContainer } from "./components/Toast";
 import { AppFooter } from "./components/AppFooter";
+import { ProfileTab } from "./features/profile/ProfileTab";
+import { ExtraHoursTab } from "./features/extraHours/ExtraHoursTab";
+import { EstimationCalculatorTab } from "./features/estimations/EstimationCalculatorTab";
+import { ActivitiesTab } from "./features/activities/ActivitiesTab";
 import type { TabId } from "./types";
 import "./App.css";
 
@@ -68,6 +72,8 @@ const SIDEBAR_GROUPS: {
     tabs: [
       { id: "consultants",  label: "Consultores",   icon: "◐", permission: "consultants:read" },
       { id: "timeEntries",  label: "Horas",          icon: "⊙", permission: "time:read" },
+      { id: "activities",   label: "Actividades",   icon: "📅", permission: "time:read" },
+      { id: "extraHours",   label: "Horas Extra",    icon: "⏰", permission: "extrahours:read" },
       { id: "expenses",     label: "Gastos",         icon: "⊟", permission: "expenses:read" },
     ],
   },
@@ -76,6 +82,7 @@ const SIDEBAR_GROUPS: {
     tabs: [
       { id: "revenue",    label: "Ingresos",      icon: "⊕", permission: "revenue:read" },
       { id: "forecasts",  label: "Proyecciones",  icon: "◷", permission: "forecasts:read" },
+      { id: "estimations", label: "Estimaciones",  icon: "⚖", permission: "projects:read" },
       { id: "fx",         label: "Tasas FX",      icon: "⊗", permission: "fx:read" },
     ],
   },
@@ -83,6 +90,7 @@ const SIDEBAR_GROUPS: {
     label: "Administración",
     tabs: [
       { id: "admin", label: "Usuarios",  icon: "◐", permission: "users:manage" },
+      { id: "extraHoursConfig", label: "Config. Horas Extra", icon: "⚙", permission: "extrahours:config" },
       { id: "audit", label: "Auditoría", icon: "⊛", permission: "users:manage" },
     ],
   },
@@ -193,6 +201,9 @@ function FxDrawer({ open, onClose, fxConfigs }: { open: boolean; onClose: () => 
   );
 }
 
+// Special tabs accessible outside the sidebar (e.g., from dropdown)
+const NON_SIDEBAR_TABS: TabId[] = ["profile"];
+
 // ── App ─────────────────────────────────────────────────────────────────────
 
 function App() {
@@ -209,6 +220,18 @@ function App() {
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [fxDrawerOpen, setFxDrawerOpen] = useState(false);
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setProfileDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const { toasts, show: showToast, dismiss } = useToastController();
 
@@ -256,7 +279,7 @@ function App() {
   }, [currentPath, authUser, goTo]);
 
   useEffect(() => {
-    if (!allVisibleTabs.some((t) => t.id === activeTab)) {
+    if (!NON_SIDEBAR_TABS.includes(activeTab) && !allVisibleTabs.some((t) => t.id === activeTab)) {
       setActiveTab(allVisibleTabs[0]?.id ?? "dashboard");
     }
   }, [allVisibleTabs, activeTab]);
@@ -409,9 +432,6 @@ function App() {
         </div>
 
         <div className="badges">
-          <span className="pill neutral" style={{ fontSize: "0.72rem" }}>
-            {authUser.displayName} ({authUser.roles.join(", ")})
-          </span>
           <button type="button" className="ghost" onClick={() => setFxDrawerOpen(true)}
             title="Conversor de divisas" style={{ fontSize: "0.82rem" }}>
             ⊗ FX
@@ -423,9 +443,130 @@ function App() {
             onReload={alertsHook.reload}
             onError={handleError}
           />
-          <button type="button" className="ghost" onClick={() => void logout()}>
-            Cerrar sesión
-          </button>
+          
+          {/* Avatar interactivo dropdown */}
+          <div ref={profileDropdownRef} style={{ position: "relative", display: "inline-block" }}>
+            <button
+              type="button"
+              onClick={() => setProfileDropdownOpen((o) => !o)}
+              style={{
+                background: "none",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center"
+              }}
+              aria-expanded={profileDropdownOpen}
+              aria-haspopup="menu"
+              aria-label="Menú de usuario"
+            >
+              <div style={{
+                width: "38px",
+                height: "38px",
+                borderRadius: "50%",
+                overflow: "hidden",
+                background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                color: "#fff",
+                fontWeight: 800,
+                display: "grid",
+                placeItems: "center",
+                fontSize: "0.9rem",
+                boxShadow: "0 2px 8px rgba(154, 79, 15, 0.2)",
+                border: "2px solid #fff"
+              }}>
+                {authUser.photoUrl ? (
+                  <img
+                    src={authUser.photoUrl}
+                    alt={authUser.displayName}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = "none";
+                    }}
+                  />
+                ) : null}
+                <span>{authUser.displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}</span>
+              </div>
+            </button>
+
+            {profileDropdownOpen && (
+              <div
+                  style={{
+                    position: "absolute",
+                    top: "45px",
+                    right: 0,
+                    width: "220px",
+                    background: "rgba(255, 255, 255, 0.95)",
+                    backdropFilter: "blur(12px)",
+                    border: "1px solid #f4d4b6",
+                    borderRadius: "12px",
+                    boxShadow: "0 8px 30px rgba(154, 79, 15, 0.15)",
+                    padding: "0.75rem",
+                    zIndex: 300,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "0.4rem"
+                  }}
+                >
+                  <div style={{ padding: "0.25rem 0.5rem 0.5rem 0.5rem", borderBottom: "1px dashed #f4d4b6" }}>
+                    <strong style={{ fontSize: "0.85rem", color: "var(--text-strong)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {authUser.displayName}
+                    </strong>
+                    <span style={{ fontSize: "0.7rem", color: "var(--text-soft)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {authUser.email}
+                    </span>
+                    <span className="pill neutral" style={{ display: "inline-block", fontSize: "0.62rem", marginTop: "0.3rem", padding: "0.1rem 0.35rem" }}>
+                      {authUser.roles.join(", ")}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => {
+                      setActiveTab("profile");
+                      setOpenProjectId(null);
+                      setProfileDropdownOpen(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      background: "none",
+                      border: "none",
+                      padding: "0.4rem 0.5rem",
+                      fontSize: "0.82rem",
+                      color: "#9a4f0f",
+                      cursor: "pointer",
+                      borderRadius: "6px"
+                    }}
+                  >
+                    👤 Ver mi Perfil
+                  </button>
+
+                  <button
+                    type="button"
+                    className="ghost"
+                    onClick={() => {
+                      void logout();
+                      setProfileDropdownOpen(false);
+                    }}
+                    style={{
+                      width: "100%",
+                      textAlign: "left",
+                      background: "none",
+                      border: "none",
+                      padding: "0.4rem 0.5rem",
+                      fontSize: "0.82rem",
+                      color: "#dc2626",
+                      cursor: "pointer",
+                      borderRadius: "6px"
+                    }}
+                  >
+                    🚪 Cerrar Sesión
+                  </button>
+                </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -510,145 +651,195 @@ function App() {
           )}
           {loading && <p className="loading">Cargando datos…</p>}
 
-          {!loading && activeTab === "dashboard" && (
-            <DashboardTab
-              projects={projectsHook.projects}
-              timeEntries={timeEntriesHook.timeEntries}
-              expenses={expensesHook.expenses}
-              forecasts={forecastsHook.forecasts}
-              fxConfigs={fxHook.fxConfigs}
-              initialStats={statsHook.stats}
-              initialBaseCurrency="USD"
-              onError={handleError}
-              onDrillTo={drillTo}
-            />
-          )}
+          {!loading && (
+            <div key={activeTab + (openProjectId || "")} className="fade-in-section">
+              {activeTab === "dashboard" && (
+                <DashboardTab
+                  projects={projectsHook.projects}
+                  timeEntries={timeEntriesHook.timeEntries}
+                  expenses={expensesHook.expenses}
+                  forecasts={forecastsHook.forecasts}
+                  fxConfigs={fxHook.fxConfigs}
+                  initialStats={statsHook.stats}
+                  initialBaseCurrency="USD"
+                  onError={handleError}
+                  onDrillTo={drillTo}
+                />
+              )}
 
-          {!loading && activeTab === "portfolio" && (
-            <PortfolioTab canWrite={can("projects:write")} onOpenProject={openProject} />
-          )}
+              {activeTab === "portfolio" && (
+                <PortfolioTab canWrite={can("projects:write")} onOpenProject={openProject} />
+              )}
 
-          {!loading && activeTab === "projects" && (
-            openProjectId ? (
-              <ProjectDetailTab
-                projectId={openProjectId}
-                canWrite={can("projects:write")}
-                onBack={() => setOpenProjectId(null)}
-                onError={handleError}
-              />
-            ) : (
-              <ProjectsTab
-                projects={projectsHook.projects}
-                loading={projectsHook.loading}
-                canWrite={can("projects:write")}
-                onReload={projectsHook.reload}
-                onError={handleError}
-                statsProjects={statsHook.stats?.projects}
-                onOpenProject={setOpenProjectId}
-              />
-            )
-          )}
+              {activeTab === "projects" && (
+                openProjectId ? (
+                  <ProjectDetailTab
+                    projectId={openProjectId}
+                    canWrite={can("projects:write")}
+                    onBack={() => setOpenProjectId(null)}
+                    onError={handleError}
+                  />
+                ) : (
+                  <ProjectsTab
+                    projects={projectsHook.projects}
+                    loading={projectsHook.loading}
+                    canWrite={can("projects:write")}
+                    onReload={projectsHook.reload}
+                    onError={handleError}
+                    statsProjects={statsHook.stats?.projects}
+                    onOpenProject={setOpenProjectId}
+                  />
+                )
+              )}
 
-          {!loading && activeTab === "consultants" && (
-            <ConsultantsTab
-              consultants={consultantsHook.consultants}
-              loading={consultantsHook.loading}
-              canWrite={can("consultants:write")}
-              onReload={consultantsHook.reload}
-              onError={handleError}
-            />
-          )}
+              {activeTab === "consultants" && (
+                <ConsultantsTab
+                  consultants={consultantsHook.consultants}
+                  loading={consultantsHook.loading}
+                  canWrite={can("consultants:write")}
+                  onReload={consultantsHook.reload}
+                  onError={handleError}
+                />
+              )}
 
-          {!loading && activeTab === "timeEntries" && (
-            <TimeEntriesTab
-              timeEntries={timeEntriesHook.timeEntries}
-              projects={projectsHook.projects}
-              consultants={consultantsHook.consultants}
-              loading={timeEntriesHook.loading}
-              canWrite={can("time:write")}
-              canReview={can("time:review")}
-              reviewerName={authUser.displayName}
-              onReload={timeEntriesHook.reload}
-              onError={handleError}
-            />
-          )}
+              {activeTab === "timeEntries" && (
+                <TimeEntriesTab
+                  timeEntries={timeEntriesHook.timeEntries}
+                  projects={projectsHook.projects}
+                  consultants={consultantsHook.consultants}
+                  loading={timeEntriesHook.loading}
+                  canWrite={can("time:write")}
+                  canReview={can("time:review")}
+                  reviewerName={authUser.displayName}
+                  onReload={timeEntriesHook.reload}
+                  onError={handleError}
+                />
+              )}
 
-          {!loading && activeTab === "expenses" && (
-            <ExpensesTab
-              expenses={expensesHook.expenses}
-              projects={projectsHook.projects}
-              forecasts={forecastsHook.forecasts}
-              loading={expensesHook.loading}
-              canWrite={can("expenses:write")}
-              onReload={expensesHook.reload}
-              onError={handleError}
-              fxConfigs={fxHook.fxConfigs}
-              baseCurrency="USD"
-            />
-          )}
+              {activeTab === "expenses" && (
+                <ExpensesTab
+                  expenses={expensesHook.expenses}
+                  projects={projectsHook.projects}
+                  forecasts={forecastsHook.forecasts}
+                  loading={expensesHook.loading}
+                  canWrite={can("expenses:write")}
+                  onReload={expensesHook.reload}
+                  onError={handleError}
+                  fxConfigs={fxHook.fxConfigs}
+                  baseCurrency="USD"
+                />
+              )}
 
-          {!loading && activeTab === "forecasts" && (
-            <ForecastsTab
-              forecasts={forecastsHook.forecasts}
-              projects={projectsHook.projects}
-              consultants={consultantsHook.consultants}
-              loading={forecastsHook.loading}
-              canWrite={can("forecasts:write")}
-              onReload={forecastsHook.reload}
-              onError={handleError}
-            />
-          )}
+              {activeTab === "forecasts" && (
+                <ForecastsTab
+                  forecasts={forecastsHook.forecasts}
+                  projects={projectsHook.projects}
+                  consultants={consultantsHook.consultants}
+                  loading={forecastsHook.loading}
+                  canWrite={can("forecasts:write")}
+                  onReload={forecastsHook.reload}
+                  onError={handleError}
+                />
+              )}
 
-          {!loading && activeTab === "revenue" && (
-            <RevenueTab
-              revenueEntries={revenueHook.revenueEntries}
-              projects={projectsHook.projects}
-              loading={revenueHook.loading}
-              canWrite={can("revenue:write")}
-              onReload={revenueHook.reload}
-              onError={handleError}
-            />
-          )}
+              {activeTab === "revenue" && (
+                <RevenueTab
+                  revenueEntries={revenueHook.revenueEntries}
+                  projects={projectsHook.projects}
+                  loading={revenueHook.loading}
+                  canWrite={can("revenue:write")}
+                  onReload={revenueHook.reload}
+                  onError={handleError}
+                />
+              )}
 
-          {!loading && activeTab === "capacity" && (
-            <CapacityTab
-              projects={projectsHook.projects}
-              consultants={consultantsHook.consultants}
-              canWrite={can("assignments:write")}
-              onError={handleError}
-            />
-          )}
+              {activeTab === "capacity" && (
+                <CapacityTab
+                  projects={projectsHook.projects}
+                  consultants={consultantsHook.consultants}
+                  canWrite={can("assignments:write")}
+                  onError={handleError}
+                />
+              )}
 
-          {!loading && activeTab === "fx" && (
-            <FxTab
-              fxConfigs={fxHook.fxConfigs}
-              loading={fxHook.loading}
-              canWrite={can("fx:write") || can("users:manage")}
-              onReload={fxHook.reload}
-              onError={handleError}
-            />
-          )}
+              {activeTab === "fx" && (
+                <FxTab
+                  fxConfigs={fxHook.fxConfigs}
+                  loading={fxHook.loading}
+                  canWrite={can("fx:write") || can("users:manage")}
+                  onReload={fxHook.reload}
+                  onError={handleError}
+                />
+              )}
 
-          {!loading && activeTab === "admin" && (
-            <AdminTab
-              adminUsers={adminHook.adminUsers}
-              loading={adminHook.loading}
-              onReload={adminHook.reload}
-              onError={handleError}
-            />
-          )}
+              {activeTab === "admin" && (
+                <AdminTab
+                  adminUsers={adminHook.adminUsers}
+                  loading={adminHook.loading}
+                  onReload={adminHook.reload}
+                  onError={handleError}
+                />
+              )}
 
-          {!loading && activeTab === "audit" && <AuditTab onError={handleError} />}
+              {activeTab === "audit" && <AuditTab onError={handleError} />}
 
-          {!loading && activeTab === "alerts" && (
-            <AlertsTab
-              alerts={alertsHook.alerts}
-              unreadCount={alertsHook.unreadCount}
-              loading={alertsHook.loading}
-              canRun={can("users:manage")}
-              onReload={alertsHook.reload}
-              onError={handleError}
-            />
+              {activeTab === "profile" && (
+                <ProfileTab
+                  authUser={authUser}
+                  onRefreshAuth={bootstrap}
+                  onError={handleError}
+                />
+              )}
+
+              {activeTab === "extraHours" && (
+                <ExtraHoursTab
+                  projects={projectsHook.projects}
+                  consultants={consultantsHook.consultants}
+                  authUser={authUser}
+                  can={can}
+                  onError={handleError}
+                />
+              )}
+
+              {activeTab === "extraHoursConfig" && (
+                <ExtraHoursTab
+                  projects={projectsHook.projects}
+                  consultants={consultantsHook.consultants}
+                  authUser={authUser}
+                  can={can}
+                  onError={handleError}
+                  configModeOnly={true}
+                />
+              )}
+
+              {activeTab === "estimations" && (
+                <EstimationCalculatorTab
+                  projects={projectsHook.projects}
+                  canWrite={can("estimations:write")}
+                  onError={handleError}
+                />
+              )}
+
+              {activeTab === "activities" && (
+                <ActivitiesTab
+                  projects={projectsHook.projects}
+                  consultants={consultantsHook.consultants}
+                  authUser={authUser}
+                  onError={handleError}
+                />
+              )}
+
+              {activeTab === "alerts" && (
+                <AlertsTab
+                  alerts={alertsHook.alerts}
+                  unreadCount={alertsHook.unreadCount}
+                  loading={alertsHook.loading}
+                  canRun={can("users:manage")}
+                  onReload={alertsHook.reload}
+                  onError={handleError}
+                />
+              )}
+            </div>
           )}
         </main>
       </div>

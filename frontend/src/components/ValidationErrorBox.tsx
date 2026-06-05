@@ -1,24 +1,4 @@
-/**
- * ValidationErrorBox
- * Renders inline validation errors (from Zod/backend) inside forms and modals.
- * Parses the bullet-formatted string produced by api.ts and displays each issue
- * as a styled list item with an exclamation icon.
- */
-
-/** Parse the formatted validation error string into individual field messages. */
-export function parseValidationErrors(message: string): string[] {
-  if (!message.startsWith("Error de validación:")) return [];
-  return message
-    .replace("Error de validación:\n", "")
-    .split("\n")
-    .map((line) => line.replace(/^[•\s]+/, "").trim())
-    .filter(Boolean);
-}
-
-/** Returns true when the error message is a backend validation error. */
-export function isValidationError(message: string): boolean {
-  return message.startsWith("Error de validación:");
-}
+import { parseValidationErrors } from "../utils/validation";
 
 export function ValidationErrorBox({ message }: { message: string }) {
   const items = parseValidationErrors(message);

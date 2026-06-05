@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import {
   createRevenueEntry,
   deleteRevenueEntry,
@@ -11,7 +12,8 @@ import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SectionLayout } from "../../components/SectionLayout";
 import { downloadCsv } from "../../utils/csv";
 import { formatDate } from "../../utils/formatDate";
-import { ValidationErrorBox, isValidationError } from "../../components/ValidationErrorBox";
+import { ValidationErrorBox } from "../../components/ValidationErrorBox";
+import { isValidationError } from "../../utils/validation";
 import { CurrencyInput } from "../../components/CurrencyInput";
 
 const currencyOptions = ["COP", "USD", "EUR", "MXN", "PEN", "CLP"];
@@ -156,7 +158,12 @@ export function RevenueTab({
   }
 
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="⊕"
+        title="Reconocimiento de Ingresos"
+        description="Registra y realiza el seguimiento de facturas, hitos de pago e ingresos devengados."
+      />
       <SectionLayout
         title="Ingresos registrados"
         newLabel="+ Nuevo ingreso"
@@ -282,6 +289,6 @@ export function RevenueTab({
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
-    </>
+    </div>
   );
 }

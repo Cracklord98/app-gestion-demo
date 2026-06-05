@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import { TIME_ENTRY_STATUS_LABELS, label } from "../../utils/statusLabels";
 import { formatDate } from "../../utils/formatDate";
 import {
@@ -109,8 +110,14 @@ export function TimeEntriesTab({
   }
 
   return (
-    <SectionLayout
-      title="Flujo de aprobación"
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="⊙"
+        title="Registro de Horas (Timesheet)"
+        description="Gestiona y aprueba los reportes de horas cargados por los consultores para cada proyecto."
+      />
+      <SectionLayout
+        title="Flujo de aprobación"
       newLabel="+ Registrar horas"
       canWrite={canWrite}
       onExport={handleExport}
@@ -180,5 +187,6 @@ export function TimeEntriesTab({
         )
       }
     />
+    </div>
   );
 }

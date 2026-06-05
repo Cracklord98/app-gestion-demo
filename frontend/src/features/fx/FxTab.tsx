@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import { deleteFxRate, listFxHistory, upsertFxRate, type FxConfig, type FxRateHistory } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { formatDate } from "../../utils/formatDate";
@@ -95,7 +96,13 @@ export function FxTab({
   }
 
   return (
-    <section className="grid two-col">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="⊗"
+        title="Tasas de Cambio (FX)"
+        description="Configura y actualiza las tasas de conversión de monedas extranjeras frente a la moneda base."
+      />
+      <section className="grid two-col">
       <article className="card">
         <h3>Configurar tasa de cambio</h3>
         {canWrite ? (
@@ -223,5 +230,6 @@ export function FxTab({
         onCancel={() => setDeleteTarget(null)}
       />
     </section>
+    </div>
   );
 }

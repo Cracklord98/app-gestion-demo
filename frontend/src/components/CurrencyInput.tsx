@@ -84,7 +84,7 @@ export function CurrencyInput({
 
       // Renderizar con formato en vivo
       if (inputRef.current) {
-        const formatted = formatLive(stripped, locale, decimals, decSep, thouSep);
+        const formatted = formatLive(stripped, locale, decimals, decSep);
         const cursorAtEnd = e.target.selectionStart === raw.length;
         inputRef.current.value = formatted;
         if (cursorAtEnd) {
@@ -119,7 +119,7 @@ export function CurrencyInput({
   // ── Render ────────────────────────────────────────────────────────────────
 
   const displayValue = isFocused
-    ? formatLive(value, locale, decimals, decSep, thouSep)
+    ? formatLive(value, locale, decimals, decSep)
     : toDisplay(value);
 
   return (
@@ -149,7 +149,6 @@ function formatLive(
   locale: string,
   decimals: number,
   decSep: string,
-  _thouSep: string,
 ): string {
   if (!raw || raw === "") return "";
   const endsWithDec = raw.endsWith(".");

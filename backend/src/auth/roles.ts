@@ -24,7 +24,12 @@ export type Permission =
   | "alerts:read"
   | "alerts:resolve"
   | "audit:read"
-  | "users:manage";
+  | "users:manage"
+  | "extrahours:read"
+  | "extrahours:write"
+  | "extrahours:review"
+  | "extrahours:config"
+  | "estimations:write";
 
 const allPermissions: Permission[] = [
   "projects:read",
@@ -51,6 +56,11 @@ const allPermissions: Permission[] = [
   "alerts:resolve",
   "audit:read",
   "users:manage",
+  "extrahours:read",
+  "extrahours:write",
+  "extrahours:review",
+  "extrahours:config",
+  "estimations:write",
 ];
 
 export const rolePermissions: Record<AppRole, Permission[]> = {
@@ -76,6 +86,10 @@ export const rolePermissions: Record<AppRole, Permission[]> = {
     "capacity:read",
     "alerts:read",
     "alerts:resolve",
+    "extrahours:read",
+    "extrahours:write",
+    "extrahours:review",
+    "estimations:write",
   ],
   CONSULTANT: [
     "projects:read",
@@ -87,6 +101,8 @@ export const rolePermissions: Record<AppRole, Permission[]> = {
     "assignments:read",
     "capacity:read",
     "alerts:read",
+    "extrahours:read",
+    "extrahours:write",
   ],
   FINANCE: [
     "projects:read",
@@ -104,6 +120,9 @@ export const rolePermissions: Record<AppRole, Permission[]> = {
     "alerts:read",
     "alerts:resolve",
     "audit:read",
+    "extrahours:read",
+    "extrahours:review",
+    "extrahours:config",
   ],
   VIEWER: [
     "projects:read",
@@ -117,6 +136,7 @@ export const rolePermissions: Record<AppRole, Permission[]> = {
     "assignments:read",
     "capacity:read",
     "alerts:read",
+    "extrahours:read",
   ],
 };
 
@@ -129,3 +149,4 @@ export function resolvePermissions(roles: AppRole[]): Permission[] {
   }
   return Array.from(permissions);
 }
+

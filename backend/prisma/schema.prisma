@@ -181,6 +181,10 @@ model Project {
   risks          Risk[]
   issues         Issue[]
   changeRequests ChangeRequest[]
+  allowExtraHours Boolean         @default(true)
+  extraHourEntries ExtraHourEntry[]
+  estimations      Estimation[]
+  activities       Activity[]
 }
 
 model Consultant {
@@ -205,6 +209,9 @@ model Consultant {
   blocks         ConsultantBlock[]
   capacityConfig CapacityConfig?
   alerts         Alert[]
+  identification String?
+  extraHourEntries ExtraHourEntry[]
+  activities       Activity[]
 }
 
 model TimeEntry {
@@ -323,6 +330,10 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  photoUrl     String?
+  bio          String?
+  phrase       String?
+  skills       String[] @default([])
   roles UserRole[]
 }
 
@@ -559,4 +570,101 @@ model ChangeRequest {
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId, status])
+}
+
+enum ExtraHourStatus {
+  PENDING_PM
+  PENDING_FINANCE
+  APPROVED
+  REJECTED
+}
+
+model ExtraHoursConfig {
+  id                         String   @id @default(cuid())
+  country                    String   @unique @default("Default")
+  weeklyExtraHoursLimit      Decimal  @default(12) @db.Decimal(5, 2)
+  diurnalMultiplier          Decimal  @default(1.25) @db.Decimal(4, 2)
+  nocturnalMultiplier        Decimal  @default(1.75) @db.Decimal(4, 2)
+  diurnalHolidayMultiplier   Decimal  @default(2.00) @db.Decimal(4, 2)
+  nocturnalHolidayMultiplier Decimal  @default(2.50) @db.Decimal(4, 2)
+  diurnalStart               String   @default("06:00:00")
+  diurnalEnd                 String   @default("21:00:00")
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+}
+
+model ExtraHourEntry {
+  id                     String           @id @default(cuid())
+  consultantId           String
+  projectId              String?
+  date                   DateTime
+  startTime              String           
+  endTime                String           
+  diurnal                Decimal          @db.Decimal(6, 2)
+  nocturnal              Decimal          @db.Decimal(6, 2)
+  diurnalHoliday         Decimal          @db.Decimal(6, 2)
+  nocturnalHoliday       Decimal          @db.Decimal(6, 2)
+  totalHours             Decimal          @db.Decimal(6, 2)
+  diurnalAmount          Decimal          @db.Decimal(14, 2)
+  nocturnalAmount        Decimal          @db.Decimal(14, 2)
+  diurnalHolidayAmount   Decimal          @db.Decimal(14, 2)
+  nocturnalHolidayAmount Decimal          @db.Decimal(14, 2)
+  totalAmount            Decimal          @db.Decimal(14, 2)
+  observations           String?
+  status                 ExtraHourStatus  @default(PENDING_PM)
+  approvedBy             String?
+  approvedAt             DateTime?
+  rejectionNote          String?
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  consultant             Consultant       @relation(fields: [consultantId], references: [id], onDelete: Restrict)
+  project                Project?         @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([consultantId])
+  @@index([projectId])
+  @@index([status])
+}
+
+model Estimation {
+  id                   String     @id @default(cuid())
+  projectId            String?
+  projectName          String
+  createdAt            DateTime   @default(now())
+  totalIdealHours      Decimal    @db.Decimal(10, 2)
+  totalAdjustedHours   Decimal    @db.Decimal(10, 2)
+  bufferPercentage     Decimal    @db.Decimal(5, 2)
+  riskLevel            String     
+  confidenceLevel      Decimal    @db.Decimal(5, 2)
+  rawDataJson          String     @db.Text
+  
+  project              Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([projectId])
+}
+
+model Activity {
+  id             String      @id @default(cuid())
+  title          String
+  description    String?
+  consultantId   String
+  projectId      String?
+  activityType   String      @default("project") // "project" | "personal" | "meeting" | "training" | "support" | "other"
+  scheduledDate  DateTime
+  dueDate        DateTime?
+  completedDate  DateTime?
+  estimatedHours Decimal     @db.Decimal(5, 2)
+  actualHours    Decimal     @default(0) @db.Decimal(5, 2)
+  status         String      @default("pending") // "pending" | "in_progress" | "completed" | "cancelled" | "blocked"
+  priority       String      @default("medium")  // "low" | "medium" | "high" | "urgent"
+  comments       String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  consultant     Consultant  @relation(fields: [consultantId], references: [id], onDelete: Cascade)
+  project        Project?    @relation(fields: [projectId], references: [id], onDelete: SetNull)
+
+  @@index([consultantId])
+  @@index([projectId])
+  @@index([scheduledDate])
 }

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import { resolveAlert, runAlertEngine, type AppAlert } from "../../services/api";
 
 type AlertGroup = {
@@ -96,38 +97,34 @@ export function AlertsTab({
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      {/* Tab Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-        <div>
-          <h2 style={{ margin: 0, fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            🔔 Alertas PMO
-          </h2>
-          <p style={{ margin: "0.2rem 0 0", fontSize: "0.8rem", color: "#6b7280" }}>
-            Monitoreo y resolución de incidentes, desviaciones y riesgos de proyectos
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          {canRun && (
+      <PageHeader
+        icon="🔔"
+        title="Centro de Alertas"
+        description="Bandeja de entrada de notificaciones del sistema sobre desvíos presupuestarios y horas extras."
+        actions={
+          <>
+            {canRun && (
+              <button
+                type="button"
+                onClick={() => void handleRun()}
+                disabled={running || loading}
+                style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px" }}
+              >
+                {running ? "Procesando motor…" : "⚡ Ejecutar motor de alertas"}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => void handleRun()}
-              disabled={running || loading}
-              style={{ fontSize: "0.8rem" }}
+              className="ghost"
+              onClick={() => void onReload()}
+              disabled={loading}
+              style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px" }}
             >
-              {running ? "Procesando motor…" : "⚡ Ejecutar motor de alertas"}
+              {loading ? "Actualizando…" : "↺ Actualizar"}
             </button>
-          )}
-          <button
-            type="button"
-            className="ghost"
-            onClick={() => void onReload()}
-            disabled={loading}
-            style={{ fontSize: "0.8rem" }}
-          >
-            {loading ? "Actualizando…" : "↺ Actualizar"}
-          </button>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       {/* KPI stats bar */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>

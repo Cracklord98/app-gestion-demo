@@ -3,6 +3,7 @@ import { type HealthStatus } from "../../services/api";
 import { usePortfolio } from "../../hooks/usePortfolio";
 import { backendHealthToResult, HEALTH_CRITERIA_TOOLTIP } from "../../utils/projectHealth";
 import { PROJECT_STATUS_LABELS, label } from "../../utils/statusLabels";
+import { PageHeader } from "../../components/PageHeader";
 
 function fmt(n: number, currency = "USD") {
   return new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
@@ -182,17 +183,21 @@ export function PortfolioTab({
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.5rem" }}>
-        <h2 style={{ margin: 0, fontSize: "1.2rem" }}>Portafolio PMO</h2>
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button type="button" className="ghost" onClick={() => void reload()} style={{ fontSize: "0.8rem" }}>
-            ↺ Actualizar
-          </button>
-          <button type="button" onClick={exportCsv} style={{ fontSize: "0.8rem" }}>
-            ↓ Exportar CSV
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        icon="◈"
+        title="Portafolio PMO"
+        description="Supervisa el rendimiento consolidado del portafolio, indicadores EVM, salud de proyectos y análisis de riesgos."
+        actions={
+          <>
+            <button type="button" className="ghost" onClick={() => void reload()} style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px" }}>
+              ↺ Actualizar
+            </button>
+            <button type="button" onClick={exportCsv} style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px" }}>
+              ↓ Exportar CSV
+            </button>
+          </>
+        }
+      />
 
       {/* Summary KPI cards */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>

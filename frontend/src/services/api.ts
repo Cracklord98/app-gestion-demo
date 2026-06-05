@@ -14,6 +14,10 @@ export type AuthUser = {
   displayName: string;
   roles: AppRole[];
   permissions: string[];
+  photoUrl?: string | null;
+  bio?: string | null;
+  phrase?: string | null;
+  skills?: string[];
 };
 
 export type AdminUser = {
@@ -52,6 +56,7 @@ export type Project = {
   sellCurrency: string;
   createdAt: string;
   updatedAt: string;
+  allowExtraHours?: boolean;
 };
 
 export type Consultant = {
@@ -66,6 +71,7 @@ export type Consultant = {
   active: boolean;
   createdAt: string;
   updatedAt: string;
+  identification?: string | null;
 };
 
 export type TimeEntryStatus = "PENDING" | "APPROVED" | "REJECTED";
@@ -396,6 +402,7 @@ export async function createProject(payload: {
   status?: ProjectStatus;
   sellPrice?: number;
   sellCurrency?: string;
+  allowExtraHours?: boolean;
 }): Promise<Project> {
   const response = await request<ApiEnvelope<Project>>("/api/projects", "POST", payload);
   return response.data;
@@ -416,6 +423,7 @@ export async function updateProject(
     status?: ProjectStatus;
     sellPrice?: number;
     sellCurrency?: string;
+    allowExtraHours?: boolean;
   },
 ): Promise<Project> {
   const response = await request<ApiEnvelope<Project>>(`/api/projects/${id}`, "PUT", payload);
@@ -1425,4 +1433,324 @@ export async function getPortfolio(baseCurrency?: string): Promise<Portfolio> {
   const query = baseCurrency ? `?baseCurrency=${baseCurrency}` : "";
   const response = await request<ApiEnvelope<Portfolio>>(`/api/stats/portfolio${query}`);
   return response.data;
+}
+
+// ─── Profile ───────────────────────────────────────────────────────────────────
+
+export type UserProfile = {
+  id: string;
+  email: string;
+  displayName: string;
+  photoUrl: string | null;
+  bio: string | null;
+  phrase: string | null;
+  roles: AppRole[];
+  skills?: string[];
+};
+
+export async function getProfile(): Promise<UserProfile> {
+  const response = await request<ApiEnvelope<UserProfile>>("/api/profile");
+  return response.data;
+}
+
+export async function updateProfile(payload: {
+  displayName: string;
+  photoUrl?: string | null;
+  bio?: string | null;
+  phrase?: string | null;
+  skills?: string[];
+}): Promise<UserProfile> {
+  const response = await request<ApiEnvelope<UserProfile>>("/api/profile", "PUT", payload);
+  return response.data;
+}
+
+// ─── Extra Hours ───────────────────────────────────────────────────────────────
+
+export type ExtraHourStatus = "PENDING_PM" | "PENDING_FINANCE" | "APPROVED" | "REJECTED";
+
+export type ExtraHourEntry = {
+  id: string;
+  consultantId: string;
+  projectId: string | null;
+  date: string;
+  startTime: string;
+  endTime: string;
+  diurnal: string;
+  nocturnal: string;
+  diurnalHoliday: string;
+  nocturnalHoliday: string;
+  totalHours: string;
+  diurnalAmount: string;
+  nocturnalAmount: string;
+  diurnalHolidayAmount: string;
+  nocturnalHolidayAmount: string;
+  totalAmount: string;
+  observations: string | null;
+  status: ExtraHourStatus;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  rejectionNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+  project?: Project | null;
+  consultant?: Consultant;
+};
+
+export type ExtraHoursConfig = {
+  id: string;
+  country: string;
+  weeklyExtraHoursLimit: string;
+  diurnalMultiplier: string;
+  nocturnalMultiplier: string;
+  diurnalHolidayMultiplier: string;
+  nocturnalHolidayMultiplier: string;
+  diurnalStart: string;
+  diurnalEnd: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ExtraHoursCalculationResult = {
+  diurnal: number;
+  nocturnal: number;
+  diurnalHoliday: number;
+  nocturnalHoliday: number;
+  totalHours: number;
+  diurnalAmount: number;
+  nocturnalAmount: number;
+  diurnalHolidayAmount: number;
+  nocturnalHolidayAmount: number;
+  totalAmount: number;
+  hourlyRateUsed: number;
+  divisorUsed: number;
+  isHoliday: boolean;
+  warnings: string[];
+};
+
+export type PayrollConsolidationRow = {
+  consultantName: string;
+  identification: string;
+  country: string;
+  currency: string;
+  totalHours: number;
+  diurnal: number;
+  nocturnal: number;
+  diurnalHoliday: number;
+  nocturnalHoliday: number;
+  totalAmountLocal: number;
+  totalAmountUSD: number;
+};
+
+export async function listExtraHours(): Promise<ExtraHourEntry[]> {
+  const response = await request<ApiEnvelope<ExtraHourEntry[]>>("/api/extra-hours");
+  return response.data;
+}
+
+export async function createExtraHour(payload: {
+  projectId: string;
+  consultantId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  observations?: string;
+}): Promise<{ data: ExtraHourEntry; warnings: string[] }> {
+  return await request<{ data: ExtraHourEntry; warnings: string[] }>("/api/extra-hours", "POST", payload);
+}
+
+export async function calculateExtraHoursApi(payload: {
+  consultantId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+}): Promise<ExtraHoursCalculationResult> {
+  const response = await request<ApiEnvelope<ExtraHoursCalculationResult>>("/api/extra-hours/calculate", "POST", payload);
+  return response.data;
+}
+
+export async function getExtraHoursConfig(): Promise<ExtraHoursConfig> {
+  const response = await request<ApiEnvelope<ExtraHoursConfig>>("/api/extra-hours/config/Default");
+  return response.data;
+}
+
+export async function listExtraHoursConfigs(): Promise<ExtraHoursConfig[]> {
+  const response = await request<ApiEnvelope<ExtraHoursConfig[]>>("/api/extra-hours/config");
+  return response.data;
+}
+
+export async function getCountryExtraHoursConfig(country: string): Promise<ExtraHoursConfig> {
+  const response = await request<ApiEnvelope<ExtraHoursConfig>>(`/api/extra-hours/config/${country}`);
+  return response.data;
+}
+
+export async function updateCountryExtraHoursConfig(
+  country: string,
+  payload: {
+    weeklyExtraHoursLimit: number;
+    diurnalMultiplier: number;
+    nocturnalMultiplier: number;
+    diurnalHolidayMultiplier: number;
+    nocturnalHolidayMultiplier: number;
+    diurnalStart: string;
+    diurnalEnd: string;
+  },
+): Promise<ExtraHoursConfig> {
+  const response = await request<ApiEnvelope<ExtraHoursConfig>>(`/api/extra-hours/config/${country}`, "PUT", payload);
+  return response.data;
+}
+
+export async function approveExtraHour(id: string, payload: {
+  approvedBy: string;
+  rejectionNote?: string;
+}): Promise<ExtraHourEntry> {
+  const response = await request<ApiEnvelope<ExtraHourEntry>>(`/api/extra-hours/${id}/approve`, "PATCH", payload);
+  return response.data;
+}
+
+export async function rejectExtraHour(id: string, payload: {
+  approvedBy: string;
+  rejectionNote: string;
+}): Promise<ExtraHourEntry> {
+  const response = await request<ApiEnvelope<ExtraHourEntry>>(`/api/extra-hours/${id}/reject`, "PATCH", payload);
+  return response.data;
+}
+
+export async function getPayrollSummary(year: number, month: number): Promise<PayrollConsolidationRow[]> {
+  const response = await request<ApiEnvelope<PayrollConsolidationRow[]>>(`/api/extra-hours/payroll?year=${year}&month=${month}`);
+  return response.data;
+}
+
+export async function deleteExtraHour(id: string): Promise<void> {
+  await request<void>(`/api/extra-hours/${id}`, "DELETE");
+}
+
+// ─── Estimations ───────────────────────────────────────────────────────────────
+
+export type Estimation = {
+  id: string;
+  projectId: string | null;
+  projectName: string;
+  createdAt: string;
+  totalIdealHours: string;
+  totalAdjustedHours: string;
+  bufferPercentage: string;
+  riskLevel: string;
+  confidenceLevel: string;
+  rawDataJson: string;
+  project?: Project | null;
+};
+
+export async function listEstimations(): Promise<Estimation[]> {
+  const response = await request<ApiEnvelope<Estimation[]>>("/api/estimations");
+  return response.data;
+}
+
+export async function listProjectEstimations(projectId: string): Promise<Estimation[]> {
+  const response = await request<ApiEnvelope<Estimation[]>>(`/api/estimations/project/${projectId}`);
+  return response.data;
+}
+
+export async function createEstimation(payload: {
+  projectId?: string | null;
+  projectName: string;
+  totalIdealHours: number;
+  totalAdjustedHours: number;
+  bufferPercentage: number;
+  riskLevel: string;
+  confidenceLevel: number;
+  rawDataJson: string;
+}): Promise<Estimation> {
+  const response = await request<ApiEnvelope<Estimation>>("/api/estimations", "POST", payload);
+  return response.data;
+}
+
+export async function deleteEstimation(id: string): Promise<void> {
+  await request<void>(`/api/estimations/${id}`, "DELETE");
+}
+
+// ─── Activities ────────────────────────────────────────────────────────────────
+
+export type ActivityType = "project" | "personal" | "meeting" | "training" | "support" | "other";
+export type ActivityPriority = "low" | "medium" | "high" | "urgent";
+export type ActivityStatus = "pending" | "in_progress" | "completed" | "cancelled" | "blocked";
+
+export type Activity = {
+  id: string;
+  title: string;
+  description: string | null;
+  consultantId: string;
+  projectId: string | null;
+  activityType: ActivityType;
+  scheduledDate: string;
+  dueDate: string | null;
+  completedDate: string | null;
+  estimatedHours: string;
+  actualHours: string;
+  status: ActivityStatus;
+  priority: ActivityPriority;
+  comments: string | null;
+  createdAt: string;
+  updatedAt: string;
+  project?: Project | null;
+  consultant?: Consultant;
+};
+
+export async function listActivities(params?: {
+  consultantId?: string;
+  projectId?: string;
+  startDate?: string;
+  endDate?: string;
+}): Promise<Activity[]> {
+  const query = new URLSearchParams();
+  if (params?.consultantId) query.set("consultantId", params.consultantId);
+  if (params?.projectId) query.set("projectId", params.projectId);
+  if (params?.startDate) query.set("startDate", params.startDate);
+  if (params?.endDate) query.set("endDate", params.endDate);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const response = await request<ApiEnvelope<Activity[]>>(`/api/activities${suffix}`);
+  return response.data;
+}
+
+export async function createActivity(payload: {
+  title: string;
+  description?: string | null;
+  consultantId: string;
+  projectId?: string | null;
+  activityType: ActivityType;
+  scheduledDate: string;
+  dueDate?: string | null;
+  completedDate?: string | null;
+  estimatedHours: number;
+  actualHours: number;
+  status: ActivityStatus;
+  priority: ActivityPriority;
+  comments?: string | null;
+}): Promise<Activity> {
+  const response = await request<ApiEnvelope<Activity>>("/api/activities", "POST", payload);
+  return response.data;
+}
+
+export async function updateActivity(
+  id: string,
+  payload: {
+    title: string;
+    description?: string | null;
+    consultantId: string;
+    projectId?: string | null;
+    activityType: ActivityType;
+    scheduledDate: string;
+    dueDate?: string | null;
+    completedDate?: string | null;
+    estimatedHours: number;
+    actualHours: number;
+    status: ActivityStatus;
+    priority: ActivityPriority;
+    comments?: string | null;
+  },
+): Promise<Activity> {
+  const response = await request<ApiEnvelope<Activity>>(`/api/activities/${id}`, "PUT", payload);
+  return response.data;
+}
+
+export async function deleteActivity(id: string): Promise<void> {
+  await request<void>(`/api/activities/${id}`, "DELETE");
 }

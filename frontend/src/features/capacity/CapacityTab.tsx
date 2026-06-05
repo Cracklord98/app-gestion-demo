@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from "react";
 import type { FormEvent } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import {
   cancelAssignment,
   completeAssignment,
@@ -115,7 +116,13 @@ export function CapacityTab({
   const [subTab, setSubTab] = useState<SubTab>("overview");
 
   return (
-    <section className="grid">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="◉"
+        title="Planificación de Capacidad"
+        description="Visualiza y gestiona la asignación de consultores, disponibilidad y ocupación a lo largo de los proyectos."
+      />
+      <section className="grid">
       <nav className="sub-tabs" style={{ display: "flex", gap: "0.5rem", padding: "0 0 0.75rem 0" }}>
         {([
           ["overview", "Vista general"],
@@ -147,6 +154,7 @@ export function CapacityTab({
         <BlocksPanel consultants={consultants} canWrite={canWrite} onError={onError} />
       )}
     </section>
+    </div>
   );
 }
 

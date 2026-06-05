@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import { createAdminUser, updateAdminUser, type AdminUser, type AppRole } from "../../services/api";
 
 const roleOptions: AppRole[] = ["ADMIN", "PM", "CONSULTANT", "FINANCE", "VIEWER"];
@@ -56,7 +57,13 @@ export function AdminTab({
   }
 
   return (
-    <section className="grid two-col">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="👤"
+        title="Gestión de Usuarios"
+        description="Administra los usuarios del sistema, asignación de roles y permisos de acceso."
+      />
+      <section className="grid two-col">
       <article className="card">
         <h3>Crear usuario</h3>
         <form onSubmit={(e) => void handleCreate(e)} className="form-grid">
@@ -112,5 +119,6 @@ export function AdminTab({
         )}
       </article>
     </section>
+    </div>
   );
 }

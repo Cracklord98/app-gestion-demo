@@ -21,6 +21,10 @@ import { risksRoutes } from "../modules/projects/risks.routes.js";
 import { issuesRoutes } from "../modules/projects/issues.routes.js";
 import { changeRequestsRoutes } from "../modules/projects/change-requests.routes.js";
 import { projectDetailRoutes } from "../modules/projects/project-detail.routes.js";
+import { extraHoursRoutes } from "../modules/extra-hours/extra-hours.routes.js";
+import { estimationsRoutes } from "../modules/estimations/estimations.routes.js";
+import { profileRoutes } from "../modules/profile/profile.routes.js";
+import { activitiesRoutes } from "../modules/activities/activities.routes.js";
 
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(healthRoutes);
@@ -45,4 +49,8 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(snapshotsRoutes, { prefix: "/api/snapshots" });
   await app.register(alertsRoutes, { prefix: "/api/alerts" });
   await app.register(auditRoutes, { prefix: "/api/audit" });
+  await app.register(extraHoursRoutes, { prefix: "/api/extra-hours" });
+  await app.register(estimationsRoutes, { prefix: "/api/estimations" });
+  await app.register(profileRoutes, { prefix: "/api/profile" });
+  await app.register(activitiesRoutes, { prefix: "/api/activities" });
 }

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import { listAuditLogs, type AuditLog } from "../../services/api";
 
 export function AuditTab({ onError }: { onError: (msg: string) => void }) {
@@ -40,7 +41,13 @@ export function AuditTab({ onError }: { onError: (msg: string) => void }) {
   };
 
   return (
-    <section className="grid">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="⊛"
+        title="Bitácora de Auditoría"
+        description="Consulta el historial de acciones y cambios realizados por los usuarios en la plataforma."
+      />
+      <section className="grid">
       <article className="card">
         <h3>Log de Auditoría</h3>
         <div className="form-grid filters-grid" style={{ marginBottom: "0.75rem" }}>
@@ -129,5 +136,6 @@ export function AuditTab({ onError }: { onError: (msg: string) => void }) {
         )}
       </article>
     </section>
+    </div>
   );
 }

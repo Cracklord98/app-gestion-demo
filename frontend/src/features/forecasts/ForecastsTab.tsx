@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FormEvent } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import {
   createForecast,
   deleteForecast,
@@ -11,7 +12,8 @@ import {
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SectionLayout } from "../../components/SectionLayout";
 import { downloadCsv } from "../../utils/csv";
-import { ValidationErrorBox, isValidationError } from "../../components/ValidationErrorBox";
+import { ValidationErrorBox } from "../../components/ValidationErrorBox";
+import { isValidationError } from "../../utils/validation";
 import { CurrencyInput } from "../../components/CurrencyInput";
 import {
   describeDuration,
@@ -302,7 +304,12 @@ export function ForecastsTab({
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="◷"
+        title="Proyecciones de Staffing"
+        description="Planifica la asignación futura de consultores y proyecta costos laborales mensuales."
+      />
       <SectionLayout
         title="Proyecciones"
         newLabel="+ Nueva proyección"
@@ -676,6 +683,6 @@ export function ForecastsTab({
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
-    </>
+    </div>
   );
 }

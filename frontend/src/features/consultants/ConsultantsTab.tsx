@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import {
   createConsultant,
   deleteConsultant,
@@ -9,7 +10,8 @@ import {
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { SectionLayout } from "../../components/SectionLayout";
 import { downloadCsv } from "../../utils/csv";
-import { ValidationErrorBox, isValidationError } from "../../components/ValidationErrorBox";
+import { ValidationErrorBox } from "../../components/ValidationErrorBox";
+import { isValidationError } from "../../utils/validation";
 import { CurrencyInput } from "../../components/CurrencyInput";
 
 const currencyOptions = ["COP", "USD", "EUR", "MXN", "PEN", "CLP"];
@@ -193,7 +195,12 @@ export function ConsultantsTab({
   }
 
   return (
-    <>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="◐"
+        title="Gestión de Consultores"
+        description="Administra los perfiles de los consultores, tarifas por hora y asignaciones operativas."
+      />
       <SectionLayout
         title="Consultores"
         newLabel="+ Nuevo consultor"
@@ -334,6 +341,6 @@ export function ConsultantsTab({
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
-    </>
+    </div>
   );
 }

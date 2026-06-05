@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { PageHeader } from "../../components/PageHeader";
 import {
   createExpense,
   deleteExpense,
@@ -17,7 +18,8 @@ import { useGastosGrouped, type GroupBy } from "./useGastosGrouped";
 import { GastosKPIStrip } from "./GastosKPIStrip";
 import { GastosFilters } from "./GastosFilters";
 import { GastosSummaryTable } from "./GastosSummaryTable";
-import { ValidationErrorBox, isValidationError } from "../../components/ValidationErrorBox";
+import { ValidationErrorBox } from "../../components/ValidationErrorBox";
+import { isValidationError } from "../../utils/validation";
 import { CurrencyInput } from "../../components/CurrencyInput";
 
 const currencyOptions = ["COP", "USD", "EUR", "MXN", "PEN", "CLP"];
@@ -245,6 +247,11 @@ export function ExpensesTab({
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="⊟"
+        title="Gestión de Gastos"
+        description="Registra, reembolsa y controla los gastos operacionales asociados a los proyectos."
+      />
 
       {loading ? (
         <p className="loading">Cargando gastos…</p>

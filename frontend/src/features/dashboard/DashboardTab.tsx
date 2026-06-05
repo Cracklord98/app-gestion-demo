@@ -11,6 +11,7 @@ import { formatISODateRange } from "../../utils/periodUtils";
 import { backendHealthToResult, HEALTH_CRITERIA_TOOLTIP } from "../../utils/projectHealth";
 import { AlertBadge } from "./AlertBadge";
 import { calcDelta, calcEVM, fmt, type DeltaResult } from "./dashboardUtils";
+import { PageHeader } from "../../components/PageHeader";
 
 // ── Formatting helpers ───────────────────────────────────────────────────────
 
@@ -569,7 +570,46 @@ export function DashboardTab({
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <section className="grid">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <PageHeader
+        icon="▦"
+        title="Tablero de Control"
+        description="Monitorea el estado financiero, la salud del portafolio, el rendimiento y las alertas en tiempo real."
+        actions={
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => setExportMenuOpen((o) => !o)}
+                style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px" }}
+              >
+                📥 Exportar
+              </button>
+              {exportMenuOpen && (
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  right: 0,
+                  background: "#fff",
+                  border: "1px solid #f4d4b6",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 12px rgba(154,79,15,0.08)",
+                  zIndex: 50,
+                  display: "flex",
+                  flexDirection: "column",
+                  minWidth: "120px",
+                  marginTop: "0.25rem"
+                }}>
+                  <button type="button" className="ghost" onClick={() => { void exportExcel(); setExportMenuOpen(false); }} style={{ padding: "0.5rem 1rem", textAlign: "left", fontSize: "0.8rem", width: "100%", border: "none" }}>Excel (.xlsx)</button>
+                  <button type="button" className="ghost" onClick={() => { void exportPdf(); setExportMenuOpen(false); }} style={{ padding: "0.5rem 1rem", textAlign: "left", fontSize: "0.8rem", width: "100%", border: "none" }}>PDF (.pdf)</button>
+                </div>
+              )}
+            </div>
+          </div>
+        }
+      />
+      <section className="grid">
 
       {/* Tarea 3: Portfolio Health — arriba del todo */}
       <article className="card">
@@ -1076,5 +1116,6 @@ export function DashboardTab({
         </article>
       )}
     </section>
+    </div>
   );
 }
