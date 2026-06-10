@@ -29,7 +29,8 @@ type ActivitiesTabProps = {
 };
 
 export function ActivitiesTab({ projects, consultants, authUser, onError, onDrillTo }: ActivitiesTabProps) {
-  const [view, setView] = useState<"week" | "month" | "list">("week");
+  const [view, setView] = useState<"week" | "month" | "list" | "report">("week");
+  const [reportRange, setReportRange] = useState<"week" | "month" | "all">("week");
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -627,6 +628,83 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
     });
   }, [activities, filterType]);
 
+  const reportActivities = useMemo(() => {
+    return activities.filter((act) => {
+      const actDate = new Date(act.scheduledDate);
+      if (reportRange === "week") {
+        const start = new Date(weekDays[0]);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date(weekDays[6]);
+        end.setHours(23, 59, 59, 999);
+        return actDate >= start && actDate <= end;
+      }
+      if (reportRange === "month") {
+        return actDate.getFullYear() === selectedDate.getFullYear() && actDate.getMonth() === selectedDate.getMonth();
+      }
+      return true;
+    });
+  }, [activities, reportRange, weekDays, selectedDate]);
+
+  const reportStats = useMemo(() => {
+    let totalActualHours = 0;
+    let totalEstimatedHours = 0;
+    const hoursByProject: Record<string, number> = {};
+    const hoursByType: Record<string, number> = {};
+    const hoursByConsultant: Record<string, { name: string; hours: number; email: string; actsCount: number; weekendWork: boolean }> = {};
+    let completedCount = 0;
+    let totalCount = 0;
+
+    for (const act of reportActivities) {
+      const actHours = Number(act.actualHours || 0);
+      const estHours = Number(act.estimatedHours || 0);
+      totalActualHours += actHours;
+      totalEstimatedHours += estHours;
+      totalCount++;
+      if (act.status === "completed") completedCount++;
+
+      // Project breakdown
+      const projName = act.project?.name || "Sin Proyecto / Personal";
+      hoursByProject[projName] = (hoursByProject[projName] || 0) + actHours;
+
+      // Type breakdown
+      const typeLabel = getTypeLabel(act.activityType);
+      hoursByType[typeLabel] = (hoursByType[typeLabel] || 0) + actHours;
+
+      // Consultant breakdown
+      const consName = consultants.find((c) => c.id === act.consultantId)?.fullName || "Desconocido";
+      const consEmail = consultants.find((c) => c.id === act.consultantId)?.email || "";
+      const actDate = new Date(act.scheduledDate);
+      const isWeekend = actDate.getUTCDay() === 0 || actDate.getUTCDay() === 6;
+      const dateKeyStr = act.scheduledDate.slice(0, 10);
+      const isHoli = holidays.some((h) => h.date.slice(0, 10) === dateKeyStr);
+
+      if (!hoursByConsultant[act.consultantId]) {
+        hoursByConsultant[act.consultantId] = {
+          name: consName,
+          hours: 0,
+          email: consEmail,
+          actsCount: 0,
+          weekendWork: false
+        };
+      }
+      hoursByConsultant[act.consultantId].hours += actHours;
+      hoursByConsultant[act.consultantId].actsCount++;
+      if (isWeekend || isHoli) {
+        hoursByConsultant[act.consultantId].weekendWork = true;
+      }
+    }
+
+    return {
+      totalActualHours,
+      totalEstimatedHours,
+      hoursByProject,
+      hoursByType,
+      hoursByConsultant,
+      completedPct: totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0,
+      totalCount,
+    };
+  }, [reportActivities, consultants, holidays]);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", padding: "1rem 2rem" }}>
       
@@ -662,6 +740,16 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               >
                 Lista
               </button>
+              {(authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM")) && (
+                <button
+                  type="button"
+                  className={view === "report" ? "" : "ghost"}
+                  onClick={() => setView("report")}
+                  style={{ fontSize: "0.82rem", padding: "0.3rem 0.6rem", border: "none" }}
+                >
+                  📈 Reporte
+                </button>
+              )}
             </div>
 
             <button
@@ -1154,41 +1242,311 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
         </div>
       )}
 
-      {/* --- CREATE / EDIT MODAL --- */}
+      {/* --- REPORT VIEW --- */}
+      {view === "report" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          
+          {/* Header Controls for Report */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "1rem", borderRadius: "14px", border: "1px solid #f4d4b6" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
+              <strong style={{ fontSize: "1rem", color: "var(--text-strong)" }}>
+                Reporte de Actividades del Equipo
+              </strong>
+              <span style={{ fontSize: "0.78rem", color: "var(--text-soft)" }}>
+                Rango seleccionado: {
+                  reportRange === "week" ? `Semana del ${weekDays[0].toLocaleDateString("es-CO")} al ${weekDays[6].toLocaleDateString("es-CO")}` :
+                  reportRange === "month" ? `Mes de ${selectedDate.toLocaleString("es-CO", { month: "long", year: "numeric" })}` :
+                  "Historial Completo"
+                }
+              </span>
+            </div>
+            
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Período:</span>
+              <select 
+                value={reportRange} 
+                onChange={(e) => setReportRange(e.target.value as "week" | "month" | "all")}
+                style={{ padding: "0.4rem 0.8rem", borderRadius: "8px", border: "1px solid #f4d4b6", fontSize: "0.82rem", background: "#fff", fontWeight: 600, color: "#9a4f0f" }}
+              >
+                <option value="week">Esta semana</option>
+                <option value="month">Este mes</option>
+                <option value="all">Historial completo</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Metric Cards Row */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
+            {/* Card 1 */}
+            <div className="card glass-card" style={{ padding: "1.25rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "linear-gradient(135deg, #fff, #fef8f3)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
+              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Horas Reales / Estimadas</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
+                <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>{reportStats.totalActualHours.toFixed(1)}h</strong>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-soft)" }}>/ {reportStats.totalEstimatedHours.toFixed(1)}h est.</span>
+              </div>
+              <div style={{ marginTop: "0.5rem", fontSize: "0.72rem", display: "flex", gap: "0.3rem", color: reportStats.totalActualHours >= reportStats.totalEstimatedHours ? "#16a34a" : "#dc2626" }}>
+                <span>{reportStats.totalActualHours >= reportStats.totalEstimatedHours ? "▲" : "▼"}</span>
+                <span>{reportStats.totalEstimatedHours > 0 ? Math.round((reportStats.totalActualHours / reportStats.totalEstimatedHours) * 100) : 0}% de ejecución</span>
+              </div>
+            </div>
+
+            {/* Card 2 */}
+            <div className="card glass-card" style={{ padding: "1.25rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "linear-gradient(135deg, #fff, #fef8f3)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
+              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Completitud de Tareas</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
+                <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>{reportStats.completedPct}%</strong>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-soft)" }}>({reportStats.totalCount} acts. totales)</span>
+              </div>
+              <div style={{ marginTop: "0.5rem", fontSize: "0.72rem", color: "var(--text-soft)" }}>
+                Porcentaje de actividades en estado Completado
+              </div>
+            </div>
+
+            {/* Card 3 */}
+            <div className="card glass-card" style={{ padding: "1.25rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "linear-gradient(135deg, #fff, #fef8f3)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
+              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Promedio por Consultor</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
+                <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>
+                  {(consultants.length > 0 ? reportStats.totalActualHours / consultants.length : 0).toFixed(1)}h
+                </strong>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-soft)" }}>por consultor activo</span>
+              </div>
+              <div style={{ marginTop: "0.5rem", fontSize: "0.72rem", color: "var(--text-soft)" }}>
+                Horas cargadas en promedio por persona
+              </div>
+            </div>
+
+            {/* Card 4 */}
+            <div className="card glass-card" style={{ padding: "1.25rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "linear-gradient(135deg, #fff, #fef8f3)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
+              <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Sobrecarga de Reuniones (Teams)</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
+                <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>
+                  {reportStats.totalActualHours > 0 
+                    ? Math.round(((reportStats.hoursByType["🤝 Reunión"] || 0) / reportStats.totalActualHours) * 100)
+                    : 0}%
+                </strong>
+                <span style={{ fontSize: "0.8rem", color: "var(--text-soft)" }}>({(reportStats.hoursByType["🤝 Reunión"] || 0).toFixed(1)}h de reunión)</span>
+              </div>
+              <div style={{ marginTop: "0.5rem", fontSize: "0.72rem", color: ((reportStats.hoursByType["🤝 Reunión"] || 0) / reportStats.totalActualHours) > 0.3 ? "#dc2626" : "var(--text-soft)", fontWeight: ((reportStats.hoursByType["🤝 Reunión"] || 0) / reportStats.totalActualHours) > 0.3 ? 700 : 400 }}>
+                {((reportStats.hoursByType["🤝 Reunión"] || 0) / reportStats.totalActualHours) > 0.3 ? "⚠️ Sobrecarga administrativa alta" : "✓ Distribución de reuniones normal"}
+              </div>
+            </div>
+          </div>
+
+          {/* Charts Row */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }} className="grid-one-col-mobile">
+            {/* Chart 1: Projects distribution */}
+            <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+              <h4 style={{ margin: "0 0 1.25rem 0", color: "#5f2f00", fontSize: "0.95rem" }}>📂 Distribución de Horas por Proyecto</h4>
+              {Object.keys(reportStats.hoursByProject).length === 0 ? (
+                <p style={{ fontStyle: "italic", color: "var(--text-soft)", fontSize: "0.85rem", textAlign: "center", padding: "2rem" }}>Sin datos de proyectos para este periodo</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  {Object.entries(reportStats.hoursByProject).map(([proj, hrs]) => {
+                    const pct = reportStats.totalActualHours > 0 ? Math.round((hrs / reportStats.totalActualHours) * 100) : 0;
+                    return (
+                      <div key={proj} style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "var(--text-strong)" }}>
+                          <strong>{proj}</strong>
+                          <span>{hrs.toFixed(1)}h ({pct}% )</span>
+                        </div>
+                        <div style={{ width: "100%", height: "8px", background: "#f3f4f6", borderRadius: "4px", overflow: "hidden" }}>
+                          <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #ff9c2c, #9a4f0f)", borderRadius: "4px" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Chart 2: Activity Type distribution */}
+            <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+              <h4 style={{ margin: "0 0 1.25rem 0", color: "#5f2f00", fontSize: "0.95rem" }}>📊 Horas por Tipo de Actividad</h4>
+              {Object.keys(reportStats.hoursByType).length === 0 ? (
+                <p style={{ fontStyle: "italic", color: "var(--text-soft)", fontSize: "0.85rem", textAlign: "center", padding: "2rem" }}>Sin datos de tipo de actividad para este periodo</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                  {Object.entries(reportStats.hoursByType).map(([type, hrs]) => {
+                    const pct = reportStats.totalActualHours > 0 ? Math.round((hrs / reportStats.totalActualHours) * 100) : 0;
+                    
+                    // Distinct gradients per activity type
+                    let gradient = "linear-gradient(90deg, #3b82f6, #1d4ed8)"; // Blue for projects
+                    if (type.includes("Personal")) gradient = "linear-gradient(90deg, #a855f7, #7e22ce)"; // Purple
+                    if (type.includes("Reunión")) gradient = "linear-gradient(90deg, #6366f1, #4338ca)"; // Indigo
+                    if (type.includes("Capacitación")) gradient = "linear-gradient(90deg, #10b981, #047857)"; // Green
+                    if (type.includes("Soporte")) gradient = "linear-gradient(90deg, #f59e0b, #b45309)"; // Orange
+                    if (type.includes("Otros")) gradient = "linear-gradient(90deg, #6b7280, #374151)"; // Gray
+
+                    return (
+                      <div key={type} style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "var(--text-strong)" }}>
+                          <strong>{type}</strong>
+                          <span>{hrs.toFixed(1)}h ({pct}% )</span>
+                        </div>
+                        <div style={{ width: "100%", height: "8px", background: "#f3f4f6", borderRadius: "4px", overflow: "hidden" }}>
+                          <div style={{ width: `${pct}%`, height: "100%", background: gradient, borderRadius: "4px" }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Consultant workload table */}
+          <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+            <h4 style={{ margin: "0 0 1rem 0", color: "#5f2f00", fontSize: "0.95rem" }}>👥 Carga de Trabajo de Consultores</h4>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr style={{ background: "#fdf8f5" }}>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th style={{ textAlign: "center" }}>Actividades</th>
+                    <th style={{ textAlign: "center" }}>Horas Registradas</th>
+                    <th style={{ textAlign: "center" }}>Estado Carga</th>
+                    <th style={{ textAlign: "center" }}>Horas Extra</th>
+                    <th style={{ textAlign: "center" }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {consultants.map((cons) => {
+                    const record = reportStats.hoursByConsultant[cons.id];
+                    const hrs = record ? record.hours : 0;
+                    const count = record ? record.actsCount : 0;
+                    const weekendWork = record ? record.weekendWork : false;
+
+                    // Load status evaluation
+                    let statusLabel = "Sin registros";
+                    let statusClass = "neutral";
+                    
+                    const minTarget = reportRange === "week" ? 6 : reportRange === "month" ? 25 : 10;
+                    const maxTarget = reportRange === "week" ? 9 : reportRange === "month" ? 45 : 30;
+
+                    if (hrs > 0) {
+                      if (hrs < minTarget) {
+                        statusLabel = "Sub-asignado";
+                        statusClass = "error";
+                      } else if (hrs > maxTarget) {
+                        statusLabel = "Sobrecargado";
+                        statusClass = "error";
+                      } else {
+                        statusLabel = "Normal";
+                        statusClass = "ok";
+                      }
+                    }
+
+                    return (
+                      <tr key={cons.id}>
+                        <td><strong>{cons.fullName}</strong></td>
+                        <td>{cons.email || "Sin email"}</td>
+                        <td style={{ textAlign: "center" }}>{count}</td>
+                        <td style={{ textAlign: "center", fontWeight: 700 }}>{hrs.toFixed(1)}h</td>
+                        <td style={{ textAlign: "center" }}>
+                          <span className={`pill ${statusClass}`} style={{ fontSize: "0.68rem", padding: "0.15rem 0.45rem", fontWeight: 700 }}>
+                            {statusLabel}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          {weekendWork ? (
+                            <span className="pill error" style={{ fontSize: "0.68rem", padding: "0.15rem 0.45rem", fontWeight: 700, background: "#fee2e2", color: "#b91c1c" }} title="Ha registrado actividades en fin de semana o festivos">
+                              ⚠️ HE Pendiente
+                            </span>
+                          ) : (
+                            <span style={{ color: "#9ca3af", fontSize: "0.75rem" }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFilterConsultantId(cons.id);
+                              setView("week");
+                            }}
+                            className="ghost"
+                            style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem", borderColor: "#f4d4b6", color: "#9a4f0f" }}
+                          >
+                            Ver Actividades
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+      )}      {/* --- CREATE / EDIT MODAL --- */}
       {modalOpen && (
-        <div className="modal-overlay" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <form onSubmit={handleSubmit} className="modal-card" style={{ maxWidth: "600px", width: "100%", maxHeight: "90vh", overflowY: "auto" }}>
-            <div className="modal-header">
-              <h3>{editingActivity ? "✍️ Editar Actividad" : "➕ Registrar Nueva Actividad"}</h3>
+        <div className="modal-overlay" style={{ 
+          display: "flex", 
+          justifyContent: "center", 
+          alignItems: "center",
+          background: "rgba(15, 23, 42, 0.4)",
+          backdropFilter: "blur(8px)",
+          position: "fixed",
+          inset: 0,
+          zIndex: 1000
+        }}>
+          <form onSubmit={handleSubmit} className="modal-card" style={{ 
+            maxWidth: "600px", 
+            width: "100%", 
+            maxHeight: "90vh", 
+            overflowY: "auto",
+            borderRadius: "16px",
+            border: "1px solid #f4d4b6",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            background: "rgba(255, 255, 255, 0.95)",
+            backdropFilter: "blur(12px)",
+            padding: "1.5rem",
+            display: "flex",
+            flexDirection: "column",
+            gap: "1.2rem"
+          }}>
+            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #fdecd8", paddingBottom: "0.75rem" }}>
+              <h3 style={{ margin: 0, color: "#5f2f00", fontSize: "1.25rem", fontWeight: 700 }}>
+                {editingActivity ? "✍️ Editar Actividad" : "➕ Registrar Nueva Actividad"}
+              </h3>
               <button type="button" className="ghost" onClick={() => setModalOpen(false)} style={{ padding: "0.25rem 0.5rem" }}>✕</button>
             </div>
 
             <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.8rem", padding: "0.5rem 0" }}>
               
               <div style={{ gridColumn: "span 2" }}>
-                <label className="form-label">Título de la Actividad *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Título de la Actividad *</label>
                 <input
                   type="text"
                   required
                   placeholder="Ej. Diseño de base de datos, Reunión con cliente..."
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
+                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
               <div style={{ gridColumn: "span 2" }}>
-                <label className="form-label">Descripción</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Descripción</label>
                 <textarea
                   rows={2}
                   placeholder="Detalles adicionales del trabajo realizado..."
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
+                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
               <div>
-                <label className="form-label">Tipo de Actividad *</label>
-                <select value={formType} onChange={(e) => setFormType(e.target.value as ActivityType)} required>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Tipo de Actividad *</label>
+                <select 
+                  value={formType} 
+                  onChange={(e) => setFormType(e.target.value as ActivityType)} 
+                  required
+                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db", background: "#fff" }}
+                >
                   <option value="project">Proyecto</option>
                   <option value="personal">Personal / Bench</option>
                   <option value="meeting">Reunión</option>
@@ -1199,7 +1557,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div>
-                <label className="form-label">Proyecto Vincular (Opcional)</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Proyecto Vincular (Opcional)</label>
                 <SearchableSelect
                   options={projects.map((p) => ({ value: p.id, label: p.name }))}
                   value={formProjectId}
@@ -1211,7 +1569,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
 
               {(authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM")) ? (
                 <div>
-                  <label className="form-label">Consultor *</label>
+                  <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Consultor *</label>
                   <SearchableSelect
                     options={consultants.map((c) => ({ value: c.id, label: c.fullName }))}
                     value={formConsultantId}
@@ -1222,28 +1580,29 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                 </div>
               ) : (
                 <div>
-                  <label className="form-label">Consultor</label>
+                  <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Consultor</label>
                   <input
                     type="text"
                     readOnly
                     value={myConsultant ? myConsultant.fullName : authUser?.displayName || ""}
-                    style={{ background: "#f3f4f6", cursor: "not-allowed" }}
+                    style={{ background: "#f3f4f6", cursor: "not-allowed", width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                   />
                 </div>
               )}
 
               <div>
-                <label className="form-label">Fecha Planificada *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Fecha Planificada *</label>
                 <input
                   type="date"
                   required
                   value={formDate}
                   onChange={(e) => setFormDate(e.target.value)}
+                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
               <div>
-                <label className="form-label">Horas Estimadas *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Horas Estimadas *</label>
                 <input
                   type="number"
                   min="0"
@@ -1251,11 +1610,12 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                   required
                   value={formEstimatedHours}
                   onChange={(e) => setFormEstimatedHours(e.target.value)}
+                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
               <div>
-                <label className="form-label">Horas Reales (Ejecutadas) *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Horas Reales (Ejecutadas) *</label>
                 <input
                   type="number"
                   min="0"
@@ -1263,12 +1623,18 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                   required
                   value={formActualHours}
                   onChange={(e) => setFormActualHours(e.target.value)}
+                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
               <div>
-                <label className="form-label">Prioridad *</label>
-                <select value={formPriority} onChange={(e) => setFormPriority(e.target.value as ActivityPriority)} required>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Prioridad *</label>
+                <select 
+                  value={formPriority} 
+                  onChange={(e) => setFormPriority(e.target.value as ActivityPriority)} 
+                  required
+                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db", background: "#fff" }}
+                >
                   <option value="low">Baja</option>
                   <option value="medium">Media</option>
                   <option value="high">Alta</option>
@@ -1277,8 +1643,13 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div>
-                <label className="form-label">Estado *</label>
-                <select value={formStatus} onChange={(e) => setFormStatus(e.target.value as ActivityStatus)} required>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Estado *</label>
+                <select 
+                  value={formStatus} 
+                  onChange={(e) => setFormStatus(e.target.value as ActivityStatus)} 
+                  required
+                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db", background: "#fff" }}
+                >
                   <option value="pending">Pendiente</option>
                   <option value="in_progress">En Progreso</option>
                   <option value="completed">Completado</option>
@@ -1288,12 +1659,13 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div style={{ gridColumn: "span 2" }}>
-                <label className="form-label">Comentarios / Notas internas</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Comentarios / Notas internas</label>
                 <textarea
                   rows={2}
                   placeholder="Observaciones de avance, impedimentos, etc..."
                   value={formComments}
                   onChange={(e) => setFormComments(e.target.value)}
+                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
@@ -1301,9 +1673,10 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               {isExtraHoursEligible && formProjectId && (
                 <div style={{
                   gridColumn: "span 2",
-                  background: "#fffbeb",
-                  border: "1px solid #fcd34d",
-                  borderRadius: "12px",
+                  background: "rgba(254, 243, 199, 0.65)",
+                  backdropFilter: "blur(10px)",
+                  border: "1px solid #fbbf24",
+                  borderRadius: "14px",
                   padding: "1rem",
                   marginTop: "0.5rem",
                   boxShadow: "0 4px 6px -1px rgba(217, 119, 6, 0.05)"
@@ -1396,18 +1769,18 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                       setModalOpen(false);
                       handleDeleteClick(editingActivity.id);
                     }}
-                    style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: "6px", fontSize: "0.85rem", padding: "0.5rem 1rem" }}
+                    style={{ background: "#ef4444", color: "#fff", border: "none", borderRadius: "6px", fontSize: "0.85rem", padding: "0.5rem 1rem", cursor: "pointer" }}
                   >
                     🗑 Eliminar Actividad
                   </button>
                 )}
               </div>
               <div style={{ display: "flex", gap: "0.5rem" }}>
-                <button type="button" className="ghost" onClick={() => setModalOpen(false)}>Cancelar</button>
+                <button type="button" className="ghost" onClick={() => setModalOpen(false)} style={{ cursor: "pointer" }}>Cancelar</button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  style={{ background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)", border: "none" }}
+                  style={{ background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)", border: "none", color: "#fff", cursor: "pointer", borderRadius: "6px", padding: "0.5rem 1rem", fontWeight: 700 }}
                 >
                   {submitting ? "Guardando..." : "Guardar Actividad"}
                 </button>
@@ -1416,133 +1789,166 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
           </form>
         </div>
       )}
-
       {/* --- TEAMS SYNC MODAL --- */}
       {teamsModalOpen && (
-        <div className="modal-overlay" style={{ display: "flex", justifyContent: "center", alignItems: "center" }}>
-          <div className="modal-card" style={{ maxWidth: "680px", width: "100%", maxHeight: "90vh", display: "flex", flexDirection: "column", gap: "1rem", overflow: "hidden", padding: "1.5rem", borderRadius: "16px" }}>
-            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #fdecd8", paddingBottom: "0.75rem" }}>
-              <h3 style={{ margin: 0, color: "#5f2f00", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                👥 Sincronizar Eventos de Microsoft Teams
+        <div className="modal-overlay" style={{ 
+          display: "flex", 
+          justifyContent: "center", 
+          alignItems: "center",
+          background: "rgba(15, 23, 42, 0.4)",
+          backdropFilter: "blur(8px)",
+          position: "fixed",
+          inset: 0,
+          zIndex: 1000
+        }}>
+          <div className="modal-card" style={{ 
+            maxWidth: "680px", 
+            width: "100%", 
+            maxHeight: "90vh", 
+            display: "flex", 
+            flexDirection: "column", 
+            gap: "1.2rem", 
+            overflow: "hidden", 
+            padding: "0", 
+            borderRadius: "16px",
+            border: "1px solid #c7d2fe",
+            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
+            background: "rgba(255, 255, 255, 0.98)",
+            backdropFilter: "blur(16px)"
+          }}>
+            {/* Teams branded header */}
+            <div className="modal-header" style={{ 
+              display: "flex", 
+              justifyContent: "space-between", 
+              alignItems: "center", 
+              background: "linear-gradient(90deg, #ececfc, #f5f3ff)", 
+              padding: "1rem 1.5rem", 
+              borderBottom: "1px solid #c7d2fe" 
+            }}>
+              <h3 style={{ margin: 0, color: "#3730a3", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700 }}>
+                👥 Sincronizar Reuniones de Teams
               </h3>
-              <button type="button" className="ghost" onClick={() => setTeamsModalOpen(false)} style={{ padding: "0.25rem 0.5rem" }}>✕</button>
+              <button type="button" className="ghost" onClick={() => setTeamsModalOpen(false)} style={{ padding: "0.25rem 0.5rem", color: "#3730a3" }}>✕</button>
             </div>
 
-            <div style={{ display: "flex", gap: "0.4rem", background: "#fdf8f5", padding: "0.75rem", borderRadius: "10px", border: "1px solid #f4d4b6", fontSize: "0.82rem", color: "#9a4f0f" }}>
-              <span>ℹ️</span>
-              <span>
-                Mostrando reuniones para la semana del <strong>{weekDays[0].toLocaleDateString("es-CO")}</strong> al <strong>{weekDays[6].toLocaleDateString("es-CO")}</strong>. 
-                {accounts.length > 0 ? " Conectado a tu cuenta de Microsoft." : " Usando datos de simulación local (modo demo)."}
-              </span>
-            </div>
+            <div style={{ padding: "0 1.5rem", display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto", flex: 1 }}>
+              
+              <div style={{ display: "flex", gap: "0.5rem", background: "#f5f3ff", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #c7d2fe", fontSize: "0.82rem", color: "#4f46e5" }}>
+                <span>ℹ️</span>
+                <span>
+                  Mostrando reuniones para la semana del <strong>{weekDays[0].toLocaleDateString("es-CO")}</strong> al <strong>{weekDays[6].toLocaleDateString("es-CO")}</strong>. 
+                  {accounts.length > 0 ? " Conectado a Microsoft Graph." : " Usando datos de simulación local (modo demo)."}
+                </span>
+              </div>
 
-            {/* Default Project selector */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-              <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-soft)" }}>Asociar actividades importadas al Proyecto:</label>
-              <SearchableSelect
-                options={projects.map((p) => ({ value: p.id, label: p.name }))}
-                value={syncProjectId}
-                onChange={(val) => setSyncProjectId(val)}
-                placeholder="Buscar proyecto..."
-                emptyLabel="-- No vincular a proyecto --"
-              />
-            </div>
+              {/* Default Project selector */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-soft)" }}>Asociar actividades importadas al Proyecto:</label>
+                <SearchableSelect
+                  options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                  value={syncProjectId}
+                  onChange={(val) => setSyncProjectId(val)}
+                  placeholder="Buscar proyecto..."
+                  emptyLabel="-- No vincular a proyecto --"
+                />
+              </div>
 
-            {/* List of events */}
-            <div style={{ flex: 1, overflowY: "auto", minHeight: "220px", border: "1px solid #e5e7eb", borderRadius: "12px", background: "#fffdfa" }}>
-              {syncLoading ? (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "3rem", gap: "0.5rem" }}>
-                  <span className="loading" style={{ margin: 0 }}>Cargando eventos de Microsoft...</span>
-                </div>
-              ) : syncEvents.length === 0 ? (
-                <div style={{ textAlign: "center", padding: "3rem", color: "#9ca3af", fontStyle: "italic", fontSize: "0.85rem" }}>
-                  No se encontraron eventos en tu calendario para esta semana.
-                </div>
-              ) : (
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ background: "#fdf8f5" }}>
-                      <th style={{ width: "40px", textAlign: "center", padding: "0.5rem" }}>
-                        <input
-                          type="checkbox"
-                          checked={syncSelectedIds.length === syncEvents.filter(ev => !ev.isImported).length && syncEvents.filter(ev => !ev.isImported).length > 0}
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              setSyncSelectedIds(syncEvents.filter(ev => !ev.isImported).map(ev => ev.id));
-                            } else {
-                              setSyncSelectedIds([]);
-                            }
-                          }}
-                          disabled={syncEvents.filter(ev => !ev.isImported).length === 0}
-                          style={{ width: "16px", height: "16px", cursor: "pointer" }}
-                        />
-                      </th>
-                      <th style={{ padding: "0.5rem" }}>Reunión / Evento</th>
-                      <th style={{ padding: "0.5rem", width: "80px", textAlign: "center" }}>Duración</th>
-                      <th style={{ padding: "0.5rem", width: "120px", textAlign: "center" }}>Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {syncEvents.map((ev) => (
-                      <tr 
-                        key={ev.id} 
-                        style={{ 
-                          borderBottom: "1px solid #f3f4f6", 
-                          background: ev.isImported ? "#f9fafb" : "transparent",
-                          opacity: ev.isImported ? 0.75 : 1
-                        }}
-                      >
-                        <td style={{ textAlign: "center", padding: "0.75rem 0.5rem" }}>
+              {/* List of events */}
+              <div style={{ flex: 1, overflowY: "auto", minHeight: "220px", border: "1px solid #e5e7eb", borderRadius: "12px", background: "#fffdfa" }}>
+                {syncLoading ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "3rem", gap: "0.5rem" }}>
+                    <span className="loading" style={{ margin: 0 }}>Cargando eventos de Microsoft...</span>
+                  </div>
+                ) : syncEvents.length === 0 ? (
+                  <div style={{ textAlign: "center", padding: "3rem", color: "#9ca3af", fontStyle: "italic", fontSize: "0.85rem" }}>
+                    No se encontraron eventos en tu calendario para esta semana.
+                  </div>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ background: "#f5f3ff", borderBottom: "1px solid #e5e7eb" }}>
+                        <th style={{ width: "40px", textAlign: "center", padding: "0.6rem 0.5rem" }}>
                           <input
                             type="checkbox"
-                            checked={syncSelectedIds.includes(ev.id)}
-                            disabled={ev.isImported}
+                            checked={syncSelectedIds.length === syncEvents.filter(ev => !ev.isImported).length && syncEvents.filter(ev => !ev.isImported).length > 0}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSyncSelectedIds(prev => [...prev, ev.id]);
+                                setSyncSelectedIds(syncEvents.filter(ev => !ev.isImported).map(ev => ev.id));
                               } else {
-                                setSyncSelectedIds(prev => prev.filter(id => id !== ev.id));
+                                setSyncSelectedIds([]);
                               }
                             }}
-                            style={{ width: "16px", height: "16px", cursor: ev.isImported ? "not-allowed" : "pointer" }}
+                            disabled={syncEvents.filter(ev => !ev.isImported).length === 0}
+                            style={{ width: "16px", height: "16px", cursor: "pointer" }}
                           />
-                        </td>
-                        <td style={{ padding: "0.75rem 0.5rem" }}>
-                          <strong style={{ display: "block", fontSize: "0.82rem", color: ev.isImported ? "var(--text-soft)" : "var(--text-strong)" }}>
-                            {ev.subject}
-                          </strong>
-                          <span style={{ fontSize: "0.72rem", color: "#6b7280" }}>
-                            {formatMeetingTime(ev.start, ev.end)}
-                          </span>
-                        </td>
-                        <td style={{ padding: "0.75rem 0.5rem", textAlign: "center", fontWeight: 700, fontSize: "0.82rem" }}>
-                          {ev.duration.toFixed(1)}h
-                        </td>
-                        <td style={{ padding: "0.75rem 0.5rem", textAlign: "center" }}>
-                          {ev.isImported ? (
-                            <span className="pill ok" style={{ fontSize: "0.65rem", padding: "0.1rem 0.4rem" }}>✓ Importado</span>
-                          ) : (
-                            <span className="pill neutral" style={{ fontSize: "0.65rem", padding: "0.1rem 0.4rem", background: "#f3f4f6", color: "#6b7280" }}>Pendiente</span>
-                          )}
-                        </td>
+                        </th>
+                        <th style={{ padding: "0.6rem 0.5rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "#4b5563" }}>Reunión / Evento</th>
+                        <th style={{ padding: "0.6rem 0.5rem", width: "85px", textAlign: "center", fontSize: "0.75rem", fontWeight: 700, color: "#4b5563" }}>Duración</th>
+                        <th style={{ padding: "0.6rem 0.5rem", width: "120px", textAlign: "center", fontSize: "0.75rem", fontWeight: 700, color: "#4b5563" }}>Estado</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+                    </thead>
+                    <tbody>
+                      {syncEvents.map((ev) => (
+                        <tr 
+                          key={ev.id} 
+                          style={{ 
+                            borderBottom: "1px solid #f3f4f6", 
+                            background: ev.isImported ? "#f9fafb" : "transparent",
+                            opacity: ev.isImported ? 0.75 : 1
+                          }}
+                        >
+                          <td style={{ textAlign: "center", padding: "0.75rem 0.5rem" }}>
+                            <input
+                              type="checkbox"
+                              checked={syncSelectedIds.includes(ev.id)}
+                              disabled={ev.isImported}
+                              onChange={(e) => {
+                                if (e.target.checked) {
+                                  setSyncSelectedIds(prev => [...prev, ev.id]);
+                                } else {
+                                  setSyncSelectedIds(prev => prev.filter(id => id !== ev.id));
+                                }
+                              }}
+                              style={{ width: "16px", height: "16px", cursor: ev.isImported ? "not-allowed" : "pointer" }}
+                            />
+                          </td>
+                          <td style={{ padding: "0.75rem 0.5rem" }}>
+                            <strong style={{ display: "block", fontSize: "0.82rem", color: ev.isImported ? "var(--text-soft)" : "var(--text-strong)" }}>
+                              {ev.subject}
+                            </strong>
+                            <span style={{ fontSize: "0.72rem", color: "#6b7280" }}>
+                              {formatMeetingTime(ev.start, ev.end)}
+                            </span>
+                          </td>
+                          <td style={{ padding: "0.75rem 0.5rem", textAlign: "center", fontWeight: 700, fontSize: "0.82rem", color: "#4f46e5" }}>
+                            {ev.duration.toFixed(1)}h
+                          </td>
+                          <td style={{ padding: "0.75rem 0.5rem", textAlign: "center" }}>
+                            {ev.isImported ? (
+                              <span className="pill ok" style={{ fontSize: "0.65rem", padding: "0.15rem 0.45rem", fontWeight: 700, background: "#dcfce7", color: "#15803d" }}>✓ Importado</span>
+                            ) : (
+                              <span className="pill neutral" style={{ fontSize: "0.65rem", padding: "0.15rem 0.45rem", fontWeight: 700, background: "#f3f4f6", color: "#6b7280" }}>Pendiente</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
 
-            <div className="modal-actions" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #fdecd8", paddingTop: "0.75rem", marginTop: "auto" }}>
-              <span style={{ fontSize: "0.78rem", color: "var(--text-soft)" }}>
+            <div className="modal-actions" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #e5e7eb", padding: "1rem 1.5rem", background: "#fafafa" }}>
+              <span style={{ fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600 }}>
                 {syncSelectedIds.length} seleccionados para importar
               </span>
               <div style={{ display: "flex", gap: "0.5rem" }}>
-                <button type="button" className="ghost" onClick={() => setTeamsModalOpen(false)}>Cancelar</button>
+                <button type="button" className="ghost" onClick={() => setTeamsModalOpen(false)} style={{ cursor: "pointer" }}>Cancelar</button>
                 <button 
                   type="button" 
                   disabled={syncSelectedIds.length === 0 || syncingInProgress}
                   onClick={handleImportMeetings}
-                  style={{ background: "linear-gradient(135deg, #4f46e5, #3730a3)", border: "none" }}
+                  style={{ background: "linear-gradient(135deg, #4f46e5, #3730a3)", border: "none", color: "#fff", cursor: "pointer", borderRadius: "6px", padding: "0.5rem 1rem", fontWeight: 700 }}
                 >
                   {syncingInProgress ? "Importando..." : "Importar seleccionados"}
                 </button>

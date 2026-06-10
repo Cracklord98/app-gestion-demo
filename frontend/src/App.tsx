@@ -214,6 +214,38 @@ function App() {
   const [currentPath, setCurrentPath] = useState(() => (window.location.pathname || "/").toLowerCase());
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [originalUser, setOriginalUser] = useState<AuthUser | null>(null);
+
+  const handleSwitchRole = useCallback((role: "ADMIN" | "PM" | "CONSULTANT") => {
+    if (!originalUser) return;
+    const rolePermissionsMap: Record<string, string[]> = {
+      ADMIN: [
+        "projects:read", "projects:write", "consultants:read", "consultants:write",
+        "time:read", "time:write", "time:review", "expenses:read", "expenses:write",
+        "forecasts:read", "forecasts:write", "revenue:read", "revenue:write",
+        "fx:read", "fx:write", "stats:read", "assignments:read", "assignments:write",
+        "capacity:read", "snapshots:close", "alerts:read", "alerts:resolve",
+        "audit:read", "users:manage", "extrahours:read", "extrahours:write",
+        "extrahours:review", "extrahours:config", "estimations:write"
+      ],
+      PM: [
+        "projects:read", "projects:write", "consultants:read", "consultants:write",
+        "time:read", "time:write", "time:review", "expenses:read", "expenses:write",
+        "forecasts:read", "forecasts:write", "revenue:read", "revenue:write",
+        "fx:read", "stats:read", "assignments:read", "assignments:write",
+        "capacity:read", "alerts:read", "alerts:resolve", "extrahours:read",
+        "extrahours:write", "extrahours:review", "estimations:write"
+      ],
+      CONSULTANT: [
+        "time:read", "time:write", "alerts:read", "extrahours:read", "extrahours:write"
+      ]
+    };
+    setAuthUser({
+      ...originalUser,
+      roles: [role],
+      permissions: rolePermissionsMap[role]
+    });
+  }, [originalUser]);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -308,6 +340,7 @@ function App() {
         setApiAccessToken(null);
       }
       const me = await getMe();
+      setOriginalUser(me);
       setAuthUser(me);
       if (currentPath !== "/home") goTo("/home", true);
     } catch (err) {
@@ -322,6 +355,7 @@ function App() {
 
   async function logout() {
     setApiAccessToken(null);
+    setOriginalUser(null);
     setAuthUser(null);
     goTo("/login", true);
     if (authWithMicrosoftEnabled) {
@@ -432,6 +466,42 @@ function App() {
         </div>
 
         <div className="badges">
+          {authUser && (
+            <div className="role-switcher" style={{
+              display: "flex",
+              alignItems: "center",
+              background: "rgba(154, 79, 15, 0.08)",
+              border: "1px solid #f4d4b6",
+              borderRadius: "20px",
+              padding: "2px",
+              marginRight: "0.5rem"
+            }}>
+              <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#9a4f0f", padding: "0 6px 0 10px" }}>VISTA:</span>
+              {(["ADMIN", "PM", "CONSULTANT"] as const).map((r) => {
+                const isActive = authUser.roles.includes(r) && authUser.roles.length === 1;
+                return (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => handleSwitchRole(r)}
+                    style={{
+                      background: isActive ? "linear-gradient(135deg, #ff9c2c, #9a4f0f)" : "none",
+                      color: isActive ? "#fff" : "#9a4f0f",
+                      border: "none",
+                      borderRadius: "16px",
+                      padding: "4px 10px",
+                      fontSize: "0.68rem",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    {r === "ADMIN" ? "Admin" : r === "PM" ? "PM" : "Consultor"}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           <button type="button" className="ghost" onClick={() => setFxDrawerOpen(true)}
             title="Conversor de divisas" style={{ fontSize: "0.82rem" }}>
             ⊗ FX

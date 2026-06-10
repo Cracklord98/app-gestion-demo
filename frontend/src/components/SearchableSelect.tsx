@@ -252,8 +252,11 @@ export function SearchableSelect({
                 const isSelected = value === opt.value;
                 const isHighlighted = highlightedIndex === idx;
                 
-                // Highlight search matches
-                const parts = opt.label.split(new RegExp(`(${search})`, "gi"));
+                // Highlight search matches (escape regex chars to prevent runtime errors)
+                const hasSearch = search.trim() !== "";
+                const parts = hasSearch 
+                  ? opt.label.split(new RegExp(`(${search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, "gi")) 
+                  : [opt.label];
                 
                 return (
                   <div
@@ -283,14 +286,18 @@ export function SearchableSelect({
                     }}
                   >
                     <span>
-                      {parts.map((part, i) => 
-                        part.toLowerCase() === search.toLowerCase() ? (
-                          <mark key={i} style={{ background: "#fde047", color: "inherit", padding: "0.05rem 0.1rem", borderRadius: "2px" }}>
-                            {part}
-                          </mark>
-                        ) : (
-                          part
+                      {hasSearch ? (
+                        parts.map((part, i) => 
+                          part.toLowerCase() === search.toLowerCase() ? (
+                            <mark key={i} style={{ background: "#fde047", color: "inherit", padding: "0.05rem 0.1rem", borderRadius: "2px" }}>
+                              {part}
+                            </mark>
+                          ) : (
+                            part
+                          )
                         )
+                      ) : (
+                        opt.label
                       )}
                     </span>
                   </div>
