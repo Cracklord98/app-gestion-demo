@@ -492,7 +492,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
       />
 
       {/* Global Filters Panel */}
-      <div className="card glass-card" style={{ padding: "1rem", borderRadius: "12px", border: "1px solid #f4d4b6", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+      <div className="card glass-card" style={{ position: "relative", zIndex: 20, padding: "1rem", borderRadius: "12px", border: "1px solid #f4d4b6", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
         {(authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM") || authUser?.roles.includes("FINANCE")) ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "220px" }}>
             <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)" }}>Filtrar por Consultor</label>
