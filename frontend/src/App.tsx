@@ -826,6 +826,7 @@ function App() {
                   consultants={consultantsHook.consultants}
                   authUser={authUser}
                   onError={handleError}
+                  onDrillTo={drillTo}
                 />
               )}
 
