@@ -10,6 +10,7 @@ const userPayloadSchema = z.object({
   microsoftOid: z.string().trim().min(1).optional(),
   active: z.coerce.boolean().default(true),
   roles: z.array(z.nativeEnum(AppRole)).min(1),
+  country: z.string().trim().nullish(),
 });
 
 const userUpdateSchema = z.object({
@@ -17,6 +18,7 @@ const userUpdateSchema = z.object({
   microsoftOid: z.string().trim().min(1).optional(),
   active: z.coerce.boolean().optional(),
   roles: z.array(z.nativeEnum(AppRole)).min(1).optional(),
+  country: z.string().trim().nullish(),
 });
 
 const paramsSchema = z.object({ id: z.string().min(1) });
@@ -59,6 +61,7 @@ export async function adminUsersRoutes(app: FastifyInstance) {
           microsoftOid: user.microsoftOid,
           active: user.active,
           roles: user.roles.map((item) => item.role.name),
+          country: user.country,
           createdAt: user.createdAt,
           updatedAt: user.updatedAt,
         })),
@@ -92,6 +95,7 @@ export async function adminUsersRoutes(app: FastifyInstance) {
           displayName: payload.displayName,
           microsoftOid: payload.microsoftOid,
           active: payload.active,
+          country: payload.country,
           roles: {
             create: roleRecords.map((role) => ({
               roleId: role.id,
@@ -115,6 +119,7 @@ export async function adminUsersRoutes(app: FastifyInstance) {
           microsoftOid: user.microsoftOid,
           active: user.active,
           roles: user.roles.map((item) => item.role.name),
+          country: user.country,
         },
       });
     },
@@ -158,6 +163,7 @@ export async function adminUsersRoutes(app: FastifyInstance) {
           displayName: payload.displayName,
           microsoftOid: payload.microsoftOid,
           active: payload.active,
+          country: payload.country,
         },
         include: {
           roles: {
@@ -176,6 +182,7 @@ export async function adminUsersRoutes(app: FastifyInstance) {
           microsoftOid: updated.microsoftOid,
           active: updated.active,
           roles: updated.roles.map((item) => item.role.name),
+          country: updated.country,
           createdAt: updated.createdAt,
           updatedAt: updated.updatedAt,
         },

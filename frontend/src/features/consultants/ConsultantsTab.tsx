@@ -35,6 +35,7 @@ type EditForm = {
   hourlyRate: string;
   rateCurrency: string;
   active: boolean;
+  allowWeekendWork: boolean;
 };
 
 const emptyForm = {
@@ -44,6 +45,7 @@ const emptyForm = {
   hourlyRate: "",
   rateCurrency: "USD",
   active: true,
+  allowWeekendWork: false,
 };
 
 export function ConsultantsTab({
@@ -123,6 +125,7 @@ export function ConsultantsTab({
         hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : undefined,
         rateCurrency: form.rateCurrency,
         active: form.active,
+        allowWeekendWork: form.allowWeekendWork,
       });
       setForm(emptyForm);
       await onReload();
@@ -151,6 +154,7 @@ export function ConsultantsTab({
         hourlyRate: editForm.hourlyRate ? Number(editForm.hourlyRate) : undefined,
         rateCurrency: editForm.rateCurrency,
         active: editForm.active,
+        allowWeekendWork: editForm.allowWeekendWork,
       });
       setEditForm(null);
       await onReload();
@@ -175,6 +179,7 @@ export function ConsultantsTab({
         hourlyRate: numberish(consultant.hourlyRate),
         rateCurrency: consultant.rateCurrency || "USD",
         active: !consultant.active,
+        allowWeekendWork: consultant.allowWeekendWork || false,
       });
       await onReload();
     } catch (err) {
@@ -229,6 +234,10 @@ export function ConsultantsTab({
               <input type="checkbox" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
               Activo
             </label>
+            <label className="check">
+              <input type="checkbox" checked={form.allowWeekendWork} onChange={(e) => setForm((p) => ({ ...p, allowWeekendWork: e.target.checked }))} />
+              Finde/Festivos
+            </label>
             <button type="submit" disabled={submitting}>{submitting ? "Creando…" : "Crear consultor"}</button>
           </form>
         }
@@ -256,7 +265,14 @@ export function ConsultantsTab({
                       <td>{money(numberish(c.hourlyRate), c.rateCurrency || "USD")}</td>
                       <td>{fxLoading ? "…" : toUSD(numberish(c.hourlyRate), c.rateCurrency || "USD")}</td>
                       <td>
-                        <span className={`pill ${c.active ? "ok" : "neutral"}`}>{c.active ? "Activo" : "Inactivo"}</span>
+                        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                          <span className={`pill ${c.active ? "ok" : "neutral"}`}>{c.active ? "Activo" : "Inactivo"}</span>
+                          {c.allowWeekendWork && (
+                            <span className="pill warning" style={{ fontSize: "0.7rem", background: "#fef3c7", color: "#d97706", fontWeight: 700 }} title="Autorizado para registrar en fines de semana y festivos">
+                              📅 Finde
+                            </span>
+                          )}
+                        </div>
                       </td>
                       {canWrite && (
                         <td>
@@ -272,6 +288,7 @@ export function ConsultantsTab({
                                   hourlyRate: String(numberish(c.hourlyRate)),
                                   rateCurrency: c.rateCurrency || "USD",
                                   active: c.active,
+                                  allowWeekendWork: c.allowWeekendWork || false,
                                 })
                               }
                             >
@@ -322,6 +339,10 @@ export function ConsultantsTab({
               <label className="check">
                 <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm((p) => p && { ...p, active: e.target.checked })} />
                 Activo
+              </label>
+              <label className="check">
+                <input type="checkbox" checked={editForm.allowWeekendWork} onChange={(e) => setEditForm((p) => p && { ...p, allowWeekendWork: e.target.checked })} />
+                Permitir Fin de Semana/Festivos
               </label>
               <div className="modal-actions">
                 <button type="submit" disabled={editSubmitting}>{editSubmitting ? "Guardando…" : "Guardar cambios"}</button>

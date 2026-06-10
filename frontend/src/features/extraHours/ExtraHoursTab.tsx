@@ -10,6 +10,10 @@ import {
   rejectExtraHour,
   getPayrollSummary,
   deleteExtraHour,
+  listCustomHolidays,
+  createCustomHoliday,
+  deleteCustomHoliday,
+  type CustomHoliday,
   type Project,
   type Consultant,
   type AuthUser,
@@ -19,6 +23,247 @@ import {
   type PayrollConsolidationRow
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+
+// ─── HELPER FUNCTIONS FOR OFFICIAL HOLIDAYS ───────────────────────────────────
+
+function calculateEasterSunday(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function getNthMonday(year: number, month: number, n: number): Date {
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const dayOfWeek = firstDay.getUTCDay();
+  const daysUntilMonday = (1 - dayOfWeek + 7) % 7;
+  const firstMondayDay = 1 + daysUntilMonday;
+  const targetDay = firstMondayDay + (n - 1) * 7;
+  return new Date(Date.UTC(year, month - 1, targetDay));
+}
+
+function getNthThursday(year: number, month: number, n: number): Date {
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const dayOfWeek = firstDay.getUTCDay();
+  const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
+  const firstThursdayDay = 1 + daysUntilThursday;
+  const targetDay = firstThursdayDay + (n - 1) * 7;
+  return new Date(Date.UTC(year, month - 1, targetDay));
+}
+
+function moveChileanHoliday(year: number, month: number, day: number): Date {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = date.getUTCDay();
+  if (dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4) {
+    const offset = dayOfWeek === 2 ? -1 : dayOfWeek === 3 ? -2 : -3;
+    return new Date(date.getTime() + offset * 24 * 60 * 60 * 1000);
+  } else if (dayOfWeek === 5) {
+    return new Date(date.getTime() + 3 * 24 * 60 * 60 * 1000);
+  }
+  return date;
+}
+
+function moveEcuadorHoliday(year: number, month: number, day: number): Date {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = date.getUTCDay();
+  if (dayOfWeek === 6) {
+    return new Date(date.getTime() - 1 * 24 * 60 * 60 * 1000);
+  } else if (dayOfWeek === 0) {
+    return new Date(date.getTime() + 1 * 24 * 60 * 60 * 1000);
+  } else if (dayOfWeek === 2) {
+    return new Date(date.getTime() - 1 * 24 * 60 * 60 * 1000);
+  } else if (dayOfWeek === 3) {
+    return new Date(date.getTime() + 2 * 24 * 60 * 60 * 1000);
+  } else if (dayOfWeek === 4) {
+    return new Date(date.getTime() + 1 * 24 * 60 * 60 * 1000);
+  }
+  return date;
+}
+
+function getOfficialHolidaysForYear(year: number, country: string): { date: string; name: string }[] {
+  const holidays: { date: Date; name: string }[] = [];
+  const normalizedCountry = country.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+  if (normalizedCountry === "colombia") {
+    const fixed = {
+      "01-01": "Año Nuevo",
+      "05-01": "Día del Trabajo",
+      "07-20": "Día de la Independencia",
+      "08-07": "Batalla de Boyacá",
+      "12-08": "Día de la Inmaculada Concepción",
+      "12-25": "Navidad",
+    };
+    for (const [key, name] of Object.entries(fixed)) {
+      const [m, d] = key.split("-").map(Number);
+      holidays.push({ date: new Date(Date.UTC(year, m - 1, d)), name });
+    }
+
+    const movable = {
+      "01-06": "Día de los Reyes Magos",
+      "03-19": "Día de San José",
+      "06-29": "San Pedro y San Pablo",
+      "08-15": "La Asunción",
+      "10-12": "Día de la Raza",
+      "11-01": "Día de Todos los Santos",
+      "11-11": "Independencia de Cartagena",
+    };
+    for (const [key, name] of Object.entries(movable)) {
+      const [m, d] = key.split("-").map(Number);
+      const originalDate = new Date(Date.UTC(year, m - 1, d));
+      if (originalDate.getUTCDay() === 1) {
+        holidays.push({ date: originalDate, name });
+      } else {
+        const daysUntilMonday = (1 - originalDate.getUTCDay() + 7) % 7;
+        const offset = daysUntilMonday === 0 ? 7 : daysUntilMonday;
+        holidays.push({ date: new Date(originalDate.getTime() + offset * 24 * 60 * 60 * 1000), name: `${name} (trasladado)` });
+      }
+    }
+
+    const easter = calculateEasterSunday(year);
+    const easterDependent: Record<number, string> = {
+      [-3]: "Jueves Santo",
+      [-2]: "Viernes Santo",
+      [43]: "Ascensión del Señor",
+      [64]: "Corpus Christi",
+      [71]: "Sagrado Corazón",
+    };
+    for (const [offsetStr, name] of Object.entries(easterDependent)) {
+      const offset = Number(offsetStr);
+      const holidayDate = new Date(easter.getTime() + offset * 24 * 60 * 60 * 1000);
+      if (offset === -3 || offset === -2) {
+        holidays.push({ date: holidayDate, name });
+      } else {
+        if (holidayDate.getUTCDay() === 1) {
+          holidays.push({ date: holidayDate, name });
+        } else {
+          const daysUntilMonday = (1 - holidayDate.getUTCDay() + 7) % 7;
+          const offsetMonday = daysUntilMonday === 0 ? 7 : daysUntilMonday;
+          holidays.push({ date: new Date(holidayDate.getTime() + offsetMonday * 24 * 60 * 60 * 1000), name: `${name} (trasladado)` });
+        }
+      }
+    }
+  } else if (normalizedCountry === "peru") {
+    const fixed = {
+      "01-01": "Año Nuevo",
+      "05-01": "Día del Trabajo",
+      "06-07": "Día de la Bandera",
+      "06-29": "San Pedro y San Pablo",
+      "07-23": "Día de la Fuerza Aérea",
+      "07-28": "Fiestas Patrias (Independencia)",
+      "07-29": "Fiestas Patrias (Fuerzas Armadas)",
+      "08-06": "Batalla de Junín",
+      "08-30": "Santa Rosa de Lima",
+      "10-08": "Combate de Angamos",
+      "11-01": "Día de Todos los Santos",
+      "12-08": "Día de la Inmaculada Concepción",
+      "12-09": "Batalla de Ayacucho",
+      "12-25": "Navidad",
+    };
+    for (const [key, name] of Object.entries(fixed)) {
+      const [m, d] = key.split("-").map(Number);
+      holidays.push({ date: new Date(Date.UTC(year, m - 1, d)), name });
+    }
+    const easter = calculateEasterSunday(year);
+    holidays.push({ date: new Date(easter.getTime() - 3 * 24 * 60 * 60 * 1000), name: "Jueves Santo" });
+    holidays.push({ date: new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000), name: "Viernes Santo" });
+  } else if (normalizedCountry === "chile") {
+    const fixed = {
+      "01-01": "Año Nuevo",
+      "05-01": "Día del Trabajo",
+      "05-21": "Día de las Glorias Navales",
+      "07-16": "Día de la Virgen del Carmen",
+      "08-15": "Asunción de la Virgen",
+      "09-18": "Fiestas Patrias (Independencia)",
+      "09-19": "Glorias del Ejército",
+      "11-01": "Día de Todos los Santos",
+      "12-08": "Inmaculada Concepción",
+      "12-25": "Navidad",
+    };
+    for (const [key, name] of Object.entries(fixed)) {
+      const [m, d] = key.split("-").map(Number);
+      holidays.push({ date: new Date(Date.UTC(year, m - 1, d)), name });
+    }
+    holidays.push({ date: moveChileanHoliday(year, 6, 29), name: "San Pedro y San Pablo" });
+    holidays.push({ date: moveChileanHoliday(year, 10, 12), name: "Encuentro de Dos Mundos" });
+
+    const evangBase = new Date(Date.UTC(year, 9, 31));
+    const evangDay = evangBase.getUTCDay();
+    let evangDate = evangBase;
+    if (evangDay === 3) {
+      evangDate = new Date(Date.UTC(year, 10, 2));
+    } else if (evangDay === 2) {
+      evangDate = new Date(Date.UTC(year, 9, 27));
+    }
+    holidays.push({ date: evangDate, name: "Día de las Iglesias Evangélicas y Protestantes" });
+
+    const easter = calculateEasterSunday(year);
+    holidays.push({ date: new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000), name: "Viernes Santo" });
+    holidays.push({ date: new Date(easter.getTime() - 1 * 24 * 60 * 60 * 1000), name: "Sábado Santo" });
+  } else if (normalizedCountry === "mexico") {
+    const fixed = {
+      "01-01": "Año Nuevo",
+      "05-01": "Día del Trabajo",
+      "09-16": "Día de la Independencia",
+      "12-25": "Navidad",
+    };
+    for (const [key, name] of Object.entries(fixed)) {
+      const [m, d] = key.split("-").map(Number);
+      holidays.push({ date: new Date(Date.UTC(year, m - 1, d)), name });
+    }
+    holidays.push({ date: getNthMonday(year, 2, 1), name: "Día de la Constitución Mexicana" });
+    holidays.push({ date: getNthMonday(year, 3, 3), name: "Natalicio de Benito Juárez" });
+    holidays.push({ date: getNthMonday(year, 11, 3), name: "Día de la Revolución Mexicana" });
+    if ((year - 2024) % 6 === 0) {
+      holidays.push({ date: new Date(Date.UTC(year, 11, 1)), name: "Transmisión del Poder Ejecutivo Federal" });
+    }
+  } else if (normalizedCountry === "ecuador") {
+    holidays.push({ date: new Date(Date.UTC(year, 0, 1)), name: "Año Nuevo" });
+    holidays.push({ date: new Date(Date.UTC(year, 4, 1)), name: "Día del Trabajo" });
+    holidays.push({ date: new Date(Date.UTC(year, 11, 25)), name: "Navidad" });
+
+    holidays.push({ date: moveEcuadorHoliday(year, 5, 24), name: "Batalla de Pichincha" });
+    holidays.push({ date: moveEcuadorHoliday(year, 8, 10), name: "Primer Grito de Independencia" });
+    holidays.push({ date: moveEcuadorHoliday(year, 10, 9), name: "Independencia de Guayaquil" });
+    holidays.push({ date: moveEcuadorHoliday(year, 11, 2), name: "Día de los Difuntos" });
+    holidays.push({ date: moveEcuadorHoliday(year, 11, 3), name: "Independencia de Cuenca" });
+
+    const easter = calculateEasterSunday(year);
+    holidays.push({ date: new Date(easter.getTime() - 48 * 24 * 60 * 60 * 1000), name: "Lunes de Carnaval" });
+    holidays.push({ date: new Date(easter.getTime() - 47 * 24 * 60 * 60 * 1000), name: "Martes de Carnaval" });
+    holidays.push({ date: new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000), name: "Viernes Santo" });
+  } else {
+    holidays.push({ date: new Date(Date.UTC(year, 0, 1)), name: "New Year's Day" });
+    holidays.push({ date: new Date(Date.UTC(year, 6, 4)), name: "Independence Day" });
+    holidays.push({ date: new Date(Date.UTC(year, 11, 25)), name: "Christmas Day" });
+    holidays.push({ date: getNthMonday(year, 9, 1), name: "Labor Day" });
+    holidays.push({ date: getNthThursday(year, 11, 4), name: "Thanksgiving" });
+
+    const firstMondayJune = getNthMonday(year, 6, 1);
+    holidays.push({ date: new Date(firstMondayJune.getTime() - 7 * 24 * 60 * 60 * 1000), name: "Memorial Day" });
+  }
+
+  return holidays
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map((h) => {
+      const y = h.date.getUTCFullYear();
+      const m = String(h.date.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(h.date.getUTCDate()).padStart(2, "0");
+      return { date: `${y}-${m}-${d}`, name: h.name };
+    });
+}
+
 
 type ExtraHoursTabProps = {
   projects: Project[];
@@ -81,6 +326,17 @@ const LEGISLATIONS: Record<string, LegislationInfo> = {
       "Máximo sugerido: 3 horas diarias, 3 veces por semana."
     ]
   },
+  Ecuador: {
+    country: "Ecuador",
+    flag: "🇪🇨",
+    desc: "Cálculo de horas suplementarias y extraordinarias según el Código del Trabajo de Ecuador.",
+    points: [
+      "Divisor mensual: 240 horas.",
+      "Horas Suplementarias (+50%): Fuera de la jornada regular, hasta las 24:00 (Lunes a Viernes).",
+      "Horas Extraordinarias (+100%): Sábados, domingos, festivos nacionales, o de 00:00 a 06:00.",
+      "Límite legal: Máximo 4 horas extras diarias, 12 horas semanales."
+    ]
+  },
   Default: {
     country: "USA / Default",
     flag: "🇺🇸",
@@ -95,7 +351,7 @@ const LEGISLATIONS: Record<string, LegislationInfo> = {
 
 export function ExtraHoursTab({ projects, consultants, authUser, can, onError, configModeOnly = false }: ExtraHoursTabProps) {
   // Sub-navigation tabs
-  const [activeSubTab, setActiveSubTab] = useState<"report" | "pm" | "finance" | "payroll" | "config">(
+  const [activeSubTab, setActiveSubTab] = useState<"report" | "pm" | "finance" | "payroll" | "config" | "holidays">(
     configModeOnly ? "config" : "report"
   );
 
@@ -105,6 +361,17 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
   // Global lists
   const [entries, setEntries] = useState<ExtraHourEntry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
+
+  // --- Custom Holidays state ---
+  const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
+  const [loadingHolidays, setLoadingHolidays] = useState(false);
+  const [holidayName, setHolidayName] = useState("");
+  const [holidayDate, setHolidayDate] = useState("");
+  const [holidayCountry, setHolidayCountry] = useState("All");
+  const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
+  const [calendarCountry, setCalendarCountry] = useState("Colombia");
+  const [savingHoliday, setSavingHoliday] = useState(false);
+
 
   // --- 1. Report Form state ---
   const myConsultant = consultants.find((c) => c.email?.toLowerCase() === authUser?.email?.toLowerCase());
@@ -190,13 +457,28 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
     }
   }, [selectedCountryConfig, onError]);
 
+  // Load custom holidays
+  const loadCustomHolidaysList = useCallback(async () => {
+    setLoadingHolidays(true);
+    try {
+      const data = await listCustomHolidays();
+      setCustomHolidays(data);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Error al cargar feriados especiales");
+    } finally {
+      setLoadingHolidays(false);
+    }
+  }, [onError]);
+
   // Load initial data
   useEffect(() => {
     void loadEntries();
     if (can("extrahours:config")) {
       void loadConfigs();
+      void loadCustomHolidaysList();
     }
-  }, [loadEntries, loadConfigs, can]);
+  }, [loadEntries, loadConfigs, loadCustomHolidaysList, can]);
+
 
   // Handle selected country changes in config
   useEffect(() => {
@@ -449,6 +731,45 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
     }
   };
 
+  const handleAddHoliday = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!holidayName.trim() || !holidayDate) {
+      onError("Por favor ingresa un nombre y una fecha válida.");
+      return;
+    }
+    setSavingHoliday(true);
+    try {
+      await createCustomHoliday({
+        name: holidayName,
+        date: holidayDate,
+        country: holidayCountry,
+      });
+      triggerSuccess("Feriado corporativo agregado con éxito.");
+      setHolidayName("");
+      setHolidayDate("");
+      setHolidayCountry("All");
+      await loadCustomHolidaysList();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Error al agregar feriado especial");
+    } finally {
+      setSavingHoliday(false);
+    }
+  };
+
+  const handleDeleteHoliday = async (id: string) => {
+    if (!window.confirm("¿Está seguro de que desea eliminar este feriado especial?")) {
+      return;
+    }
+    try {
+      await deleteCustomHoliday(id);
+      triggerSuccess("Feriado corporativo eliminado con éxito.");
+      await loadCustomHolidaysList();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Error al eliminar feriado especial");
+    }
+  };
+
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "PENDING_PM": return { label: "Pte. PM (Nivel 1)", bg: "#fef3c7", color: "#d97706" };
@@ -491,7 +812,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
       )}
 
       <PageHeader
-        icon={configModeOnly ? "⚙" : "⏰"}
+        icon={configModeOnly ? "⚙" : "⧗"}
         title={configModeOnly ? "Configuración de Horas Extra" : "Solicitud de Horas Extra"}
         description={
           configModeOnly
@@ -499,7 +820,26 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
             : "Registra y consulta tus solicitudes de horas extras con cálculo automático de recargos y estado de aprobación."
         }
         actions={
-          !configModeOnly ? (
+          configModeOnly ? (
+            <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+              <button
+                type="button"
+                className={activeSubTab === "config" ? "" : "ghost"}
+                onClick={() => setActiveSubTab("config")}
+                style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem", borderRadius: "8px" }}
+              >
+                ⚙ Parámetros y Recargos
+              </button>
+              <button
+                type="button"
+                className={activeSubTab === "holidays" ? "" : "ghost"}
+                onClick={() => setActiveSubTab("holidays")}
+                style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem", borderRadius: "8px" }}
+              >
+                📅 Calendario y Festivos
+              </button>
+            </div>
+          ) : (
             <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
               {can("extrahours:write") && (
                 <button
@@ -545,7 +885,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 </button>
               )}
             </div>
-          ) : undefined
+          )
         }
       />
 
@@ -1212,6 +1552,238 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 {savingConfig ? "Guardando..." : "Guardar Configuración"}
               </button>
             </form>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* --- HOLIDAYS SUB-TAB (Official Calendar & Corporate Non-Working Days) --- */}
+      {activeSubTab === "holidays" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          
+          {/* Header */}
+          <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "rgba(255, 255, 255, 0.55)" }}>
+            <h3 style={{ margin: 0, fontSize: "1.15rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
+              📅 Gestión de Días No Laborables y Festivos
+            </h3>
+            <p style={{ color: "var(--text-soft)", fontSize: "0.82rem", marginTop: "0.25rem" }}>
+              Visualiza los calendarios oficiales de festivos nacionales por país y registra los días festivos especiales de la empresa (feriados corporativos).
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.8fr", gap: "2rem", alignItems: "start" }}>
+            
+            {/* Left Column: Official Holiday Calendar */}
+            <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+              <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
+                🗓️ Calendario de Festivos Oficiales
+              </h4>
+              
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "1rem", marginBottom: "1.25rem" }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: "0.78rem" }}>País</label>
+                  <select
+                    value={calendarCountry}
+                    onChange={(e) => setCalendarCountry(e.target.value)}
+                    style={{ fontSize: "0.85rem", padding: "0.35rem 0.5rem" }}
+                  >
+                    <option value="Colombia">Colombia 🇨🇴</option>
+                    <option value="Peru">Perú 🇵🇪</option>
+                    <option value="Chile">Chile 🇨🇱</option>
+                    <option value="Mexico">México 🇲🇽</option>
+                    <option value="Ecuador">Ecuador 🇪🇨</option>
+                    <option value="Default">USA / Default 🇺🇸</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: "0.78rem" }}>Año</label>
+                  <input
+                    type="number"
+                    min={2020}
+                    max={2030}
+                    value={calendarYear}
+                    onChange={(e) => setCalendarYear(Number(e.target.value))}
+                    style={{ fontSize: "0.85rem", padding: "0.35rem 0.5rem" }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ maxHeight: "350px", overflowY: "auto", border: "1px solid #f3f4f6", borderRadius: "8px", padding: "0.5rem" }}>
+                {getOfficialHolidaysForYear(calendarYear, calendarCountry).map((h, index) => {
+                  const [y, m, d] = h.date.split("-");
+                  const dateObj = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
+                  const formattedDate = dateObj.toLocaleDateString("es-ES", {
+                    weekday: "long",
+                    day: "numeric",
+                    month: "long",
+                    timeZone: "UTC"
+                  });
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        padding: "0.5rem 0.75rem",
+                        borderBottom: "1px solid #f3f4f6",
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        fontSize: "0.78rem"
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, color: "var(--text-strong)", textTransform: "capitalize" }}>
+                        {formattedDate}
+                      </span>
+                      <span style={{ color: "#9a4f0f", background: "#fffbeb", padding: "0.15rem 0.4rem", borderRadius: "12px", fontSize: "0.72rem", border: "1px solid #fde68a" }}>
+                        {h.name}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Right Column: Custom Holiday Administration */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              
+              {/* Form to Create Custom Holiday */}
+              <form onSubmit={handleAddHoliday} className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+                <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
+                  ➕ Agregar Feriado Corporativo / Especial
+                </h4>
+                
+                <div style={{ display: "grid", gridTemplateColumns: "1.5fr 1fr 1fr", gap: "0.75rem", marginTop: "1rem", alignItems: "end" }}>
+                  <div>
+                    <label className="form-label" style={{ fontSize: "0.78rem" }}>Nombre del Evento *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Aniversario Synaptica"
+                      value={holidayName}
+                      onChange={(e) => setHolidayName(e.target.value)}
+                      style={{ fontSize: "0.85rem", padding: "0.35rem 0.5rem" }}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ fontSize: "0.78rem" }}>Fecha *</label>
+                    <input
+                      type="date"
+                      required
+                      value={holidayDate}
+                      onChange={(e) => setHolidayDate(e.target.value)}
+                      style={{ fontSize: "0.85rem", padding: "0.35rem 0.5rem" }}
+                    />
+                  </div>
+                  <div>
+                    <label className="form-label" style={{ fontSize: "0.78rem" }}>País / Alcance</label>
+                    <select
+                      value={holidayCountry}
+                      onChange={(e) => setHolidayCountry(e.target.value)}
+                      style={{ fontSize: "0.85rem", padding: "0.35rem 0.5rem" }}
+                    >
+                      <option value="All">Todos (Corporativo) 🌐</option>
+                      <option value="Colombia">Colombia 🇨🇴</option>
+                      <option value="Peru">Perú 🇵🇪</option>
+                      <option value="Chile">Chile 🇨🇱</option>
+                      <option value="Mexico">México 🇲🇽</option>
+                      <option value="Ecuador">Ecuador 🇪🇨</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "1rem" }}>
+                  <button
+                    type="submit"
+                    disabled={savingHoliday}
+                    style={{
+                      background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                      border: "none",
+                      padding: "0.45rem 1rem",
+                      fontSize: "0.8rem"
+                    }}
+                  >
+                    {savingHoliday ? "Guardando..." : "Agregar Feriado"}
+                  </button>
+                </div>
+              </form>
+
+              {/* Table of Custom Holidays */}
+              <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+                <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
+                  📋 Feriados Corporativos Registrados
+                </h4>
+
+                <div style={{ marginTop: "1rem" }} className="table-container">
+                  {loadingHolidays ? (
+                    <p style={{ textAlign: "center", color: "var(--text-soft)", fontSize: "0.8rem", padding: "1rem" }}>
+                      Cargando feriados...
+                    </p>
+                  ) : customHolidays.length === 0 ? (
+                    <p style={{ textAlign: "center", color: "var(--text-soft)", fontSize: "0.8rem", padding: "1.5rem" }}>
+                      No hay feriados corporativos especiales registrados.
+                    </p>
+                  ) : (
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid #e2e8f0", textAlign: "left" }}>
+                          <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600 }}>Nombre</th>
+                          <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600 }}>Fecha</th>
+                          <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600 }}>Alcance</th>
+                          <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600, textAlign: "right" }}>Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {customHolidays.map((h) => {
+                          const dateObj = new Date(h.date);
+                          const formattedDate = dateObj.toLocaleDateString("es-ES", {
+                            day: "2-digit",
+                            month: "2-digit",
+                            year: "numeric",
+                            timeZone: "UTC"
+                          });
+                          return (
+                            <tr key={h.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                              <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-strong)", fontWeight: 600 }}>{h.name}</td>
+                              <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-normal)" }}>{formattedDate}</td>
+                              <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-normal)" }}>
+                                {h.country === "All" ? "🌐 Todos" : (
+                                  <span>
+                                    {h.country === "Colombia" && "🇨🇴 "}
+                                    {h.country === "Peru" && "🇵🇪 "}
+                                    {h.country === "Chile" && "🇨🇱 "}
+                                    {h.country === "Mexico" && "🇲🇽 "}
+                                    {h.country === "Ecuador" && "🇪🇨 "}
+                                    {h.country}
+                                  </span>
+                                )}
+                              </td>
+                              <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", textAlign: "right" }}>
+                                <button
+                                  type="button"
+                                  className="ghost"
+                                  onClick={() => handleDeleteHoliday(h.id)}
+                                  style={{
+                                    color: "#ef4444",
+                                    padding: "0.25rem 0.5rem",
+                                    fontSize: "0.75rem",
+                                    border: "none",
+                                    background: "none",
+                                    cursor: "pointer"
+                                  }}
+                                >
+                                  🗑️ Eliminar
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </div>
+
+            </div>
 
           </div>
 

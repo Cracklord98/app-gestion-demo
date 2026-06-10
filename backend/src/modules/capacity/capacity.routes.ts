@@ -52,6 +52,16 @@ async function buildCapacityRows(
   period: { from: Date; to: Date },
   filters: { country?: string; skill?: string; seniority?: string },
 ) {
+  // Pre-cargar todos los CustomHoliday que coincidan temporalmente con el periodo consultado
+  const customHolidays = await prisma.customHoliday.findMany({
+    where: {
+      date: {
+        gte: period.from,
+        lte: period.to,
+      },
+    },
+  });
+
   const consultants = await prisma.consultant.findMany({
     where: {
       active: true,
@@ -82,8 +92,23 @@ async function buildCapacityRows(
   });
 
   return consultants.map((c) => {
+    // Filtrar feriados corporativos ("All") y específicos de su país
+    const cry = c.country || "Default";
+    const consultantCustomHolidays = customHolidays.filter(
+      (h) => h.country === "All" || h.country.toLowerCase() === cry.toLowerCase()
+    );
+
+    const customHolidaySet = new Set(
+      consultantCustomHolidays.map((h) => {
+        const y = h.date.getUTCFullYear();
+        const m = String(h.date.getUTCMonth() + 1).padStart(2, "0");
+        const d = String(h.date.getUTCDate()).padStart(2, "0");
+        return `${y}-${m}-${d}`;
+      })
+    );
+
     const { consultantId: _cid, ...availability } = computeAvailability(
-      c.id, c.assignments, c.blocks, c.capacityConfig, period,
+      c.id, c.assignments, c.blocks, c.capacityConfig, period, c.country, customHolidaySet
     );
 
     // ── Forecast contribution ──────────────────────────────────────────────
@@ -370,6 +395,7 @@ export async function capacityRoutes(app: FastifyInstance) {
           consultant.blocks,
           consultant.capacityConfig,
           { from: mFrom, to: mTo },
+          consultant.country,
         );
         return { year, month, ...avail };
       });
@@ -426,8 +452,8 @@ export async function capacityRoutes(app: FastifyInstance) {
           if (overlapTo < overlapFrom) return null;
 
           const overlapPeriod = { from: overlapFrom, to: overlapTo };
-          const capacityHours = calculateCapacityHours(overlapPeriod, c.capacityConfig, c.blocks);
-          const committedHours = calculateCommittedHours([a], overlapPeriod, c.capacityConfig);
+          const capacityHours = calculateCapacityHours(overlapPeriod, c.capacityConfig, c.blocks, c.country);
+          const committedHours = calculateCommittedHours([a], overlapPeriod, c.capacityConfig, c.country);
           const hourlyRate = c.hourlyRate ? Number(c.hourlyRate) : 0;
           const estimatedCost = Math.round(committedHours * hourlyRate * 100) / 100;
 
@@ -505,7 +531,7 @@ export async function capacityRoutes(app: FastifyInstance) {
             const overlapTo = a.endDate < period.to ? a.endDate : period.to;
             if (overlapTo < overlapFrom) return null;
             const overlapPeriod = { from: overlapFrom, to: overlapTo };
-            const committedHours = calculateCommittedHours([a], overlapPeriod, c.capacityConfig);
+            const committedHours = calculateCommittedHours([a], overlapPeriod, c.capacityConfig, c.country);
             const hourlyRate = c.hourlyRate ? Number(c.hourlyRate) : 0;
             return {
               consultantId: c.id,

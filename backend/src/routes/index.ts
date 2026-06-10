@@ -25,6 +25,7 @@ import { extraHoursRoutes } from "../modules/extra-hours/extra-hours.routes.js";
 import { estimationsRoutes } from "../modules/estimations/estimations.routes.js";
 import { profileRoutes } from "../modules/profile/profile.routes.js";
 import { activitiesRoutes } from "../modules/activities/activities.routes.js";
+import { customHolidaysRoutes } from "../modules/holidays/custom-holidays.routes.js";
 
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(healthRoutes);
@@ -53,4 +54,5 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(estimationsRoutes, { prefix: "/api/estimations" });
   await app.register(profileRoutes, { prefix: "/api/profile" });
   await app.register(activitiesRoutes, { prefix: "/api/activities" });
+  await app.register(customHolidaysRoutes, { prefix: "/api/custom-holidays" });
 }

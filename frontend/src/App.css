@@ -413,6 +413,201 @@
   justify-content: space-between;
   align-items: center;
   gap: 1rem;
+  overflow-x: hidden;
+}
+
+/* ── Grid + Cards ───────────────────────────────────────────────────────── */
+.grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.dashboard-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboard-grid-wide {
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.two-col {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.three-col {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #f4d4b6;
+  border-radius: 14px;
+  padding: 1rem;
+  box-shadow: 0 4px 16px rgba(15, 23, 42, 0.06);
+  min-width: 0;
+}
+
+.card h3 {
+  margin: 0 0 0.75rem;
+  color: #5f2f00;
+  font-size: 0.9rem;
+}
+
+/* ── KPI Cards ──────────────────────────────────────────────────────────── */
+.kpi {
+  cursor: default;
+  transition: box-shadow 0.14s, transform 0.14s;
+}
+
+.kpi.clickable {
+  cursor: pointer;
+}
+
+.kpi.clickable:hover {
+  box-shadow: 0 8px 24px rgba(249,115,22,0.18);
+  transform: translateY(-1px);
+}
+
+.kpi p {
+  margin: 0;
+  color: #1e293b;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.kpi-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 0.45rem;
+}
+
+.kpi-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #9a4f0f;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.kpi-tooltip-btn {
+  all: unset;
+  cursor: help;
+  font-size: 0.65rem;
+  color: #b45309;
+  border: 1px solid #f4d4b6;
+  border-radius: 50%;
+  width: 1rem;
+  height: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.kpi-delta {
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.kpi-delta.up   { color: #16a34a; }
+.kpi-delta.down { color: #dc2626; }
+.kpi-delta.flat { color: #9ca3af; }
+
+/* ── Span helpers ───────────────────────────────────────────────────────── */
+.span-4 { grid-column: span 4; }
+.span-5 { grid-column: span 5; }
+.span-full { grid-column: 1 / -1; }
+
+/* ── Forms & Filters ────────────────────────────────────────────────────── */
+.form-grid {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.filters-grid {
+  grid-template-columns: 1fr 1fr 1.4fr auto;
+  align-items: end;
+}
+
+.filters-bar {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.converter-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.fx-note {
+  margin: 0.35rem 0 0;
+  color: #7c3f0c;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.converter-result {
+  margin: 0.5rem 0 0;
+  color: #5f2f00;
+  font-weight: 700;
+}
+
+/* ── FX Drawer ──────────────────────────────────────────────────────────── */
+.fx-drawer {
+  position: fixed;
+  top: 0;
+  right: -22rem;
+  width: min(21rem, 100vw);
+  height: 100dvh;
+  background: #fffdf9;
+  border-left: 1px solid #f4d4b6;
+  box-shadow: -6px 0 24px rgba(15,23,42,0.12);
+  z-index: 301;
+  display: flex;
+  flex-direction: column;
+  transition: right 0.25s ease;
+  padding: 1.25rem;
+  gap: 1rem;
+  overflow-y: auto;
+}
+
+.fx-drawer.open {
+  right: 0;
+}
+
+/* ── Modals ─────────────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 400;
+}
+
+.modal-card {
+  width: min(640px, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid #f4d4b6;
+  border-radius: 16px;
+  padding: 1rem;
+  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.24);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
   margin-bottom: 0.8rem;
 }
 
@@ -437,11 +632,13 @@ input, select, textarea {
   color: #2a1e12;
   padding: 0.6rem 0.75rem;
   outline: none;
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, background-color 0.22s ease;
 }
 
 input:focus, select:focus, textarea:focus {
-  border-color: #f97316;
-  box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.15);
+  border-color: #ea580c;
+  box-shadow: 0 0 0 3px rgba(234, 88, 12, 0.15);
+  background: #ffffff;
 }
 
 textarea { min-height: 84px; resize: vertical; }
@@ -454,12 +651,37 @@ button {
   color: white;
   background: linear-gradient(135deg, #fb923c, #ea580c);
   cursor: pointer;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), filter 0.15s ease, box-shadow 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(234, 88, 12, 0.22);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(234, 88, 12, 0.15);
 }
 
 button.ghost {
   background: #fff6ef;
   color: #9a3412;
   border: 1px solid #f8c39b;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+button.ghost:hover:not(:disabled) {
+  background: #fff0e0;
+  border-color: #ea580c;
+  color: #ea580c;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(234, 88, 12, 0.08);
+}
+
+button.ghost:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 button:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -1025,4 +1247,246 @@ th.sortable:hover { background: #fff0e0; }
   }
 }
 
+
+/* ── InfoTooltip CSS-only Implementation ── */
+.info-tooltip-wrapper {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+  z-index: 10;
+}
+
+.info-tooltip-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: #ffe8cc;
+  border: 1px solid #f4d4b6;
+  color: #9a4f0f;
+  font-size: 0.62rem;
+  font-weight: 800;
+  cursor: help;
+  flex-shrink: 0;
+  line-height: 1;
+  transition: background-color 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.info-tooltip-wrapper:hover .info-tooltip-icon {
+  background: #ea580c;
+  color: #ffffff;
+  border-color: #ea580c;
+  transform: scale(1.12);
+}
+
+.info-tooltip-bubble {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  transform: translateX(-50%) translateY(4px);
+  background: #1e1e2e;
+  color: #e2e8f0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  white-space: pre-wrap;
+  width: 220px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 999;
+  transition: opacity 0.18s cubic-bezier(0.4, 0, 0.2, 1), transform 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.info-tooltip-wrapper:hover .info-tooltip-bubble {
+  opacity: 1 !important;
+  transform: translateX(-50%) translateY(0);
+}
+
+.info-tooltip-arrow {
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid #1e1e2e;
+}
+
+/* Hide tooltips globally when requested */
+.hide-tooltips .info-tooltip-wrapper {
+  display: none !important;
+}
+
+/* ── Consolidado Summary Rows Hover ── */
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.55rem 0.5rem;
+  border-bottom: 1px solid #ffd8a8;
+  transition: background-color 0.2s ease;
+  border-radius: 6px;
+}
+
+.summary-row:hover {
+  background-color: rgba(255, 156, 44, 0.05);
+}
+
+/* ── Structured responsive grids to avoid gaps ── */
+.calculator-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.calculator-grid-span-2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 1200px) {
+  .calculator-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 650px) {
+  .calculator-grid {
+    grid-template-columns: 1fr;
+  }
+  .calculator-grid-span-2 {
+    grid-column: span 1;
+  }
+}
+
+.task-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+}
+
+.task-editor-span-2 {
+  grid-column: span 2;
+}
+
+@media (max-width: 600px) {
+  .task-editor-grid {
+    grid-template-columns: 1fr;
+  }
+  .task-editor-span-2 {
+    grid-column: span 1;
+  }
+}
+
+/* ── Micro-Animations ── */
+.fade-in-tab {
+  animation: tabFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in-detail {
+  animation: detailFadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes detailFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive grid for education guide and main panels */
+@media (max-width: 1100px) {
+  .responsive-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Master-Detail Split Pane Responsiveness */
+@media (max-width: 950px) {
+  .split-pane-wrapper {
+    flex-direction: column !important;
+  }
+  .split-pane-master {
+    width: 100% !important;
+    border-right: none !important;
+    border-bottom: 1px solid #ffd8a8;
+    padding-right: 0 !important;
+    padding-bottom: 1rem !important;
+    max-height: 300px !important;
+  }
+  .split-pane-detail {
+    width: 100% !important;
+    padding-left: 0 !important;
+  }
+}
+
+/* Label alignment within structured grids */
+.calculator-grid .form-label,
+.task-editor-grid .form-label {
+  display: flex !important;
+  align-items: flex-end !important;
+  flex-wrap: wrap !important;
+  gap: 0.25rem !important;
+  font-size: 0.78rem !important;
+  font-weight: 700 !important;
+  color: var(--text-strong) !important;
+  margin-bottom: 0.45rem !important;
+  min-height: 2.3rem !important; /* ensures inputs start at the exact same row level */
+}
+
+/* ── Searchable Select Premium Animations and Styles ────────────────────────── */
+@keyframes selectDropdownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.searchable-select-option:hover {
+  background-color: #fff6ed !important;
+}
+
+.month-day-cell:hover {
+  background-color: #fdf6ee !important;
+}
+
+.month-day-cell.is-blocked {
+  background: #fdf2f2 !important;
+  cursor: not-allowed !important;
+}
 

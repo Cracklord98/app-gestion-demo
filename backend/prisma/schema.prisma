@@ -200,6 +200,7 @@ model Consultant {
   seniority      String?  // "Junior" | "Mid" | "Senior" | "Lead"
   maxHoursPerDay Decimal? @db.Decimal(4, 2)
   active         Boolean  @default(true)
+  allowWeekendWork Boolean @default(false)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -335,6 +336,7 @@ model User {
   phrase       String?
   skills       String[] @default([])
   roles UserRole[]
+  country      String?
 }
 
 model Role {
@@ -667,4 +669,15 @@ model Activity {
   @@index([consultantId])
   @@index([projectId])
   @@index([scheduledDate])
+}
+
+model CustomHoliday {
+  id        String   @id @default(cuid())
+  name      String
+  date      DateTime
+  country   String   @default("All") // "All" indica global/corporativo, o un país específico ("Colombia", "Peru", etc.)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([date, country])
 }

@@ -11,6 +11,7 @@ const emptyForm = {
   microsoftOid: "",
   active: true,
   role: "VIEWER" as AppRole,
+  country: "Default",
 };
 
 export function AdminTab({
@@ -37,6 +38,7 @@ export function AdminTab({
         microsoftOid: form.microsoftOid || undefined,
         active: form.active,
         roles: [form.role],
+        country: form.country,
       });
       setForm(emptyForm);
       await onReload();
@@ -73,6 +75,14 @@ export function AdminTab({
           <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as AppRole }))}>
             {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
           </select>
+          <select value={form.country} onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}>
+            <option value="Default">País: Default</option>
+            <option value="Colombia">Colombia 🇨🇴</option>
+            <option value="Peru">Perú 🇵🇪</option>
+            <option value="Chile">Chile 🇨🇱</option>
+            <option value="Mexico">México 🇲🇽</option>
+            <option value="Ecuador">Ecuador 🇪🇨</option>
+          </select>
           <label className="check">
             <input type="checkbox" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
             Activo
@@ -93,6 +103,7 @@ export function AdminTab({
                   <th>Nombre</th>
                   <th>Correo</th>
                   <th>Roles</th>
+                  <th>País</th>
                   <th>Estado</th>
                   <th>Acciones</th>
                 </tr>
@@ -103,6 +114,7 @@ export function AdminTab({
                     <td>{user.displayName}</td>
                     <td>{user.email}</td>
                     <td>{user.roles.join(", ")}</td>
+                    <td>{user.country || "Default"}</td>
                     <td>
                       <span className={`pill ${user.active ? "ok" : "neutral"}`}>{user.active ? "Activo" : "Inactivo"}</span>
                     </td>

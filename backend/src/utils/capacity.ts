@@ -1,4 +1,5 @@
 import type { Assignment, ConsultantBlock, CapacityConfig, AssignmentStatus } from "@prisma/client";
+import { isPublicHoliday } from "./holidays.js";
 
 export type AvailabilityStatus = "FREE" | "PARTIAL" | "FULL" | "OVERLOADED";
 
@@ -15,21 +16,31 @@ export type ConsultantAvailability = {
 const ACTIVE_STATUSES: AssignmentStatus[] = ["ACTIVE", "PARTIAL", "PLANNED"];
 
 /** Días hábiles entre dos fechas (lunes a viernes, sin feriados) */
-export function countWorkdays(from: Date, to: Date, workDaysPerWeek = 5): number {
+export function countWorkdays(from: Date, to: Date, workDaysPerWeek = 5, country?: string | null, customHolidays?: Set<string>): number {
   if (to < from) return 0;
-  const totalDays = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1;
-  const fullWeeks = Math.floor(totalDays / 7);
-  const remainder = totalDays % 7;
+  
+  let workdays = 0;
+  const start = new Date(Date.UTC(from.getUTCFullYear(), from.getUTCMonth(), from.getUTCDate()));
+  const end = new Date(Date.UTC(to.getUTCFullYear(), to.getUTCMonth(), to.getUTCDate()));
 
-  let workdays = fullWeeks * workDaysPerWeek;
-
-  // Days of week: 0=Sun, 1=Mon, ..., 6=Sat (UTC to avoid timezone shifts)
-  const startDay = from.getUTCDay();
-  for (let i = 0; i < remainder; i++) {
-    const day = (startDay + i) % 7;
-    // With workDaysPerWeek=5 assume Mon-Fri; with =6 also Sat
+  const current = new Date(start);
+  while (current <= end) {
+    const day = current.getUTCDay(); // 0=Sun, 6=Sat
     const isWorkday = workDaysPerWeek >= 6 ? day !== 0 : day !== 0 && day !== 6;
-    if (isWorkday) workdays++;
+    
+    if (isWorkday) {
+      const y = current.getUTCFullYear();
+      const m = String(current.getUTCMonth() + 1).padStart(2, "0");
+      const d = String(current.getUTCDate()).padStart(2, "0");
+      const dateStr = `${y}-${m}-${d}`;
+      
+      const isHoliday = (country ? isPublicHoliday(current, country) : false) || (customHolidays ? customHolidays.has(dateStr) : false);
+      if (!isHoliday) {
+        workdays++;
+      }
+    }
+    
+    current.setUTCDate(current.getUTCDate() + 1);
   }
 
   return workdays;
@@ -42,11 +53,13 @@ export function overlapDays(
   periodStart: Date,
   periodEnd: Date,
   workDaysPerWeek = 5,
+  country?: string | null,
+  customHolidays?: Set<string>,
 ): number {
   const start = itemStart > periodStart ? itemStart : periodStart;
   const end = itemEnd < periodEnd ? itemEnd : periodEnd;
   if (end < start) return 0;
-  return countWorkdays(start, end, workDaysPerWeek);
+  return countWorkdays(start, end, workDaysPerWeek, country, customHolidays);
 }
 
 /** Horas de capacidad de un consultor en un período */
@@ -54,14 +67,16 @@ export function calculateCapacityHours(
   period: { from: Date; to: Date },
   config: Pick<CapacityConfig, "hoursPerDay" | "workDaysPerWeek"> | null,
   blocks: Pick<ConsultantBlock, "startDate" | "endDate">[],
+  country?: string | null,
+  customHolidays?: Set<string>,
 ): number {
   const hoursPerDay = config ? Number(config.hoursPerDay) : 8;
   const workDaysPerWeek = config ? config.workDaysPerWeek : 5;
 
-  const totalWorkdays = countWorkdays(period.from, period.to, workDaysPerWeek);
+  const totalWorkdays = countWorkdays(period.from, period.to, workDaysPerWeek, country, customHolidays);
 
   const blockedDays = blocks.reduce((sum, block) => {
-    return sum + overlapDays(block.startDate, block.endDate, period.from, period.to, workDaysPerWeek);
+    return sum + overlapDays(block.startDate, block.endDate, period.from, period.to, workDaysPerWeek, country, customHolidays);
   }, 0);
 
   return Math.max(totalWorkdays - blockedDays, 0) * hoursPerDay;
@@ -72,6 +87,8 @@ export function calculateCommittedHours(
   assignments: Pick<Assignment, "startDate" | "endDate" | "allocationMode" | "allocationPct" | "hoursPerPeriod" | "periodUnit" | "status">[],
   period: { from: Date; to: Date },
   config: Pick<CapacityConfig, "hoursPerDay" | "workDaysPerWeek"> | null,
+  country?: string | null,
+  customHolidays?: Set<string>,
 ): number {
   const hoursPerDay = config ? Number(config.hoursPerDay) : 8;
   const workDaysPerWeek = config ? config.workDaysPerWeek : 5;
@@ -85,6 +102,8 @@ export function calculateCommittedHours(
         period.from,
         period.to,
         workDaysPerWeek,
+        country,
+        customHolidays,
       );
 
       if (assignment.allocationMode === "PERCENTAGE") {
@@ -97,7 +116,7 @@ export function calculateCommittedHours(
       const unit = assignment.periodUnit ?? "week";
 
       // Full period length in workdays
-      const fullWorkdays = countWorkdays(assignment.startDate, assignment.endDate, workDaysPerWeek);
+      const fullWorkdays = countWorkdays(assignment.startDate, assignment.endDate, workDaysPerWeek, country, customHolidays);
       if (fullWorkdays === 0) return sum;
 
       // Proportional allocation for the overlapping portion
@@ -160,9 +179,11 @@ export function computeAvailability(
   blocks: Pick<ConsultantBlock, "startDate" | "endDate">[],
   config: Pick<CapacityConfig, "hoursPerDay" | "workDaysPerWeek"> | null,
   period: { from: Date; to: Date },
+  country?: string | null,
+  customHolidays?: Set<string>,
 ): ConsultantAvailability {
-  const capacityHours = calculateCapacityHours(period, config, blocks);
-  const committedHours = calculateCommittedHours(assignments, period, config);
+  const capacityHours = calculateCapacityHours(period, config, blocks, country, customHolidays);
+  const committedHours = calculateCommittedHours(assignments, period, config, country, customHolidays);
   const availableHours = Math.max(capacityHours - committedHours, 0);
   const utilizationPct = capacityHours > 0 ? Math.round((committedHours / capacityHours) * 100 * 10) / 10 : 0;
   const availabilityStatus = getAvailabilityStatus(utilizationPct);

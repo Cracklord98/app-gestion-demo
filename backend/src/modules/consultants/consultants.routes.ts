@@ -13,6 +13,7 @@ const consultantPayloadSchema = z.object({
   country: z.string().trim().optional(),
   costPerMonth: z.coerce.number().nonnegative().optional(),
   active: z.coerce.boolean().default(true),
+  allowWeekendWork: z.coerce.boolean().default(false),
 });
 
 const consultantParamsSchema = z.object({ id: z.string().min(1) });
@@ -50,6 +51,7 @@ export async function consultantsRoutes(app: FastifyInstance) {
         country: payload.country,
         costPerMonth: payload.costPerMonth,
         active: payload.active,
+        allowWeekendWork: payload.allowWeekendWork,
       },
     });
 
@@ -82,6 +84,7 @@ export async function consultantsRoutes(app: FastifyInstance) {
         country: payload.country,
         costPerMonth: payload.costPerMonth,
         active: payload.active,
+        allowWeekendWork: payload.allowWeekendWork,
       },
     });
 

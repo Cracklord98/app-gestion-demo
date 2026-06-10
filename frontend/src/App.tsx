@@ -72,8 +72,8 @@ const SIDEBAR_GROUPS: {
     tabs: [
       { id: "consultants",  label: "Consultores",   icon: "◐", permission: "consultants:read" },
       { id: "timeEntries",  label: "Horas",          icon: "⊙", permission: "time:read" },
-      { id: "activities",   label: "Actividades",   icon: "📅", permission: "time:read" },
-      { id: "extraHours",   label: "Horas Extra",    icon: "⏰", permission: "extrahours:read" },
+      { id: "activities",   label: "Actividades",   icon: "▤", permission: "time:read" },
+      { id: "extraHours",   label: "Horas Extra",    icon: "⧗", permission: "extrahours:read" },
       { id: "expenses",     label: "Gastos",         icon: "⊟", permission: "expenses:read" },
     ],
   },

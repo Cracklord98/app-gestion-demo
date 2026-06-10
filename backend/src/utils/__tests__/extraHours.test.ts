@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { isPublicHoliday } from "../colombianHolidays.js";
+import { isPublicHoliday } from "../holidays.js";
 import { calculateExtraHours } from "../calculateExtraHours.js";
 import { prisma } from "../../infra/prisma.js";
 
-// Mock the prisma client
 vi.mock("../../infra/prisma.js", () => {
   return {
     prisma: {
@@ -11,6 +10,9 @@ vi.mock("../../infra/prisma.js", () => {
         findUnique: vi.fn(),
       },
       extraHourEntry: {
+        findMany: vi.fn(() => []),
+      },
+      customHoliday: {
         findMany: vi.fn(() => []),
       },
     },
@@ -21,19 +23,19 @@ describe("colombianHolidays - isPublicHoliday", () => {
   it("Año Nuevo (1 de Enero) es festivo", () => {
     // 2026-01-01 es Jueves (Año Nuevo)
     const date = new Date(Date.UTC(2026, 0, 1));
-    expect(isPublicHoliday(date)).toBe(true);
+    expect(isPublicHoliday(date, "Colombia")).toBe(true);
   });
 
   it("Día del Trabajo (1 de Mayo) es festivo", () => {
     // 2026-05-01 es Viernes (Día del Trabajo)
     const date = new Date(Date.UTC(2026, 4, 1));
-    expect(isPublicHoliday(date)).toBe(true);
+    expect(isPublicHoliday(date, "Colombia")).toBe(true);
   });
 
   it("Un día ordinario no es festivo", () => {
     // 2026-06-03 es Miércoles (Ordinario)
     const date = new Date(Date.UTC(2026, 5, 3));
-    expect(isPublicHoliday(date)).toBe(false);
+    expect(isPublicHoliday(date, "Colombia")).toBe(false);
   });
 
   it("San José se traslada al lunes siguiente por Ley Emiliani", () => {
@@ -41,8 +43,8 @@ describe("colombianHolidays - isPublicHoliday", () => {
     // Se traslada al lunes siguiente: 23 de Marzo.
     const originalDate = new Date(Date.UTC(2026, 2, 19));
     const shiftedDate = new Date(Date.UTC(2026, 2, 23));
-    expect(isPublicHoliday(originalDate)).toBe(false);
-    expect(isPublicHoliday(shiftedDate)).toBe(true);
+    expect(isPublicHoliday(originalDate, "Colombia")).toBe(false);
+    expect(isPublicHoliday(shiftedDate, "Colombia")).toBe(true);
   });
 });
 
@@ -89,7 +91,13 @@ describe("calculateExtraHours", () => {
       startTime: "18:00",
       endTime: "21:00",
       consultantId: "c-us",
-      config: defaultConfig,
+      config: {
+        ...defaultConfig,
+        diurnalMultiplier: 1.50,
+        nocturnalMultiplier: 1.50,
+        diurnalHolidayMultiplier: 1.50,
+        nocturnalHolidayMultiplier: 1.50,
+      },
     });
 
     expect(result.totalHours).toBe(3);
@@ -98,6 +106,7 @@ describe("calculateExtraHours", () => {
     expect(result.diurnal).toBe(3);
     expect(result.nocturnal).toBe(0);
   });
+
 
   it("Chile: recargo plano +50% (1.50x) y advierte si supera límite de 2h diarias", async () => {
     const date = new Date(Date.UTC(2026, 5, 3)); // Miércoles ordinario
@@ -125,7 +134,13 @@ describe("calculateExtraHours", () => {
       startTime: "17:00",
       endTime: "20:00", // 3 horas
       consultantId: "c-cl",
-      config: defaultConfig,
+      config: {
+        ...defaultConfig,
+        diurnalMultiplier: 1.50,
+        nocturnalMultiplier: 1.50,
+        diurnalHolidayMultiplier: 1.50,
+        nocturnalHolidayMultiplier: 1.50,
+      },
     });
 
     expect(result.totalHours).toBe(3);
@@ -354,4 +369,123 @@ describe("calculateExtraHours", () => {
     expect(result.totalAmount).toBe(100);
     expect(result.warnings.some((w) => w.includes("7 horas extra registradas esta semana"))).toBe(true);
   });
+
+  it("Ecuador: suplementarias al +50% (1.50x) y extraordinarias al +100% (2.00x)", async () => {
+    vi.mocked(prisma.consultant.findUnique).mockResolvedValue({
+      id: "c-ec",
+      fullName: "Ecuador Consultant",
+      email: "ec@synaptica.cc",
+      role: "Developer",
+      country: "Ecuador",
+      hourlyRate: 10 as any,
+      costPerMonth: null,
+      rateCurrency: "USD",
+      active: true,
+      skills: [],
+      seniority: "Senior",
+      maxHoursPerDay: 8 as any,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      identification: null,
+    });
+
+    const ecuadorConfig = {
+      weeklyExtraHoursLimit: 12,
+      diurnalMultiplier: 1.50,
+      nocturnalMultiplier: 1.50,
+      diurnalHolidayMultiplier: 2.00,
+      nocturnalHolidayMultiplier: 2.00,
+      diurnalStart: "06:00:00",
+      diurnalEnd: "24:00:00",
+    };
+
+    // Caso 1: Suplementarias (día de semana ordinario, de 18:00 a 20:00)
+    const dateWeekday = new Date(Date.UTC(2026, 5, 3)); // Miércoles
+    const resSuplementarias = await calculateExtraHours({
+      date: dateWeekday,
+      startTime: "18:00",
+      endTime: "20:00",
+      consultantId: "c-ec",
+      config: ecuadorConfig,
+    });
+    expect(resSuplementarias.totalHours).toBe(2);
+    expect(resSuplementarias.diurnal).toBe(2);
+    expect(resSuplementarias.totalAmount).toBe(30);
+
+    // Caso 2: Extraordinarias en fin de semana (Domingo, de 10:00 a 12:00)
+    const dateSunday = new Date(Date.UTC(2026, 5, 7)); // Domingo
+    const resSunday = await calculateExtraHours({
+      date: dateSunday,
+      startTime: "10:00",
+      endTime: "12:00",
+      consultantId: "c-ec",
+      config: ecuadorConfig,
+    });
+    expect(resSunday.totalHours).toBe(2);
+    expect(resSunday.diurnalHoliday).toBe(2);
+    expect(resSunday.totalAmount).toBe(40);
+
+    // Caso 3: Extraordinarias por horario (Lunes, 01:00 a 03:00)
+    const dateMonday = new Date(Date.UTC(2026, 5, 8)); // Lunes
+    const resNight = await calculateExtraHours({
+      date: dateMonday,
+      startTime: "01:00",
+      endTime: "03:00",
+      consultantId: "c-ec",
+      config: ecuadorConfig,
+    });
+    expect(resNight.totalHours).toBe(2);
+    expect(resNight.nocturnalHoliday).toBe(2);
+    expect(resNight.totalAmount).toBe(40);
+  });
+
+  it("Custom Holidays: liquida a tarifa de feriado si coincide con día ordinario", async () => {
+    // Miércoles ordinario (2026-06-03)
+    const date = new Date(Date.UTC(2026, 5, 3));
+
+    vi.mocked(prisma.consultant.findUnique).mockResolvedValue({
+      id: "c-co-custom-holiday",
+      fullName: "Colombia Consultant Custom",
+      email: "col-holiday@synaptica.cc",
+      role: "Developer",
+      country: "Colombia",
+      hourlyRate: 10 as any,
+      costPerMonth: null,
+      rateCurrency: "COP",
+      active: true,
+      skills: [],
+      seniority: "Senior",
+      maxHoursPerDay: 8 as any,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      identification: null,
+    });
+
+    // Mock findMany de customHoliday para devolver un feriado corporativo en esa fecha
+    vi.mocked(prisma.customHoliday.findMany).mockResolvedValue([
+      {
+        id: "ch-1",
+        name: "Día Especial de la Empresa",
+        date: new Date(Date.UTC(2026, 5, 3)),
+        country: "Colombia",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
+
+    const result = await calculateExtraHours({
+      date,
+      startTime: "08:00",
+      endTime: "10:00", // 2h diurnas
+      consultantId: "c-co-custom-holiday",
+      config: defaultConfig,
+    });
+
+    // Debe detectarlo como feriado diurno, pagarse con diurnalHolidayMultiplier (2.00x)
+    expect(result.totalHours).toBe(2);
+    expect(result.diurnalHoliday).toBe(2);
+    expect(result.diurnal).toBe(0);
+    expect(result.totalAmount).toBe(2 * 10 * 2.00); // 40
+  });
 });
+

@@ -27,6 +27,7 @@ export type AdminUser = {
   microsoftOid: string | null;
   active: boolean;
   roles: AppRole[];
+  country?: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -69,6 +70,7 @@ export type Consultant = {
   country: string | null;
   costPerMonth: string | null;
   active: boolean;
+  allowWeekendWork?: boolean;
   createdAt: string;
   updatedAt: string;
   identification?: string | null;
@@ -360,6 +362,7 @@ export async function createAdminUser(payload: {
   microsoftOid?: string;
   active: boolean;
   roles: AppRole[];
+  country?: string | null;
 }): Promise<AdminUser> {
   const response = await request<ApiEnvelope<AdminUser>>("/api/admin/users", "POST", payload);
   return response.data;
@@ -372,6 +375,7 @@ export async function updateAdminUser(
     microsoftOid?: string;
     active?: boolean;
     roles?: AppRole[];
+    country?: string | null;
   },
 ): Promise<AdminUser> {
   const response = await request<ApiEnvelope<AdminUser>>(`/api/admin/users/${id}`, "PATCH", payload);
@@ -448,6 +452,7 @@ export async function createConsultant(payload: {
   country?: string;
   costPerMonth?: number;
   active: boolean;
+  allowWeekendWork?: boolean;
 }): Promise<Consultant> {
   const response = await request<ApiEnvelope<Consultant>>("/api/consultants", "POST", payload);
   return response.data;
@@ -464,6 +469,7 @@ export async function updateConsultant(
     country?: string;
     costPerMonth?: number;
     active: boolean;
+    allowWeekendWork?: boolean;
   },
 ): Promise<Consultant> {
   const response = await request<ApiEnvelope<Consultant>>(`/api/consultants/${id}`, "PUT", payload);
@@ -1754,3 +1760,33 @@ export async function updateActivity(
 export async function deleteActivity(id: string): Promise<void> {
   await request<void>(`/api/activities/${id}`, "DELETE");
 }
+
+// ─── Custom Holidays ──────────────────────────────────────────────────────────
+
+export type CustomHoliday = {
+  id: string;
+  name: string;
+  date: string;
+  country: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export async function listCustomHolidays(): Promise<CustomHoliday[]> {
+  const response = await request<ApiEnvelope<CustomHoliday[]>>("/api/custom-holidays");
+  return response.data;
+}
+
+export async function createCustomHoliday(payload: {
+  name: string;
+  date: string;
+  country: string;
+}): Promise<CustomHoliday> {
+  const response = await request<ApiEnvelope<CustomHoliday>>("/api/custom-holidays", "POST", payload);
+  return response.data;
+}
+
+export async function deleteCustomHoliday(id: string): Promise<void> {
+  await request<void>(`/api/custom-holidays/${id}`, "DELETE");
+}
+

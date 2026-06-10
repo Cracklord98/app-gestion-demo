@@ -15,6 +15,8 @@ import {
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { PageHeader } from "../../components/PageHeader";
+import { SearchableSelect } from "../../components/SearchableSelect";
+import { listCustomHolidays, type CustomHoliday } from "../../services/api";
 
 type ActivitiesTabProps = {
   projects: Project[];
@@ -64,6 +66,38 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
 
   // Loading/submitting states
   const [submitting, setSubmitting] = useState(false);
+  const [holidays, setHolidays] = useState<CustomHoliday[]>([]);
+
+  useEffect(() => {
+    const fetchHolidays = async () => {
+      try {
+        const data = await listCustomHolidays();
+        setHolidays(data);
+      } catch (err) {
+        // fail silently
+      }
+    };
+    void fetchHolidays();
+  }, []);
+
+  // Helper to check if a YYYY-MM-DD date string is a weekend or holiday
+  const checkIsWeekendOrHoliday = useCallback((dateStr: string) => {
+    if (!dateStr) return { isWeekend: false, isHoliday: false, isWeekendOrHoliday: false, label: "" };
+    const dateObj = new Date(dateStr);
+    const dayOfWeek = dateObj.getUTCDay(); // 0 = Sunday, 6 = Saturday
+    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+    
+    // Match date part only
+    const isHoliday = holidays.some((h) => h.date.slice(0, 10) === dateStr);
+    const holidayName = holidays.find((h) => h.date.slice(0, 10) === dateStr)?.name || "";
+    
+    return {
+      isWeekend,
+      isHoliday,
+      isWeekendOrHoliday: isWeekend || isHoliday,
+      label: isWeekend ? (dayOfWeek === 0 ? "Domingo" : "Sábado") : (isHoliday ? `Festivo: ${holidayName}` : "")
+    };
+  }, [holidays]);
 
   // Success message and confirmation states
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -154,7 +188,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
     setEditingActivity(null);
     setFormTitle("");
     setFormDescription("");
-    setFormConsultantId(myConsultant?.id || filterConsultantId || "");
+    setFormConsultantId(myConsultant?.id || filterConsultantId || consultants[0]?.id || "");
     setFormProjectId("");
     setFormType("project");
     setFormDate(dateStr || new Date().toISOString().split("T")[0]);
@@ -230,6 +264,19 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
     if (!formConsultantId) {
       onError("Por favor selecciona un consultor.");
       return;
+    }
+
+    // Weekend and Holiday validation
+    const dateCheck = checkIsWeekendOrHoliday(formDate);
+    const selectedConsultant = consultants.find((c) => c.id === formConsultantId);
+    if (dateCheck.isWeekendOrHoliday) {
+      const isAdminOrPM = authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM");
+      const hasWeekendPermission = selectedConsultant?.allowWeekendWork === true || isAdminOrPM;
+      
+      if (!hasWeekendPermission) {
+        onError(`El consultor ${selectedConsultant?.fullName || ""} no está autorizado para registrar actividades en fines de semana o festivos (${dateCheck.label}).`);
+        return;
+      }
     }
 
     setSubmitting(true);
@@ -391,7 +438,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
     <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", padding: "1rem 2rem" }}>
       
       <PageHeader
-        icon="📅"
+        icon="▤"
         title="Registro de Actividades"
         description="Realiza el tracking de tus actividades del día o semana, con alertas integradas de horas extras."
         actions={
@@ -447,18 +494,15 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
       {/* Global Filters Panel */}
       <div className="card glass-card" style={{ padding: "1rem", borderRadius: "12px", border: "1px solid #f4d4b6", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
         {(authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM") || authUser?.roles.includes("FINANCE")) ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "180px" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "220px" }}>
             <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)" }}>Filtrar por Consultor</label>
-            <select
+            <SearchableSelect
+              options={consultants.map((c) => ({ value: c.id, label: c.fullName }))}
               value={filterConsultantId}
-              onChange={(e) => setFilterConsultantId(e.target.value)}
-              style={{ padding: "0.4rem", borderRadius: "6px" }}
-            >
-              <option value="">-- Todos los Consultores --</option>
-              {consultants.map((c) => (
-                <option key={c.id} value={c.id}>{c.fullName}</option>
-              ))}
-            </select>
+              onChange={(val) => setFilterConsultantId(val)}
+              placeholder="Buscar consultor..."
+              emptyLabel="-- Todos los Consultores --"
+            />
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "180px" }}>
@@ -467,23 +511,20 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
               type="text"
               readOnly
               value={myConsultant ? myConsultant.fullName : authUser?.displayName || ""}
-              style={{ padding: "0.4rem", borderRadius: "6px", background: "#f3f4f6", border: "1px solid #d1d5db" }}
+              style={{ padding: "0.6rem 0.75rem", borderRadius: "10px", background: "#f3f4f6", border: "1px solid #d1d5db", fontSize: "0.88rem" }}
             />
           </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "180px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "220px" }}>
           <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)" }}>Filtrar por Proyecto</label>
-          <select
+          <SearchableSelect
+            options={projects.map((p) => ({ value: p.id, label: p.name }))}
             value={filterProjectId}
-            onChange={(e) => setFilterProjectId(e.target.value)}
-            style={{ padding: "0.4rem", borderRadius: "6px" }}
-          >
-            <option value="">-- Todos los Proyectos --</option>
-            {projects.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
+            onChange={(val) => setFilterProjectId(val)}
+            placeholder="Buscar proyecto..."
+            emptyLabel="-- Todos los Proyectos --"
+          />
         </div>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "150px" }}>
@@ -532,22 +573,31 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1rem", overflowX: "auto", minWidth: "900px", alignItems: "start" }}>
               {weekDays.map((day) => {
                 const dateKey = day.toISOString().slice(0, 10);
+                const dayCheck = checkIsWeekendOrHoliday(dateKey);
+                const isWeekendOrHoli = dayCheck.isWeekendOrHoliday;
+                const activeConsultantId = filterConsultantId || myConsultant?.id || "";
+                const activeConsultant = consultants.find((c) => c.id === activeConsultantId);
+                const isAdminOrPM = authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM");
+                const isDayBlocked = isWeekendOrHoli && !(activeConsultant?.allowWeekendWork || isAdminOrPM);
+
                 const dayActivities = activitiesByDate.get(dateKey) || [];
                 const totalActualHours = dayActivities.reduce((sum, a) => sum + Number(a.actualHours), 0);
-                const isOvertime = totalActualHours > 8 || day.getDay() === 0 || day.getDay() === 6;
+                const isOvertime = totalActualHours > 8 || isWeekendOrHoli;
 
                 return (
                   <div
                     key={dateKey}
                     style={{
-                      background: "#fff",
-                      border: "1px solid #e5e7eb",
+                      background: isDayBlocked ? "#f9fafb" : "#fff",
+                      border: isDayBlocked ? "1px dashed #d1d5db" : "1px solid #e5e7eb",
                       borderRadius: "12px",
                       boxShadow: "0 2px 10px rgba(0,0,0,0.03)",
                       display: "flex",
                       flexDirection: "column",
                       minHeight: "350px",
-                      padding: "0.75rem"
+                      padding: "0.75rem",
+                      opacity: isDayBlocked ? 0.75 : 1,
+                      position: "relative"
                     }}
                   >
                     {/* Day Header */}
@@ -560,16 +610,24 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
                       </strong>
                       
                       {/* Day Stats */}
-                      <div style={{ marginTop: "0.3rem", display: "flex", justifyContent: "center", gap: "0.4rem", alignItems: "center" }}>
+                      <div style={{ marginTop: "0.3rem", display: "flex", justifyContent: "center", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
                         <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.3rem", borderRadius: "4px", background: "#f3f4f6" }}>
                           ⏱️ {totalActualHours}h
                         </span>
                         {isOvertime && totalActualHours > 0 && (
                           <span
-                            title="Supera las 8h o es fin de semana. Aplica a horas extra."
+                            title={dayCheck.isHoliday ? `Festivo: ${dayCheck.label}` : "Supera las 8h o es fin de semana. Aplica a horas extra."}
                             style={{ cursor: "help", fontSize: "0.7rem", padding: "0.1rem 0.3rem", borderRadius: "4px", background: "#fef3c7", color: "#d97706", fontWeight: 700 }}
                           >
                             ⚠️ HE
+                          </span>
+                        )}
+                        {dayCheck.isHoliday && (
+                          <span
+                            title={dayCheck.label}
+                            style={{ cursor: "help", fontSize: "0.7rem", padding: "0.1rem 0.3rem", borderRadius: "4px", background: "#fee2e2", color: "#b91c1c", fontWeight: 700 }}
+                          >
+                            🎉 Festivo
                           </span>
                         )}
                       </div>
@@ -620,14 +678,31 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
                     </div>
 
                     {/* Add Activity Button per Day */}
-                    <button
-                      type="button"
-                      className="ghost"
-                      onClick={() => handleOpenAddModal(dateKey)}
-                      style={{ width: "100%", padding: "0.25rem", fontSize: "0.72rem", marginTop: "0.5rem", borderColor: "#e5e7eb" }}
-                    >
-                      + Registrar
-                    </button>
+                    {isDayBlocked ? (
+                      <div style={{
+                        width: "100%",
+                        padding: "0.4rem 0.25rem",
+                        fontSize: "0.72rem",
+                        marginTop: "0.5rem",
+                        textAlign: "center",
+                        color: "#ef4444",
+                        background: "#fee2e2",
+                        border: "1px solid #fca5a5",
+                        borderRadius: "6px",
+                        fontWeight: 600
+                      }}>
+                        🔒 Bloqueado
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ghost"
+                        onClick={() => handleOpenAddModal(dateKey)}
+                        style={{ width: "100%", padding: "0.25rem", fontSize: "0.72rem", marginTop: "0.5rem", borderColor: "#e5e7eb" }}
+                      >
+                        + Registrar
+                      </button>
+                    )}
                   </div>
                 );
               })}
@@ -666,6 +741,12 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
               <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gridAutoRows: "100px" }}>
                 {monthDays.map(({ date, currentMonth }, idx) => {
                   const dateKey = date.toISOString().slice(0, 10);
+                  const dayCheck = checkIsWeekendOrHoliday(dateKey);
+                  const activeConsultantId = filterConsultantId || myConsultant?.id || "";
+                  const activeConsultant = consultants.find((c) => c.id === activeConsultantId);
+                  const isAdminOrPM = authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM");
+                  const isDayBlocked = dayCheck.isWeekendOrHoliday && !(activeConsultant?.allowWeekendWork || isAdminOrPM);
+
                   const dayActivities = activitiesByDate.get(dateKey) || [];
                   const totalEst = dayActivities.reduce((sum, a) => sum + Number(a.estimatedHours), 0);
                   const totalAct = dayActivities.reduce((sum, a) => sum + Number(a.actualHours), 0);
@@ -685,11 +766,13 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
                         borderBottom: "1px solid #e5e7eb",
                         padding: "0.4rem",
                         cursor: "pointer",
-                        background: !currentMonth 
-                          ? "#f9fafb" 
-                          : isWeekend 
-                            ? "#fffcf9" 
-                            : "#fff",
+                        background: isDayBlocked 
+                          ? "#fdf2f2" 
+                          : !currentMonth 
+                            ? "#f9fafb" 
+                            : isWeekend 
+                              ? "#fffcf9" 
+                              : "#fff",
                         opacity: currentMonth ? 1 : 0.4,
                         display: "flex",
                         flexDirection: "column",
@@ -699,16 +782,24 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
                       className="month-day-cell"
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span style={{
-                          fontSize: "0.8rem",
-                          fontWeight: 700,
-                          color: isHighWork ? "#d97706" : "var(--text-strong)",
-                          background: isHighWork ? "#fef3c7" : "transparent",
-                          padding: isHighWork ? "0.1rem 0.25rem" : 0,
-                          borderRadius: "4px"
-                        }}>
-                          {date.getDate()}
-                        </span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          <span style={{
+                            fontSize: "0.8rem",
+                            fontWeight: 700,
+                            color: isHighWork ? "#d97706" : "var(--text-strong)",
+                            background: isHighWork ? "#fef3c7" : "transparent",
+                            padding: isHighWork ? "0.1rem 0.25rem" : 0,
+                            borderRadius: "4px"
+                          }}>
+                            {date.getDate()}
+                          </span>
+                          {isDayBlocked && (
+                            <span style={{ fontSize: "0.7rem", color: "#ef4444" }} title={dayCheck.label}>🔒</span>
+                          )}
+                          {dayCheck.isHoliday && !isDayBlocked && (
+                            <span style={{ fontSize: "0.7rem", color: "#b91c1c" }} title={dayCheck.label}>🎉</span>
+                          )}
+                        </div>
                         
                         {dayActivities.length > 0 && (
                           <span style={{ fontSize: "0.65rem", padding: "0.05rem 0.2rem", background: "#f3f4f6", borderRadius: "3px", color: "var(--text-soft)" }}>
@@ -876,22 +967,25 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
 
               <div>
                 <label className="form-label">Proyecto Vincular (Opcional)</label>
-                <select value={formProjectId} onChange={(e) => setFormProjectId(e.target.value)}>
-                  <option value="">-- No vincular a proyecto --</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                  value={formProjectId}
+                  onChange={(val) => setFormProjectId(val)}
+                  placeholder="Buscar proyecto..."
+                  emptyLabel="-- No vincular a proyecto --"
+                />
               </div>
 
               {(authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM")) ? (
                 <div>
                   <label className="form-label">Consultor *</label>
-                  <select value={formConsultantId} onChange={(e) => setFormConsultantId(e.target.value)} required>
-                    {consultants.map((c) => (
-                      <option key={c.id} value={c.id}>{c.fullName}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    options={consultants.map((c) => ({ value: c.id, label: c.fullName }))}
+                    value={formConsultantId}
+                    onChange={(val) => setFormConsultantId(val)}
+                    placeholder="Buscar consultor..."
+                    emptyLabel=""
+                  />
                 </div>
               ) : (
                 <div>
@@ -975,55 +1069,83 @@ export function ActivitiesTab({ projects, consultants, authUser, onError }: Acti
                 <div style={{
                   gridColumn: "span 2",
                   background: "#fffbeb",
-                  border: "1px solid #fde68a",
-                  borderRadius: "10px",
-                  padding: "0.75rem",
-                  marginTop: "0.5rem"
+                  border: "1px solid #fcd34d",
+                  borderRadius: "12px",
+                  padding: "1rem",
+                  marginTop: "0.5rem",
+                  boxShadow: "0 4px 6px -1px rgba(217, 119, 6, 0.05)"
                 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-                    <input
-                      type="checkbox"
-                      id="applyForExtraHours"
-                      checked={applyForExtraHours}
-                      onChange={(e) => setApplyForExtraHours(e.target.checked)}
-                      style={{ cursor: "pointer", width: "16px", height: "16px" }}
-                    />
-                    <label htmlFor="applyForExtraHours" style={{ fontSize: "0.85rem", fontWeight: 700, color: "#b45309", cursor: "pointer" }}>
-                      ⏰ Reportar automáticamente Solicitud de Horas Extras
-                    </label>
+                  <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
+                    <span style={{ fontSize: "1.5rem" }}>⏱️</span>
+                    <div>
+                      <strong style={{ display: "block", fontSize: "0.9rem", color: "#92400e", marginBottom: "0.25rem" }}>
+                        Sugerencia de Horas Extras
+                      </strong>
+                      <p style={{ margin: 0, fontSize: "0.78rem", color: "#b45309", lineHeight: "1.3" }}>
+                        Esta actividad supera las 8 horas diarias estándar o se ha programado para un fin de semana/festivo. Puedes solicitar la aprobación de horas extras aquí.
+                      </p>
+                      
+                      <button
+                        type="button"
+                        onClick={() => setApplyForExtraHours(!applyForExtraHours)}
+                        style={{
+                          background: applyForExtraHours ? "#b45309" : "linear-gradient(135deg, #f59e0b, #d97706)",
+                          color: "#fff",
+                          border: "none",
+                          padding: "0.4rem 0.8rem",
+                          fontSize: "0.78rem",
+                          borderRadius: "8px",
+                          cursor: "pointer",
+                          fontWeight: 700,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.4rem",
+                          boxShadow: "0 2px 4px rgba(217, 119, 6, 0.15)",
+                          transition: "all 0.2s ease",
+                          marginTop: "0.75rem"
+                        }}
+                      >
+                        {applyForExtraHours ? "✕ Cancelar Solicitud" : "➕ Solicitar Hora Extra"}
+                      </button>
+                    </div>
                   </div>
-                  <p style={{ margin: "0.2rem 0 0.5rem 1.4rem", fontSize: "0.72rem", color: "#b45309" }}>
-                    Hemos detectado que esta actividad excede la jornada estándar de 8h o se reporta en fin de semana.
-                  </p>
 
                   {applyForExtraHours && (
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginTop: "0.5rem", paddingLeft: "1.4rem" }}>
+                    <div style={{ 
+                      display: "grid", 
+                      gridTemplateColumns: "1fr 1fr", 
+                      gap: "0.75rem", 
+                      marginTop: "1rem", 
+                      borderTop: "1px solid #fde68a", 
+                      paddingTop: "1rem",
+                      animation: "fadeIn 0.25s ease-out" 
+                    }}>
                       <div>
-                        <label style={{ fontSize: "0.7rem", color: "var(--text-soft)", display: "block" }}>Hora Inicio Horas Extras</label>
+                        <label style={{ fontSize: "0.75rem", color: "#92400e", display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>Hora Inicio Horas Extras</label>
                         <input
                           type="time"
                           value={extraHoursStartTime}
                           onChange={(e) => setExtraHoursStartTime(e.target.value)}
-                          style={{ padding: "0.25rem", fontSize: "0.8rem" }}
+                          style={{ padding: "0.4rem 0.5rem", fontSize: "0.82rem", borderRadius: "6px", border: "1px solid #fde68a" }}
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: "0.7rem", color: "var(--text-soft)", display: "block" }}>Hora Fin Horas Extras</label>
+                        <label style={{ fontSize: "0.75rem", color: "#92400e", display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>Hora Fin Horas Extras</label>
                         <input
                           type="time"
                           value={extraHoursEndTime}
                           onChange={(e) => setExtraHoursEndTime(e.target.value)}
-                          style={{ padding: "0.25rem", fontSize: "0.8rem" }}
+                          style={{ padding: "0.4rem 0.5rem", fontSize: "0.82rem", borderRadius: "6px", border: "1px solid #fde68a" }}
                         />
                       </div>
                       <div style={{ gridColumn: "span 2" }}>
-                        <label style={{ fontSize: "0.7rem", color: "var(--text-soft)", display: "block" }}>Nota de Justificación Horas Extras</label>
+                        <label style={{ fontSize: "0.75rem", color: "#92400e", display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>Nota de Justificación Horas Extras</label>
                         <input
                           type="text"
                           value={extraHoursNote}
                           onChange={(e) => setExtraHoursNote(e.target.value)}
-                          placeholder="Justificación para aprobación..."
-                          style={{ padding: "0.25rem", fontSize: "0.8rem", width: "100%" }}
+                          placeholder="Motivo o justificación de las horas extras..."
+                          style={{ padding: "0.4rem 0.5rem", fontSize: "0.82rem", width: "100%", borderRadius: "6px", border: "1px solid #fde68a" }}
                         />
                       </div>
                     </div>

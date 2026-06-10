@@ -4,8 +4,10 @@ import {
   createEstimation, 
   listEstimations, 
   deleteEstimation, 
+  listCustomHolidays,
   type Project, 
-  type Estimation 
+  type Estimation,
+  type CustomHoliday
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 
@@ -20,7 +22,6 @@ type TaskInput = {
   name: string;
   idealHours: number;
   complexity: "routine" | "known_unknowns" | "unknown_unknowns";
-  experience: "senior" | "mid" | "junior" | "mixed";
   techDebt: "clean" | "moderate" | "heavy" | "legacy";
   dependencies: "none" | "internal" | "external" | "multiple";
   hasCodeReview: boolean;
@@ -31,51 +32,344 @@ type TaskInput = {
   notes: string;
 };
 
-const COMPLEXITY_LEVELS = [
-  {
-    key: "routine", label: "Rutinaria (x1.3)", uFactor: 1.3, color: "#22c55e", icon: "✅",
-    desc: "Trabajo estándar repetido muchas veces. CRUD básico, queries simples o componentes comunes.",
-    examples: ["CRUD básico", "Componente UI estándar", "Endpoint REST común"]
-  },
-  {
-    key: "known_unknowns", label: "Incógnitas Conocidas (x2.0)", uFactor: 2.0, color: "#eab308", icon: "⚠️",
-    desc: "Hay dependencias de terceros, APIs de otros equipos o código legacy sin pruebas automatizadas.",
-    examples: ["Integración API externa", "Refactorizar módulo legacy", "Feature multi-servicio"]
-  },
-  {
-    key: "unknown_unknowns", label: "Territorio Inexplorado (x3.5)", uFactor: 3.5, color: "#ef4444", icon: "🔴",
-    desc: "Tecnología nueva o inestable para el equipo, requisitos sumamente ambiguos o sin documentación.",
-    examples: ["Integración IA desde cero", "Protocolo de red propietario", "Cambio de arquitectura core"]
+interface EstimationWeights {
+  compRoutine: number;
+  compKnownUnknowns: number;
+  compUnknownUnknowns: number;
+  
+  expSenior: number;
+  expMid: number;
+  expJunior: number;
+  expMixed: number;
+  
+  debtClean: number;
+  debtModerate: number;
+  debtHeavy: number;
+  debtLegacy: number;
+  
+  depNone: number;
+  depInternal: number;
+  depExternal: number;
+  depMultiple: number;
+  
+  ceremonyCodeReview: number;
+  ceremonyTesting: number;
+  ceremonyDocumentation: number;
+  
+  contextSwitchingPenalty: number;
+  brooksFactor: number;
+  
+  scopeClosed: number;
+  scopePending: number;
+  scopeDiffuse: number;
+  scopeNoTechnicalClosure: number;
+}
+
+const DEFAULT_WEIGHTS: EstimationWeights = {
+  // Complexity: base uncertainty multiplier (applied to idealHours)
+  compRoutine: 1.2,          // was 1.3 — routine tasks inflate less
+  compKnownUnknowns: 1.6,    // was 2.0 — more realistic for normal unknowns
+  compUnknownUnknowns: 2.8,  // was 3.5 — still high, but not absurd
+  
+  // Experience: overhead delta over senior baseline (1.0 = no overhead)
+  expSenior: 1.0,
+  expMid: 1.15,    // was 1.25 — small extra time for mid-levels
+  expJunior: 1.35, // was 1.6  — meaningful but not 60% penalty
+  expMixed: 1.15,
+  
+  // Tech Debt: additive overhead factor
+  debtClean: 1.0,
+  debtModerate: 1.2,  // was 1.3
+  debtHeavy: 1.45,    // was 1.6
+  debtLegacy: 1.8,    // was 2.0
+  
+  // Dependencies: additive overhead factor
+  depNone: 1.0,
+  depInternal: 1.15,  // was 1.2
+  depExternal: 1.25,  // was 1.4
+  depMultiple: 1.45,  // was 1.6
+  
+  // Ceremonies: % of baseEffort added as fixed overhead
+  ceremonyCodeReview: 0.10,    // was 0.15
+  ceremonyTesting: 0.20,       // was 0.25
+  ceremonyDocumentation: 0.08, // was 0.10
+  
+  // Context switching: % overhead over baseEffort
+  contextSwitchingPenalty: 1.12, // was 1.15
+  // Brooks' Law: % overhead per communication channel (n*(n-1)/2)
+  brooksFactor: 0.05,            // was 0.08 — less aggressive per channel
+  
+  // Scope definition: multiplier on full adjusted effort
+  scopeClosed: 1.0,
+  scopePending: 1.15,            // was 1.25
+  scopeDiffuse: 1.4,             // was 1.6
+  scopeNoTechnicalClosure: 1.8   // was 2.0
+};
+
+
+// Date Utilities (UTC-based to avoid local timezone offsets)
+function formatDateUTC(date: Date): string {
+  const y = date.getUTCFullYear();
+  const m = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(date.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+const getTodayUTCStr = () => {
+  const d = new Date();
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
+};
+
+// Helper to calculate Easter Sunday (Gauss Algorithm)
+function calculateEasterSunday(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+// Helper to get the N-th Monday of a given month
+function getNthMonday(year: number, month: number, n: number): Date {
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const dayOfWeek = firstDay.getUTCDay();
+  const daysUntilMonday = (1 - dayOfWeek + 7) % 7;
+  const firstMondayDay = 1 + daysUntilMonday;
+  const targetDay = firstMondayDay + (n - 1) * 7;
+  return new Date(Date.UTC(year, month - 1, targetDay));
+}
+
+// Helper to get the N-th Thursday of a given month
+function getNthThursday(year: number, month: number, n: number): Date {
+  const firstDay = new Date(Date.UTC(year, month - 1, 1));
+  const dayOfWeek = firstDay.getUTCDay();
+  const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
+  const firstThursdayDay = 1 + daysUntilThursday;
+  const targetDay = firstThursdayDay + (n - 1) * 7;
+  return new Date(Date.UTC(year, month - 1, targetDay));
+}
+
+// Helper to move Chilean holidays under Law 19.668
+function moveChileanHoliday(year: number, month: number, day: number): Date {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = date.getUTCDay();
+  if (dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4) {
+    const offset = dayOfWeek === 2 ? -1 : dayOfWeek === 3 ? -2 : -3;
+    return new Date(date.getTime() + offset * 24 * 60 * 60 * 1000);
+  } else if (dayOfWeek === 5) {
+    return new Date(date.getTime() + 3 * 24 * 60 * 60 * 1000);
   }
-];
+  return date;
+}
 
-const TEAM_EXPERIENCE = [
-  { key: "senior", label: "Senior 5+ años (x1.0)", factor: 1.0, color: "#22c55e" },
-  { key: "mid", label: "Mid-Level 2-5 años (x1.25)", factor: 1.25, color: "#eab308" },
-  { key: "junior", label: "Junior <2 años (x1.6)", factor: 1.6, color: "#ef4444" },
-  { key: "mixed", label: "Equipo Mixto (x1.3)", factor: 1.3, color: "#3b82f6" }
-];
+// Helper to move Ecuadorian holidays
+function moveEcuadorHoliday(year: number, month: number, day: number): Date {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const dayOfWeek = date.getUTCDay();
+  if (dayOfWeek === 6) {
+    return new Date(date.getTime() - 1 * 24 * 60 * 60 * 1000);
+  } else if (dayOfWeek === 0) {
+    return new Date(date.getTime() + 1 * 24 * 60 * 60 * 1000);
+  } else if (dayOfWeek === 2) {
+    return new Date(date.getTime() - 1 * 24 * 60 * 60 * 1000);
+  } else if (dayOfWeek === 3) {
+    return new Date(date.getTime() + 2 * 24 * 60 * 60 * 1000);
+  } else if (dayOfWeek === 4) {
+    return new Date(date.getTime() + 1 * 24 * 60 * 60 * 1000);
+  }
+  return date;
+}
 
-const TECH_DEBT = [
-  { key: "clean", label: "Código Limpio (x1.0)", factor: 1.0, desc: "Bases de código estables, buena cobertura de tests, CI/CD fluido." },
-  { key: "moderate", label: "Moderada (x1.3)", factor: 1.3, desc: "Algunas deficiencias arquitectónicas y tests escasos pero comprensible." },
-  { key: "heavy", label: "Pesada (x1.6)", factor: 1.6, desc: "Sin pruebas automatizadas, alto acoplamiento, alta fricción al compilar." },
-  { key: "legacy", label: "Legacy Crítico (x2.0)", factor: 2.0, desc: "Monolito obsoleto, miedo a introducir cambios, sin soporte." }
-];
+// Get public holidays for a year and country code
+function getHolidaysForYear(year: number, country: string): Date[] {
+  const holidays: Date[] = [];
+  const normalizedCountry = (country || "").toLowerCase();
 
-const DEPENDENCIES = [
-  { key: "none", label: "Sin dependencias (x1.0)", factor: 1.0, desc: "El equipo tiene control total de la entrega." },
-  { key: "internal", label: "Interna – Otro equipo (x1.2)", factor: 1.2, desc: "Bloqueos por prioridades cruzadas dentro de la empresa." },
-  { key: "external", label: "Externa – Proveedor / API (x1.4)", factor: 1.4, desc: "Dependes de tiempos de respuesta de un tercero o pasarela externa." },
-  { key: "multiple", label: "Múltiples bloqueantes (x1.6)", factor: 1.6, desc: "Múltiples dependencias cruzadas simultáneas." }
-];
+  // Colombia
+  if (normalizedCountry === "co") {
+    // Fixed
+    const fixed = ["01-01", "05-01", "07-20", "08-07", "12-08", "12-25"];
+    fixed.forEach((f) => {
+      const [m, d] = f.split("-").map(Number);
+      holidays.push(new Date(Date.UTC(year, m - 1, d)));
+    });
+
+    // Movable (Emiliani Law)
+    const movable = ["01-06", "03-19", "06-29", "08-15", "10-12", "11-01", "11-11"];
+    movable.forEach((m) => {
+      const [mo, d] = m.split("-").map(Number);
+      const originalDate = new Date(Date.UTC(year, mo - 1, d));
+      if (originalDate.getUTCDay() === 1) {
+        holidays.push(originalDate);
+      } else {
+        const daysUntilMonday = (1 - originalDate.getUTCDay() + 7) % 7;
+        const offset = daysUntilMonday === 0 ? 7 : daysUntilMonday;
+        holidays.push(new Date(originalDate.getTime() + offset * 24 * 60 * 60 * 1000));
+      }
+    });
+
+    // Easter Dependent
+    const easter = calculateEasterSunday(year);
+    const easterDependent = [-3, -2, 43, 64, 71];
+    easterDependent.forEach((offset) => {
+      const holidayDate = new Date(easter.getTime() + offset * 24 * 60 * 60 * 1000);
+      if (offset === -3 || offset === -2) {
+        holidays.push(holidayDate);
+      } else {
+        if (holidayDate.getUTCDay() === 1) {
+          holidays.push(holidayDate);
+        } else {
+          const daysUntilMonday = (1 - holidayDate.getUTCDay() + 7) % 7;
+          const offsetMonday = daysUntilMonday === 0 ? 7 : daysUntilMonday;
+          holidays.push(new Date(holidayDate.getTime() + offsetMonday * 24 * 60 * 60 * 1000));
+        }
+      }
+    });
+  }
+  // Perú
+  else if (normalizedCountry === "pe") {
+    const fixed = ["01-01", "05-01", "06-07", "06-29", "07-23", "07-28", "07-29", "08-06", "08-30", "10-08", "11-01", "12-08", "12-09", "12-25"];
+    fixed.forEach((f) => {
+      const [m, d] = f.split("-").map(Number);
+      holidays.push(new Date(Date.UTC(year, m - 1, d)));
+    });
+    const easter = calculateEasterSunday(year);
+    holidays.push(new Date(easter.getTime() - 3 * 24 * 60 * 60 * 1000)); // Jueves Santo
+    holidays.push(new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000)); // Viernes Santo
+  }
+  // Chile
+  else if (normalizedCountry === "cl") {
+    const fixed = ["01-01", "05-01", "05-21", "07-16", "08-15", "09-18", "09-19", "11-01", "12-08", "12-25"];
+    fixed.forEach((f) => {
+      const [m, d] = f.split("-").map(Number);
+      holidays.push(new Date(Date.UTC(year, m - 1, d)));
+    });
+    holidays.push(moveChileanHoliday(year, 6, 29));
+    holidays.push(moveChileanHoliday(year, 10, 12));
+    
+    // Evangélicos
+    const evangBase = new Date(Date.UTC(year, 9, 31));
+    const evangDay = evangBase.getUTCDay();
+    let evangDate = evangBase;
+    if (evangDay === 3) {
+      evangDate = new Date(Date.UTC(year, 10, 2)); // Friday Nov 2
+    } else if (evangDay === 2) {
+      evangDate = new Date(Date.UTC(year, 9, 27)); // Friday Oct 27
+    }
+    holidays.push(evangDate);
+
+    const easter = calculateEasterSunday(year);
+    holidays.push(new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000)); // Viernes Santo
+    holidays.push(new Date(easter.getTime() - 1 * 24 * 60 * 60 * 1000)); // Sábado Santo
+  }
+  // México
+  else if (normalizedCountry === "mx") {
+    const fixed = ["01-01", "05-01", "09-16", "12-25"];
+    fixed.forEach((f) => {
+      const [m, d] = f.split("-").map(Number);
+      holidays.push(new Date(Date.UTC(year, m - 1, d)));
+    });
+    holidays.push(getNthMonday(year, 2, 1));
+    holidays.push(getNthMonday(year, 3, 3));
+    holidays.push(getNthMonday(year, 11, 3));
+    
+    if ((year - 2024) % 6 === 0) {
+      holidays.push(new Date(Date.UTC(year, 11, 1)));
+    }
+  }
+  // Ecuador
+  else if (normalizedCountry === "ec") {
+    holidays.push(new Date(Date.UTC(year, 0, 1)));
+    holidays.push(new Date(Date.UTC(year, 4, 1)));
+    holidays.push(new Date(Date.UTC(year, 11, 25)));
+    holidays.push(moveEcuadorHoliday(year, 5, 24));
+    holidays.push(moveEcuadorHoliday(year, 8, 10));
+    holidays.push(moveEcuadorHoliday(year, 10, 9));
+    holidays.push(moveEcuadorHoliday(year, 11, 2));
+    holidays.push(moveEcuadorHoliday(year, 11, 3));
+
+    const easter = calculateEasterSunday(year);
+    holidays.push(new Date(easter.getTime() - 48 * 24 * 60 * 60 * 1000)); // Lunes de Carnaval
+    holidays.push(new Date(easter.getTime() - 47 * 24 * 60 * 60 * 1000)); // Martes de Carnaval
+    holidays.push(new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000)); // Viernes Santo
+  }
+  // Default / USA
+  else {
+    holidays.push(new Date(Date.UTC(year, 0, 1)));
+    holidays.push(new Date(Date.UTC(year, 6, 4)));
+    holidays.push(new Date(Date.UTC(year, 11, 25)));
+    holidays.push(getNthMonday(year, 9, 1));
+    holidays.push(getNthThursday(year, 11, 4));
+    const firstMondayJune = getNthMonday(year, 6, 1);
+    const memorialDay = new Date(firstMondayJune.getTime() - 7 * 24 * 60 * 60 * 1000);
+    holidays.push(memorialDay);
+  }
+
+  return holidays;
+}
+
+function isHolidayFrontend(date: Date, country: string, customHolidays: CustomHoliday[]): boolean {
+  const year = date.getUTCFullYear();
+  const dayOfWeek = date.getUTCDay();
+
+  // Sundays are always holiday-equivalents for calendar checks
+  if (dayOfWeek === 0) return true;
+
+  // Custom corporate holidays check
+  const dateStr = formatDateUTC(date);
+  const normalizedCountry = (country || "").toLowerCase();
+  
+  const matchesCustom = customHolidays.some((ch) => {
+    const chCountry = (ch.country || "").toLowerCase();
+    return ch.date === dateStr && (chCountry === "all" || chCountry === normalizedCountry);
+  });
+  
+  if (matchesCustom) return true;
+
+  try {
+    const publicHols = getHolidaysForYear(year, country);
+    const targetTime = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+    return publicHols.some((h) => {
+      const holidayTime = Date.UTC(h.getUTCFullYear(), h.getUTCMonth(), h.getUTCDate());
+      return holidayTime === targetTime;
+    });
+  } catch {
+    return false;
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// InfoTooltip: CSS-only hover tooltip. No state required.
+// Usage: <InfoTooltip text="Explicación breve del campo" />
+// ─────────────────────────────────────────────────────────────────────────────
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="info-tooltip-wrapper">
+      <span className="info-tooltip-icon">i</span>
+      <span className="info-tooltip-bubble">
+        {text}
+        <span className="info-tooltip-arrow" />
+      </span>
+    </span>
+  );
+}
 
 const INITIAL_TASK = (index: number): TaskInput => ({
   id: Date.now() + index,
   name: `Tarea ${index + 1}`,
   idealHours: 8,
   complexity: "routine",
-  experience: "senior",
   techDebt: "clean",
   dependencies: "none",
   hasCodeReview: true,
@@ -87,13 +381,64 @@ const INITIAL_TASK = (index: number): TaskInput => ({
 });
 
 export function EstimationCalculatorTab({ projects, canWrite, onError }: EstimationCalculatorTabProps) {
+  // Tooltips global toggle (persistent in localStorage)
+  const [showTooltips, setShowTooltips] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem("synaptica_show_tooltips");
+      return saved !== null ? saved === "true" : true;
+    } catch {
+      return true;
+    }
+  });
+
+  const handleToggleTooltips = () => {
+    setShowTooltips((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("synaptica_show_tooltips", String(next));
+      } catch (e) {
+        console.error(e);
+      }
+      return next;
+    });
+  };
+
+  // Configuración de Estimaciones
   const [tasks, setTasks] = useState<TaskInput[]>(() => [INITIAL_TASK(0)]);
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [estimationContext, setEstimationContext] = useState<string>("");
   const [hoursPerDay, setHoursPerDay] = useState<number>(8);
   const [sprintDays, setSprintDays] = useState<number>(10);
   const [bufferPercentage, setBufferPercentage] = useState<number>(15);
+  
+  // Phase 3 States
   const [includeWeekends, setIncludeWeekends] = useState<boolean>(false);
+  const [includeHolidays, setIncludeHolidays] = useState<boolean>(false);
+  const [teamSeniorCount, setTeamSeniorCount] = useState<number>(1);
+  const [teamMidCount, setTeamMidCount] = useState<number>(0);
+  const [teamJuniorCount, setTeamJuniorCount] = useState<number>(0);
+  const [scopeDefinition, setScopeDefinition] = useState<string>("closed");
+  const [startDate, setStartDate] = useState<string>(getTodayUTCStr());
+  const [estimationCountry, setEstimationCountry] = useState<string>("US");
+  const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
+
+  // Navigation Sub-tabs state
+  const [activeMainTab, setActiveMainTab] = useState<"estimator" | "weights">("estimator");
+  const [guideTab, setGuideTab] = useState<"concepts" | "example" | "factors">("concepts");
+
+  // Weights state initialized from localStorage
+  const [weights, setWeights] = useState<EstimationWeights>(() => {
+    try {
+      const saved = localStorage.getItem("synaptica_estimation_weights");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return { ...DEFAULT_WEIGHTS, ...parsed };
+      }
+    } catch (e) {
+      console.error("Error loading weights from localStorage", e);
+    }
+    return DEFAULT_WEIGHTS;
+  });
 
   const [estimations, setEstimations] = useState<Estimation[]>([]);
   const [loadingEstimations, setLoadingEstimations] = useState(false);
@@ -105,6 +450,21 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [successBanner, setSuccessBanner] = useState<string | null>(null);
 
+  // Load Custom Holidays on mount
+  const fetchCustomHolidays = useCallback(async () => {
+    try {
+      const data = await listCustomHolidays();
+      setCustomHolidays(data);
+    } catch (err) {
+      console.error("Error al cargar festivos corporativos", err);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchCustomHolidays();
+  }, [fetchCustomHolidays]);
+
+  // Load saved estimations
   const loadEstimations = useCallback(async () => {
     setLoadingEstimations(true);
     try {
@@ -121,60 +481,228 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
     void loadEstimations();
   }, [loadEstimations]);
 
+  // Dynamic values using current weights calibration
+  const complexityLevels = useMemo(() => [
+    {
+      key: "routine", label: `Rutinaria (x${weights.compRoutine})`, uFactor: weights.compRoutine, color: "#22c55e", icon: "✅",
+      desc: "Trabajo estándar repetido muchas veces. CRUD básico, queries simples o componentes comunes.",
+      examples: ["CRUD básico", "Componente UI estándar", "Endpoint REST común"]
+    },
+    {
+      key: "known_unknowns", label: `Incógnitas Conocidas (x${weights.compKnownUnknowns})`, uFactor: weights.compKnownUnknowns, color: "#eab308", icon: "⚠️",
+      desc: "Hay dependencias de terceros, APIs de otros equipos o código legacy sin pruebas automatizadas.",
+      examples: ["Integración API externa", "Refactorizar módulo legacy", "Feature multi-servicio"]
+    },
+    {
+      key: "unknown_unknowns", label: `Territorio Inexplorado (x${weights.compUnknownUnknowns})`, uFactor: weights.compUnknownUnknowns, color: "#ef4444", icon: "🔴",
+      desc: "Tecnología nueva o inestable para el equipo, requisitos sumamente ambiguos o sin documentación.",
+      examples: ["Integración IA desde cero", "Protocolo de red propietario", "Cambio de arquitectura core"]
+    }
+  ], [weights]);
+
+
+  const techDebtOptions = useMemo(() => [
+    { key: "clean", label: `Código Limpio (x${weights.debtClean})`, factor: weights.debtClean, desc: "Bases de código estables, buena cobertura de tests, CI/CD fluido." },
+    { key: "moderate", label: `Deuda Moderada (x${weights.debtModerate})`, factor: weights.debtModerate, desc: "Algunas deficiencias arquitectónicas y tests escasos pero comprensible." },
+    { key: "heavy", label: `Deuda Pesada (x${weights.debtHeavy})`, factor: weights.debtHeavy, desc: "Sin pruebas automatizadas, alto acoplamiento, alta fricción al compilar." },
+    { key: "legacy", label: `Legacy Crítico (x${weights.debtLegacy})`, factor: weights.debtLegacy, desc: "Monolito obsoleto, miedo a introducir cambios, sin soporte." }
+  ], [weights]);
+
+  const dependencyOptions = useMemo(() => [
+    { key: "none", label: `Sin dependencias (x${weights.depNone})`, factor: weights.depNone, desc: "El equipo tiene control total de la entrega." },
+    { key: "internal", label: `Interna – Otro equipo (x${weights.depInternal})`, factor: weights.depInternal, desc: "Bloqueos por prioridades cruzadas dentro de la empresa." },
+    { key: "external", label: `Externa – Proveedor / API (x${weights.depExternal})`, factor: weights.depExternal, desc: "Dependes de tiempos de respuesta de un tercero o pasarela externa." },
+    { key: "multiple", label: `Múltiples bloqueantes (x${weights.depMultiple})`, factor: weights.depMultiple, desc: "Múltiples dependencias cruzadas simultáneas." }
+  ], [weights]);
+
+  const scopeDefinitionLevels = useMemo(() => [
+    { key: "closed", label: `Cerrado y Acotado (x${weights.scopeClosed})`, factor: weights.scopeClosed, color: "#22c55e", desc: "Requisitos 100% claros, aprobados y firmados, sin posibilidad de cambios sin control de cambios estricto." },
+    { key: "pending", label: `Pendientes Menores (x${weights.scopePending})`, factor: weights.scopePending, color: "#eab308", desc: "Flujos claros pero quedan detalles cosméticos o APIs secundarias por confirmar." },
+    { key: "diffuse", label: `Difuso / WIP (x${weights.scopeDiffuse})`, factor: weights.scopeDiffuse, color: "#ef4444", desc: "El cliente sabe qué quiere lograr pero no el cómo. Historias de usuario ambiguas o incompletas." },
+    { key: "no_closure", label: `Sin Cierre Técnico (x${weights.scopeNoTechnicalClosure})`, factor: weights.scopeNoTechnicalClosure, color: "#7f1d1d", desc: "Incertidumbre crítica. El alcance cambia semanalmente, sin alcances definidos ni límites técnicos." }
+  ], [weights]);
+
+  // Brooks' Law SVG node visualizer generation
+  const devList = useMemo(() => {
+    const list: { type: "senior" | "mid" | "junior"; color: string; label: string }[] = [];
+    for (let i = 0; i < teamSeniorCount; i++) list.push({ type: "senior", color: "#22c55e", label: "SR" });
+    for (let i = 0; i < teamMidCount; i++) list.push({ type: "mid", color: "#eab308", label: "MID" });
+    for (let i = 0; i < teamJuniorCount; i++) list.push({ type: "junior", color: "#ef4444", label: "JR" });
+    return list;
+  }, [teamSeniorCount, teamMidCount, teamJuniorCount]);
+
+  const totalDevs = devList.length;
+  const totalChannels = (totalDevs * (totalDevs - 1)) / 2;
+
+  const nodes = useMemo(() => {
+    const R = 70;
+    const cx = 105;
+    const cy = 105;
+    return devList.map((dev, i) => {
+      const angle = (2 * Math.PI * i) / Math.max(1, totalDevs) - Math.PI / 2;
+      return {
+        x: cx + R * Math.cos(angle),
+        y: cy + R * Math.sin(angle),
+        ...dev
+      };
+    });
+  }, [devList, totalDevs]);
+
+  const lines = useMemo(() => {
+    const list: { x1: number; y1: number; x2: number; y2: number }[] = [];
+    // Limit line rendering to prevent browser freeze if team count is too high (e.g. max 12 devs in visualization)
+    const limitNodes = nodes.slice(0, 12);
+    for (let i = 0; i < limitNodes.length; i++) {
+      for (let j = i + 1; j < limitNodes.length; j++) {
+        list.push({
+          x1: limitNodes[i].x,
+          y1: limitNodes[i].y,
+          x2: limitNodes[j].x,
+          y2: limitNodes[j].y
+        });
+      }
+    }
+    return list;
+  }, [nodes]);
+
+  // ADDITIVE OVERHEAD calculation engine
+  // ─────────────────────────────────────────────────────────────────────────────
+  // Instead of multiplying all factors together (which creates exponential
+  // inflation), each overhead is calculated as a delta on top of baseEffort
+  // and added independently. This keeps results proportional and transparent.
+  // ─────────────────────────────────────────────────────────────────────────────
   const calculateTask = useCallback((task: TaskInput) => {
-    const comp = COMPLEXITY_LEVELS.find((c) => c.key === task.complexity) || COMPLEXITY_LEVELS[0];
-    const exp = TEAM_EXPERIENCE.find((e) => e.key === task.experience) || TEAM_EXPERIENCE[0];
-    const debt = TECH_DEBT.find((t) => t.key === task.techDebt) || TECH_DEBT[0];
-    const dep = DEPENDENCIES.find((d) => d.key === task.dependencies) || DEPENDENCIES[0];
+    const comp = complexityLevels.find((c) => c.key === task.complexity) || complexityLevels[0];
+    const debt = techDebtOptions.find((t) => t.key === task.techDebt) || techDebtOptions[0];
+    const dep = dependencyOptions.find((d) => d.key === task.dependencies) || dependencyOptions[0];
+    const scope = scopeDefinitionLevels.find((s) => s.key === scopeDefinition) || scopeDefinitionLevels[0];
 
-    const uFactor = comp.uFactor;
-    const expFactor = exp.factor;
-    const debtFactor = debt.factor;
-    const depFactor = dep.factor;
+    // ── 1. Base effort: idealHours × complexity multiplier ──────────────────
+    const baseEffort = task.idealHours * comp.uFactor;
+    const uncertaintyOverhead = baseEffort - task.idealHours;
 
-    // Ceremonias
-    const codeReviewHours = task.hasCodeReview ? task.idealHours * 0.15 : 0;
-    const testingHours = task.hasTesting ? task.idealHours * 0.25 : 0;
-    const documentationHours = task.hasDocumentation ? task.idealHours * 0.1 : 0;
+    // ── 2. Team experience overhead (weighted average of team composition) ──
+    const calculatedTeamSize = Math.max(1, teamJuniorCount + teamMidCount + teamSeniorCount);
+    const averageExpFactor = (
+      teamSeniorCount * weights.expSenior +
+      teamMidCount    * weights.expMid    +
+      teamJuniorCount * weights.expJunior
+    ) / calculatedTeamSize;
+    // overhead = how much slower than a pure-senior team
+    const expOverhead = baseEffort * (averageExpFactor - 1);
 
-    // Reuniones y Contexto
-    const effectiveHoursPerDay = hoursPerDay - task.meetingsPerDay * 0.75;
-    const switchingPenalty = task.contextSwitching ? 1.15 : 1.0;
+    // ── 3. Tech debt overhead ───────────────────────────────────────────────
+    const debtFactor = debt.factor !== null ? debt.factor : 1.0;
+    const debtOverhead = baseEffort * (debtFactor - 1);
 
-    // Esfuerzo Ajustado
-    const baseEffort = task.idealHours * uFactor;
-    const adjustedEffort = baseEffort * expFactor * debtFactor * depFactor * switchingPenalty;
-    const totalEffort = adjustedEffort + codeReviewHours + testingHours + documentationHours;
+    // ── 4. Dependency overhead ──────────────────────────────────────────────
+    const depFactor = dep.factor !== null ? dep.factor : 1.0;
+    const depOverhead = baseEffort * (depFactor - 1);
 
-    const realDays = totalEffort / Math.max(effectiveHoursPerDay, 1);
+    // ── 5. Context switching overhead (optional toggle) ─────────────────────
+    const switchingOverhead = task.contextSwitching
+      ? baseEffort * (weights.contextSwitchingPenalty - 1)
+      : 0;
+
+    // ── 6. Brooks' Law team communication overhead ──────────────────────────
+    // L = n(n-1)/2 communication channels; each adds brooksFactor% overhead
+    const L = (calculatedTeamSize * (calculatedTeamSize - 1)) / 2;
+    const brooksOverhead = baseEffort * L * weights.brooksFactor;
+
+    // ── 7. Ceremonies: fixed % of idealHours (not compounded) ───────────────
+    const codeReviewHours    = task.hasCodeReview    ? task.idealHours * weights.ceremonyCodeReview    : 0;
+    const testingHours       = task.hasTesting       ? task.idealHours * weights.ceremonyTesting       : 0;
+    const documentationHours = task.hasDocumentation ? task.idealHours * weights.ceremonyDocumentation : 0;
+    const ceremoniesTotal    = codeReviewHours + testingHours + documentationHours;
+
+    // ── 8. Scope risk applied to the subtotal of overheads (not ceremonies) ─
+    const scopeFactor = scope.factor !== null ? scope.factor : 1.0;
+    const preScope = baseEffort + expOverhead + debtOverhead + depOverhead + switchingOverhead + brooksOverhead;
+    const scopeOverhead = preScope * (scopeFactor - 1);
+
+    const totalEffort = preScope + scopeOverhead + ceremoniesTotal;
+
+    // ── 9. Daily capacity (reduced by meetings) ─────────────────────────────
+    const effectiveHoursPerDay = Math.max(1, hoursPerDay - task.meetingsPerDay * 0.75);
+    const realDays = totalEffort / effectiveHoursPerDay;
     const withBuffer = realDays * (1 + bufferPercentage / 100);
 
-    let calendarDays = withBuffer;
-    if (!includeWeekends) {
-      calendarDays = Math.ceil(withBuffer / 5) * 7 - 2;
-      calendarDays = Math.max(calendarDays, withBuffer);
+    // ── 10. Calendar date simulation ────────────────────────────────────────
+    let workdaysRemaining = withBuffer;
+    let currentDate = new Date(startDate + "T00:00:00Z");
+    if (isNaN(currentDate.getTime())) currentDate = new Date();
+
+    while (workdaysRemaining > 0) {
+      const dayOfWeek = currentDate.getUTCDay();
+      const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+      const isHoliday = isHolidayFrontend(currentDate, estimationCountry, customHolidays);
+
+      let isWorkingDay = true;
+      if (!includeWeekends && isWeekend) isWorkingDay = false;
+      if (!includeHolidays && isHoliday) isWorkingDay = false;
+
+      if (isWorkingDay) {
+        workdaysRemaining = workdaysRemaining >= 1 ? workdaysRemaining - 1 : 0;
+      }
+      if (workdaysRemaining > 0) {
+        currentDate.setUTCDate(currentDate.getUTCDate() + 1);
+      }
     }
 
-    const combinedFactor = uFactor * expFactor * debtFactor * depFactor * switchingPenalty;
-    const riskLevel = combinedFactor > 4 ? "crítico" : combinedFactor > 2.5 ? "alto" : combinedFactor > 1.5 ? "medio" : "bajo";
+    const projectedEndDate = currentDate;
+    const calendarDays = Math.max(1, Math.ceil(
+      (projectedEndDate.getTime() - new Date(startDate + "T00:00:00Z").getTime()) / (24 * 60 * 60 * 1000)
+    ));
+
+    // ── 11. Risk & confidence metrics ───────────────────────────────────────
+    // combinedFactor = ratio of totalEffort over idealHours (how much it grew)
+    const combinedFactor = totalEffort / Math.max(task.idealHours, 0.1);
+    const riskLevel = combinedFactor > 3.5 ? "crítico" : combinedFactor > 2.2 ? "alto" : combinedFactor > 1.4 ? "medio" : "bajo";
     const confidence = Math.max(15, Math.min(95, Math.round(100 / combinedFactor)));
 
     return {
       totalEffort,
       realDays,
       withBuffer,
-      calendarDays: Math.ceil(calendarDays),
+      calendarDays,
+      projectedEndDateStr: formatDateUTC(projectedEndDate),
       combinedFactor,
       riskLevel,
       confidence,
+      teamAvgExpFactor: averageExpFactor,
       breakdown: {
-        base: task.idealHours,
-        uncertainty: baseEffort - task.idealHours,
-        ceremonies: codeReviewHours + testingHours + documentationHours,
-        context: adjustedEffort - baseEffort
+        base:             task.idealHours,
+        uncertainty:      uncertaintyOverhead,
+        teamOverhead:     expOverhead + brooksOverhead,
+        debtOverhead:     debtOverhead,
+        depOverhead:      depOverhead,
+        switchingOverhead: switchingOverhead,
+        scopeOverhead:    scopeOverhead,
+        ceremonies:       ceremoniesTotal,
+        // Individual ceremony breakdown
+        codeReview:       codeReviewHours,
+        testing:          testingHours,
+        documentation:    documentationHours
       }
     };
-  }, [hoursPerDay, bufferPercentage, includeWeekends]);
+  }, [
+    weights,
+    complexityLevels,
+    techDebtOptions,
+    dependencyOptions,
+    scopeDefinitionLevels,
+    teamJuniorCount,
+    teamMidCount,
+    teamSeniorCount,
+    scopeDefinition,
+    hoursPerDay,
+    bufferPercentage,
+    startDate,
+    estimationCountry,
+    customHolidays,
+    includeWeekends,
+    includeHolidays
+  ]);
 
   const taskResults = useMemo(() => {
     return tasks.map((t) => ({
@@ -232,9 +760,8 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
       "Tarea",
       "Horas Ideales",
       "Complejidad",
-      "Experiencia",
       "Deuda Tecnica",
-      "Factor Combinado",
+      "Factor Crecimiento",
       "Horas Ajustadas",
       "Dias Reales",
       "Dias con Buffer",
@@ -247,7 +774,6 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
       `"${tr.task.name}"`,
       tr.task.idealHours,
       tr.task.complexity,
-      tr.task.experience,
       tr.task.techDebt,
       tr.res.combinedFactor.toFixed(2),
       tr.res.totalEffort.toFixed(1),
@@ -311,7 +837,16 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
           includeWeekends,
           totals,
           estimationContext,
-          selectedProjectId
+          selectedProjectId,
+          // Phase 3 & 4 States:
+          teamSeniorCount,
+          teamMidCount,
+          teamJuniorCount,
+          includeHolidays,
+          scopeDefinition,
+          startDate,
+          estimationCountry,
+          weights
         })
       });
       await loadEstimations();
@@ -356,21 +891,50 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
       if (raw.selectedProjectId) setSelectedProjectId(raw.selectedProjectId);
       else if (est.projectId) setSelectedProjectId(est.projectId);
       
+      // Phase 3 & 4 States
+      if (raw.teamSeniorCount !== undefined) setTeamSeniorCount(raw.teamSeniorCount);
+      else if (raw.teamSize !== undefined) setTeamSeniorCount(raw.teamSize); // Fallback
+      if (raw.teamMidCount !== undefined) setTeamMidCount(raw.teamMidCount);
+      if (raw.teamJuniorCount !== undefined) setTeamJuniorCount(raw.teamJuniorCount);
+      if (raw.includeHolidays !== undefined) setIncludeHolidays(raw.includeHolidays);
+      if (raw.scopeDefinition !== undefined) setScopeDefinition(raw.scopeDefinition);
+      if (raw.startDate !== undefined) setStartDate(raw.startDate);
+      if (raw.estimationCountry !== undefined) setEstimationCountry(raw.estimationCountry);
+      if (raw.weights !== undefined) setWeights({ ...DEFAULT_WEIGHTS, ...raw.weights });
+
       showSuccess("Estimación cargada correctamente.");
     } catch {
       onError("No se pudo cargar la data cruda de la estimación.");
     }
   };
 
+  // Calibration weight handlers
+  const handleSaveWeights = (newWeights: EstimationWeights) => {
+    setWeights(newWeights);
+    localStorage.setItem("synaptica_estimation_weights", JSON.stringify(newWeights));
+    showSuccess("Factores de calibración guardados y aplicados.");
+  };
+
+  const handleResetWeights = () => {
+    setWeights(DEFAULT_WEIGHTS);
+    localStorage.setItem("synaptica_estimation_weights", JSON.stringify(DEFAULT_WEIGHTS));
+    showSuccess("Calibración restaurada a valores predeterminados.");
+  };
+
+  const activeTask = tasks[activeTaskIndex] || null;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2rem", padding: "1rem 2rem" }}>
+    <div className={showTooltips ? "" : "hide-tooltips"} style={{ display: "flex", flexDirection: "column", gap: "2.5rem", padding: "1rem 2rem" }}>
       
       <PageHeader
         icon="⚖"
         title="Calculadora de Estimaciones"
-        description="Herramienta interactiva para estimar el esfuerzo, horas y costos de desarrollo por tareas utilizando el método PERT."
+        description="Herramienta interactiva para estimar el esfuerzo, horas y costos de desarrollo por tareas utilizando el método PERT calibrado por U-Factor."
         actions={
           <>
+            <button type="button" onClick={handleToggleTooltips} className="ghost" style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px", borderColor: "#9ca3af", color: "#4b5563" }}>
+              {showTooltips ? "ℹ️ Ocultar Tooltips" : "ℹ️ Mostrar Tooltips"}
+            </button>
             <button type="button" onClick={() => setShowEducation((v) => !v)} className="ghost" style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px", borderColor: "#c4b5fd", color: "#7c3aed" }}>
               {showEducation ? "🎓 Ocultar Guía Educativa" : "🎓 Mostrar Guía Educativa"}
             </button>
@@ -392,352 +956,707 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
         </div>
       )}
 
-      {/* Educational Guide Drawer / Panel */}
-      {showEducation && (
-        <div style={{ 
-          display: "grid", 
-          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", 
-          gap: "1rem", 
-          background: "#fff9f2", 
-          border: "1px solid #ffd8a8", 
-          borderRadius: "14px", 
-          padding: "1.5rem" 
-        }}>
-          <div>
-            <h4 style={{ margin: "0 0 0.5rem 0", color: "#9a4f0f", display: "flex", alignItems: "center", gap: "0.3rem" }}>🧠 ¿Qué es U-Factor?</h4>
-            <p style={{ margin: 0, fontSize: "0.78rem", color: "#7a3c10", lineHeight: 1.45 }}>
-              El <strong>U-Factor (Uncertainty Factor)</strong> es un multiplicador que convierte el tiempo estimado optimista (horas ideales) en tiempo real estimado, compensando la falta de especificaciones claras y el riesgo tecnológico.
-            </p>
-          </div>
-          <div>
-            <h4 style={{ margin: "0 0 0.5rem 0", color: "#9a4f0f", display: "flex", alignItems: "center", gap: "0.3rem" }}>📐 Fórmula Científica</h4>
-            <p style={{ margin: 0, fontSize: "0.78rem", color: "#7a3c10", lineHeight: 1.45, fontFamily: "monospace", background: "#fff", padding: "0.4rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}>
-              T_Real = T_Ideal × Complejidad × Seniority × Deuda × Deps × Switch + Ceremonias(QA, CR, Docs)
-            </p>
-          </div>
-          <div>
-            <h4 style={{ margin: "0 0 0.5rem 0", color: "#9a4f0f", display: "flex", alignItems: "center", gap: "0.3rem" }}>⚡ Penalización por Contexto</h4>
-            <p style={{ margin: 0, fontSize: "0.78rem", color: "#7a3c10", lineHeight: 1.45 }}>
-              El <strong>Context Switching</strong> añade un recargo del <strong>+15%</strong> al esfuerzo base. Trabajar en múltiples tareas simultáneamente degrada la productividad cognitiva y alarga los plazos reales.
-            </p>
-          </div>
-          <div>
-            <h4 style={{ margin: "0 0 0.5rem 0", color: "#9a4f0f", display: "flex", alignItems: "center", gap: "0.3rem" }}>🛡️ Ley de Ceremonias Ágiles</h4>
-            <p style={{ margin: 0, fontSize: "0.78rem", color: "#7a3c10", lineHeight: 1.45 }}>
-              Las tareas de calidad son indispensables: se agrega <strong>+25%</strong> para Testing/QA, <strong>+15%</strong> para Code Review y <strong>+10%</strong> para Documentación técnica sobre las horas ideales.
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Main Tab selectors for Estimator / Weights Calibrator */}
+      <div style={{ display: "flex", gap: "0.5rem", borderBottom: "1px solid #ffd8a8", paddingBottom: "0.5rem", marginBottom: "-1rem" }}>
+        <button
+          type="button"
+          onClick={() => setActiveMainTab("estimator")}
+          style={{
+            padding: "0.6rem 1.25rem",
+            borderRadius: "8px 8px 0 0",
+            border: "none",
+            background: activeMainTab === "estimator" ? "linear-gradient(135deg, #ffe8cc, #fffdfb)" : "transparent",
+            color: activeMainTab === "estimator" ? "#9a4f0f" : "var(--text-soft)",
+            fontWeight: 700,
+            cursor: "pointer",
+            borderBottom: activeMainTab === "estimator" ? "3px solid #ff9c2c" : "none",
+            transition: "all 0.2s"
+          }}
+        >
+          📊 Estimador de Proyecto
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveMainTab("weights")}
+          style={{
+            padding: "0.6rem 1.25rem",
+            borderRadius: "8px 8px 0 0",
+            border: "none",
+            background: activeMainTab === "weights" ? "linear-gradient(135deg, #ffe8cc, #fffdfb)" : "transparent",
+            color: activeMainTab === "weights" ? "#9a4f0f" : "var(--text-soft)",
+            fontWeight: 700,
+            cursor: "pointer",
+            borderBottom: activeMainTab === "weights" ? "3px solid #ff9c2c" : "none",
+            transition: "all 0.2s"
+          }}
+        >
+          ⚙️ Configuración de Pesos (Factores)
+        </button>
+      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1.85fr 1.15fr", gap: "2rem", alignItems: "start" }} className="responsive-grid">
-        
-        {/* Left column: Parameters & Vertical Task Accordions */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          
-          {/* Global Config Card */}
-          <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "rgba(255, 255, 255, 0.5)" }}>
-            <h3 style={{ margin: "0 0 1rem 0", fontSize: "1rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
-              ⚙ Parámetros Globales de Estimación
-            </h3>
-            <div className="form-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
-              
-              <div>
-                <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Proyecto Vinculado</label>
-                <select 
-                  value={selectedProjectId} 
-                  onChange={(e) => setSelectedProjectId(e.target.value)}
-                  style={{ width: "100%", padding: "0.55rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
-                >
-                  <option value="">-- Sin Vincular / Personal --</option>
-                  {projects.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700, display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                  Nombre de la Estimación / Contexto
-                  <span style={{ cursor: "help", color: "#9a4f0f" }} title="Si no seleccionas un proyecto, este campo actuará directamente como el nombre con el que se guardará la estimación.">ℹ</span>
-                </label>
-                <input 
-                  type="text" 
-                  value={estimationContext} 
-                  onChange={(e) => setEstimationContext(e.target.value)} 
-                  placeholder="Ej. Sprint 3 - Integración de Pagos"
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
-                />
-              </div>
-
-              <div>
-                <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Horas Productivas Diarias</label>
-                <input 
-                  type="number" 
-                  min={1} 
-                  max={12} 
-                  value={hoursPerDay} 
-                  onChange={(e) => setHoursPerDay(Number(e.target.value) || 8)} 
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
-                />
-              </div>
-
-              <div>
-                <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Duración Sprint (Días Hábiles)</label>
-                <input 
-                  type="number" 
-                  min={1} 
-                  max={30} 
-                  value={sprintDays} 
-                  onChange={(e) => setSprintDays(Number(e.target.value) || 10)} 
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
-                />
-              </div>
-
-              <div>
-                <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Colchón de Imprevistos (%)</label>
-                <input 
-                  type="number" 
-                  min={0} 
-                  max={100} 
-                  value={bufferPercentage} 
-                  onChange={(e) => setBufferPercentage(Number(e.target.value) || 0)} 
-                  style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
-                />
-              </div>
-
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "1.2rem" }}>
-                <input 
-                  type="checkbox" 
-                  id="includeWeekends" 
-                  checked={includeWeekends} 
-                  onChange={(e) => setIncludeWeekends(e.target.checked)} 
-                  style={{ width: "18px", height: "18px", cursor: "pointer" }}
-                />
-                <label htmlFor="includeWeekends" style={{ fontSize: "0.8rem", fontWeight: 700, cursor: "pointer" }}>Incluir Fines de Semana</label>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Tasks Vertical Accordions Section */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
-              <h3 style={{ margin: 0, fontSize: "1.05rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
-                Desglose de Tareas Estimadas ({tasks.length})
-              </h3>
-              <button 
-                type="button" 
-                onClick={handleAddTask} 
-                style={{ 
-                  padding: "0.4rem 1rem", 
-                  borderRadius: "8px", 
-                  border: "1px solid #f4d4b6", 
-                  background: "#ffe8cc", 
-                  color: "#9a4f0f", 
-                  fontWeight: 700, 
-                  fontSize: "0.82rem",
-                  cursor: "pointer" 
-                }}
-              >
-                ➕ Agregar Tarea
-              </button>
-            </div>
-
-            {/* Vertical Accordion List */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: "550px", overflowY: "auto", paddingRight: "0.4rem" }}>
-              {tasks.map((task, idx) => {
-                const tr = taskResults.find((r) => r.task.id === task.id)!;
-                const isOpen = activeTaskIndex === idx;
-                const riskColor = tr.res.riskLevel === "crítico" || tr.res.riskLevel === "alto" ? "#ef4444" : tr.res.riskLevel === "medio" ? "#eab308" : "#22c55e";
-
-                return (
-                  <div 
-                    key={task.id} 
-                    style={{ 
-                      border: "1px solid #f4d4b6", 
-                      borderRadius: "12px", 
-                      overflow: "hidden", 
-                      background: isOpen ? "#fffdfa" : "#fff",
-                      boxShadow: isOpen ? "0 4px 16px rgba(154, 79, 15, 0.06)" : "none",
-                      transition: "all 0.2s ease"
-                    }}
-                  >
-                    
-                    {/* Header Acordeón */}
-                    <div 
-                      onClick={() => setActiveTaskIndex(isOpen ? -1 : idx)}
-                      style={{ 
-                        padding: "0.9rem 1.2rem", 
-                        display: "flex", 
-                        justifyContent: "space-between", 
-                        alignItems: "center", 
+      {activeMainTab === "estimator" ? (
+        <div className="fade-in-tab" style={{ display: "flex", flexDirection: "column", gap: "2.5rem" }}>
+          {/* Educational Guide Drawer */}
+          {showEducation && (
+            <div style={{
+              background: "linear-gradient(135deg, #fff9f2, #fffcf8)",
+              border: "1px solid #ffd8a8",
+              borderRadius: "14px",
+              padding: "1.5rem"
+            }}>
+              {/* Tab Selector */}
+              <div style={{ display: "flex", gap: "0.25rem", borderBottom: "2px solid #ffe8cc", paddingBottom: "0", marginBottom: "1.25rem" }}>
+                {(["concepts", "example", "factors"] as const).map((tab) => {
+                  const labels: Record<string, string> = { concepts: "📖 Conceptos Clave", example: "🔢 Ejemplo Real", factors: "⚖️ Tabla de Factores" };
+                  return (
+                    <button
+                      key={tab}
+                      type="button"
+                      onClick={() => setGuideTab(tab)}
+                      style={{
+                        padding: "0.4rem 0.9rem",
+                        border: "none",
+                        borderBottom: guideTab === tab ? "3px solid #ff9c2c" : "3px solid transparent",
+                        background: "transparent",
+                        color: guideTab === tab ? "#9a4f0f" : "var(--text-soft)",
+                        fontWeight: guideTab === tab ? 700 : 500,
+                        fontSize: "0.82rem",
                         cursor: "pointer",
-                        background: isOpen ? "rgba(255, 156, 44, 0.04)" : "#fff",
-                        borderBottom: isOpen ? "1px solid #f4d4b6" : "none",
-                        userSelect: "none"
+                        transition: "all 0.15s",
+                        marginBottom: "-2px"
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
-                        <span style={{ 
-                          width: "24px", 
-                          height: "24px", 
-                          borderRadius: "50%", 
-                          background: isOpen ? "#ff9c2c" : "#f3f4f6", 
-                          color: isOpen ? "#fff" : "#6b7280", 
-                          display: "inline-grid", 
-                          placeItems: "center", 
-                          fontSize: "0.8rem", 
-                          fontWeight: 700 
-                        }}>
-                          {idx + 1}
-                        </span>
-                        <strong style={{ fontSize: "0.92rem", color: isOpen ? "#9a4f0f" : "var(--text-strong)" }}>
-                          {task.name || `Tarea ${idx + 1}`}
-                        </strong>
+                      {labels[tab]}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {guideTab === "concepts" ? (
+                <div style={{ display: "grid", gridTemplateColumns: "1.6fr 1fr", gap: "1.5rem", alignItems: "start" }} className="responsive-grid">
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "0.85rem" }}>
+                    {[
+                      {
+                        icon: "🧠", title: "Método U-Factor",
+                        color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe",
+                        body: "Convierte tus horas ideales (optimistas) en horas reales añadiendo capas de overhead controladas. Cada factor es aditivo — no se multiplican entre sí.",
+                        tip: "Piensa en las horas ideales como el mejor caso posible. El U-Factor estima cuánto crecerá en el mundo real."
+                      },
+                      {
+                        icon: "🔬", title: "Complejidad (U-Factor)",
+                        color: "#b45309", bg: "#fffbeb", border: "#fde68a",
+                        body: `El factor base de incertidumbre. Rutinaria (×${weights.compRoutine}): trabajo conocido. Incógnitas (×${weights.compKnownUnknowns}): dependencias externas. Inexplorado (×${weights.compUnknownUnknowns}): tecnología nueva o sin documentar.`,
+                        tip: "Sé conservador: un CRUD con un API externa que no conoces es 'Incógnitas', no 'Rutinaria'."
+                      },
+                      {
+                        icon: "👥", title: "Composición del Equipo",
+                        color: "#c2410c", bg: "#fff7ed", border: "#fed7aa",
+                        body: `El factor promedio ponderado del equipo se calcula automáticamente. Senior (×${weights.expSenior}) = línea base. Mid (×${weights.expMid}) = +${Math.round((weights.expMid-1)*100)}% overhead. Junior (×${weights.expJunior}) = +${Math.round((weights.expJunior-1)*100)}% overhead.`,
+                        tip: "Un equipo 1SR + 1MID + 1JR tiene factor promedio ×" + (((weights.expSenior + weights.expMid + weights.expJunior) / 3).toFixed(2)) + ". Añade juniors con cuidado."
+                      },
+                      {
+                        icon: "💬", title: "Ley de Brooks",
+                        color: "#0e7490", bg: "#ecfeff", border: "#a5f3fc",
+                        body: `Cada persona que se une crea nuevos canales de comunicación: L = n(n-1)/2. Con ${totalDevs} personas hay ${totalChannels} canales, añadiendo +${Math.round(totalChannels * weights.brooksFactor * 100)}% overhead sobre el esfuerzo base.`,
+                        tip: "Agregar un dev tarde en un proyecto retrasado lo retrasa más. Planifica el equipo desde el inicio."
+                      },
+                      {
+                        icon: "⚠️", title: "Deuda Técnica",
+                        color: "#7c3aed", bg: "#faf5ff", border: "#e9d5ff",
+                        body: `Estado del código base. Limpio (×${weights.debtClean}): fácil de modificar. Moderado (×${weights.debtModerate}): algunos obstáculos. Pesado (×${weights.debtHeavy}): sin tests, alto acoplamiento. Legacy (×${weights.debtLegacy}): sin documentación, miedo a cambiar.`,
+                        tip: "La deuda técnica es el multiplicador silencioso más subestimado por los PMs."
+                      },
+                      {
+                        icon: "🛡️", title: "Ceremonias Ágiles",
+                        color: "#1d4ed8", bg: "#eff6ff", border: "#bfdbfe",
+                        body: `Overhead fijo sobre las horas ideales. Code Review: +${Math.round(weights.ceremonyCodeReview*100)}%. Testing/QA: +${Math.round(weights.ceremonyTesting*100)}%. Documentación: +${Math.round(weights.ceremonyDocumentation*100)}%. Son horas reales que se gastan aunque no se programen explícitamente.`,
+                        tip: "Nunca omitas testing en la estimación — el cliente siempre lo va a pedir al final de todos modos."
+                      },
+                      {
+                        icon: "📐", title: "Riesgo de Alcance",
+                        color: "#b91c1c", bg: "#fef2f2", border: "#fecaca",
+                        body: `Qué tan definidos están los requisitos. Cerrado (×${weights.scopeClosed}): documentado y firmado. Pendientes (×${weights.scopePending}): detalles por confirmar. Difuso (×${weights.scopeDiffuse}): el cliente sabe qué quiere pero no el cómo. Sin cierre (×${weights.scopeNoTechnicalClosure}): alcance cambia semanalmente.`,
+                        tip: "Sin cierre técnico el proyecto es potencialmente infinito. Escala esto al PM inmediatamente."
+                      },
+                      {
+                        icon: "🔄", title: "Context Switching",
+                        color: "#be185d", bg: "#fdf2f8", border: "#fbcfe8",
+                        body: `Cuando el dev trabaja en múltiples tareas a la vez pierde tiempo en cambiar de contexto mental. Actívalo si el dev está asignado a más de 2 proyectos o tiene reuniones constantes. Overhead: +${Math.round((weights.contextSwitchingPenalty-1)*100)}% sobre el esfuerzo base.`,
+                        tip: "Un dev interrumpido cada hora tarda hasta 23 min en recuperar el foco profundo."
+                      }
+                    ].map((card) => (
+                      <div key={card.title} style={{
+                        background: card.bg,
+                        border: `1px solid ${card.border}`,
+                        borderRadius: "10px",
+                        padding: "0.85rem",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "0.4rem"
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                          <span style={{ fontSize: "1rem" }}>{card.icon}</span>
+                          <strong style={{ fontSize: "0.8rem", color: card.color }}>{card.title}</strong>
+                        </div>
+                        <p style={{ margin: 0, fontSize: "0.73rem", color: "#374151", lineHeight: 1.45 }}>{card.body}</p>
+                        <div style={{ background: "rgba(0,0,0,0.04)", borderRadius: "6px", padding: "0.35rem 0.5rem", fontSize: "0.68rem", color: card.color, fontStyle: "italic", display: "flex", alignItems: "flex-start", gap: "0.3rem" }}>
+                          <span>💡</span> <span>{card.tip}</span>
+                        </div>
                       </div>
+                    ))}
+                  </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: "1rem" }} onClick={(e) => e.stopPropagation()}>
-                        {/* Summary metrics inside header */}
-                        <span style={{ 
-                          fontSize: "0.78rem", 
-                          padding: "0.15rem 0.5rem", 
-                          borderRadius: "4px", 
-                          background: `${riskColor}12`, 
-                          color: riskColor, 
-                          fontWeight: 700, 
-                          borderLeft: `2.5px solid ${riskColor}` 
-                        }}>
-                          {tr.res.totalEffort.toFixed(1)}h (~{tr.res.withBuffer.toFixed(1)}d)
+                  {/* Interactive SVG */}
+                  <div style={{ background: "#fff", padding: "1rem", borderRadius: "12px", border: "1px solid #ffd8a8", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                    <div style={{ textAlign: "center" }}>
+                      <h5 style={{ margin: "0 0 0.2rem 0", color: "#5f2f00", fontSize: "0.82rem", fontWeight: 700 }}>Red de Canales (Brooks' Law)</h5>
+                      <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--text-soft)" }}>{totalDevs} devs → {totalChannels} canales de comunicación</p>
+                    </div>
+                    <div style={{ width: "210px", height: "210px", background: "#fffdfb", border: "1px solid #f4d4b6", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {totalDevs <= 1 ? (
+                        <span style={{ fontSize: "0.72rem", color: "var(--text-soft)", fontStyle: "italic", textAlign: "center", padding: "0 1rem" }}>Agrega más devs en los parámetros para ver los canales</span>
+                      ) : (
+                        <svg width="200" height="200" viewBox="0 0 210 210" style={{ display: "block" }}>
+                          {lines.map((line, idx) => (<line key={idx} x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} stroke="#ffd8a8" strokeWidth="1" strokeOpacity="0.75" />))}
+                          {nodes.map((node, idx) => (
+                            <g key={idx}>
+                              <circle cx={node.x} cy={node.y} r={totalDevs > 10 ? "6" : "8"} fill={node.color} stroke="#fff" strokeWidth="1.5" style={{ filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.1))" }} />
+                              <text x={node.x} y={node.y + 2.5} fill="#fff" fontSize={totalDevs > 10 ? "5px" : "6px"} fontWeight="bold" textAnchor="middle">{node.label}</text>
+                            </g>
+                          ))}
+                        </svg>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: "0.75rem", fontSize: "0.68rem", color: "var(--text-soft)" }}>
+                      {[["#22c55e", "Senior"], ["#eab308", "Mid"], ["#ef4444", "Junior"]].map(([c, l]) => (
+                        <span key={l} style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+                          <span style={{ width: "8px", height: "8px", background: c, borderRadius: "50%", flexShrink: 0 }} /> {l}
                         </span>
-
-                        {/* Accordion toggle icon */}
-                        <span 
-                          onClick={() => setActiveTaskIndex(isOpen ? -1 : idx)}
-                          style={{ color: "var(--text-soft)", fontSize: "0.75rem", cursor: "pointer", padding: "0 0.25rem" }}
-                        >
-                          {isOpen ? "▼" : "▶"}
-                        </span>
-
-                        {tasks.length > 1 && (
-                          <button 
-                            type="button" 
-                            onClick={() => handleRemoveTask(task.id)}
-                            style={{ color: "#ef4444", border: "none", background: "none", cursor: "pointer", fontSize: "0.85rem" }}
-                            title="Eliminar tarea"
-                          >
-                            ✕
-                          </button>
-                        )}
+                      ))}
+                    </div>
+                    {totalChannels > 0 && (
+                      <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "8px", padding: "0.5rem 0.75rem", fontSize: "0.72rem", color: "#c2410c", textAlign: "center", lineHeight: 1.4 }}>
+                        <strong>{totalChannels} canales</strong> × {(weights.brooksFactor * 100).toFixed(0)}% = <strong>+{Math.round(totalChannels * weights.brooksFactor * 100)}%</strong> overhead de coordinación
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : guideTab === "example" ? (
+                /* Worked example tab */
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.25rem" }} className="responsive-grid">
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                    <div style={{ background: "#f0f9ff", border: "1px solid #bae6fd", borderRadius: "10px", padding: "1rem" }}>
+                      <h4 style={{ margin: "0 0 0.75rem 0", color: "#0369a1", fontSize: "0.9rem", fontWeight: 700 }}>📋 Escenario de ejemplo</h4>
+                      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", fontSize: "0.78rem", color: "#1e40af" }}>
+                        {[
+                          ["Tarea", "Integración pasarela de pagos PSE"],
+                          ["Horas ideales", "8h (estimado optimista)"],
+                          ["Complejidad", `Incógnitas Conocidas (×${weights.compKnownUnknowns})`],
+                          ["Equipo", "1 Senior + 1 Mid"],
+                          ["Deuda técnica", "Código limpio"],
+                          ["Dependencias", `API externa (×${weights.depExternal})`],
+                          ["Ceremonias", "Code Review + Testing"],
+                          ["Alcance", "Cerrado y acotado"],
+                        ].map(([k, v]) => (
+                          <div key={k} style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e0f2fe", paddingBottom: "0.25rem" }}>
+                            <span style={{ color: "#64748b" }}>{k}:</span>
+                            <strong style={{ textAlign: "right", maxWidth: "60%" }}>{v}</strong>
+                          </div>
+                        ))}
                       </div>
                     </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                    <h4 style={{ margin: "0 0 0.25rem 0", color: "#9a4f0f", fontSize: "0.9rem", fontWeight: 700 }}>🧮 Cálculo paso a paso</h4>
+                    {(() => {
+                      const ideal = 8;
+                      const base = ideal * weights.compKnownUnknowns;
+                      const unc = base - ideal;
+                      const avgExp = (weights.expSenior + weights.expMid) / 2;
+                      const expOv = base * (avgExp - 1);
+                      const depOv = base * (weights.depExternal - 1);
+                      const brooks = base * 1 * weights.brooksFactor; // L=1 for 2 devs
+                      const ceremonies = ideal * weights.ceremonyCodeReview + ideal * weights.ceremonyTesting;
+                      const total = base + expOv + depOv + brooks + ceremonies;
+                      const steps = [
+                        { label: "🏗 Base (8h × complejidad)",        value: base,     color: "#15803d" },
+                        { label: `🔬 Incertidumbre (×${weights.compKnownUnknowns} - 1)`, value: unc, color: "#b45309" },
+                        { label: `👥 Overhead equipo (factor ×${avgExp.toFixed(2)})`, value: expOv, color: "#c2410c" },
+                        { label: `🔗 Dep. externa (+${Math.round((weights.depExternal-1)*100)}%)`, value: depOv, color: "#0e7490" },
+                        { label: `💬 Brooks (1 canal × ${(weights.brooksFactor*100).toFixed(0)}%)`, value: brooks, color: "#6d28d9" },
+                        { label: `👁 Code Review (+${Math.round(weights.ceremonyCodeReview*100)}%)`, value: ideal*weights.ceremonyCodeReview, color: "#1d4ed8" },
+                        { label: `🧪 Testing (+${Math.round(weights.ceremonyTesting*100)}%)`, value: ideal*weights.ceremonyTesting, color: "#1d4ed8" },
+                      ];
+                      return (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                          {steps.map((s, i) => (
+                            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.3rem 0.5rem", background: i === 0 ? "#f0fdf4" : "#fffcf5", borderRadius: "6px", border: `1px solid ${i === 0 ? "#bbf7d0" : "#fff3e0"}`, fontSize: "0.75rem" }}>
+                              <span style={{ color: "var(--text-soft)" }}>{s.label}</span>
+                              <strong style={{ color: s.color }}>{i === 0 ? "" : "+"}{s.value.toFixed(1)}h</strong>
+                            </div>
+                          ))}
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem", background: "linear-gradient(135deg, #fffcf9, #fff6ee)", borderRadius: "6px", border: "2px solid #ff9c2c", fontSize: "0.82rem", fontWeight: 700, marginTop: "0.25rem" }}>
+                            <span style={{ color: "#9a4f0f" }}>⏱ Total real estimado:</span>
+                            <span style={{ color: "#9a4f0f", fontSize: "1rem" }}>{total.toFixed(1)}h</span>
+                          </div>
+                          <div style={{ fontSize: "0.7rem", color: "var(--text-soft)", textAlign: "center", fontStyle: "italic" }}>
+                            8h de código → {total.toFixed(1)}h de trabajo real (×{(total/8).toFixed(2)} factor de crecimiento)
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                </div>
+              ) : (
+                /* Factors table */
+                <div style={{ overflowX: "auto", fontSize: "0.76rem" }}>
+                  <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.78rem", color: "#7a3c10", background: "#fff7ed", borderRadius: "8px", padding: "0.6rem 0.75rem", border: "1px solid #fed7aa" }}>
+                    💡 Estos factores son <strong>configurables</strong> en la pestaña <strong>⚙️ Configuración de Pesos</strong>. Ajústalos según la realidad histórica de tu equipo.
+                  </p>
+                  <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
+                    <thead>
+                      <tr style={{ background: "#fff3e0", color: "#5f2f00" }}>
+                        <th style={{ padding: "0.5rem 0.6rem", borderRadius: "8px 0 0 0", fontWeight: 700, fontSize: "0.78rem" }}>Categoría</th>
+                        <th style={{ padding: "0.5rem 0.6rem", fontWeight: 700, fontSize: "0.78rem" }}>Nivel / Tipo</th>
+                        <th style={{ padding: "0.5rem 0.6rem", fontWeight: 700, fontSize: "0.78rem" }}>Factor / Overhead</th>
+                        <th style={{ padding: "0.5rem 0.6rem", borderRadius: "0 8px 0 0", fontWeight: 700, fontSize: "0.78rem" }}>Cuándo usarlo</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[
+                        ["🔬 Complejidad", "Rutinaria", `×${weights.compRoutine}`, "CRUD estándar, UI conocida"],
+                        ["", "Incógnitas Conocidas", `×${weights.compKnownUnknowns}`, "APIs externas, refactoring"],
+                        ["", "Territorio Inexplorado", `×${weights.compUnknownUnknowns}`, "Tech nueva, sin documentar"],
+                        ["👥 Seniority", "Senior (baseline)", `×${weights.expSenior}`, "Referencia sin overhead"],
+                        ["", "Mid-Level", `×${weights.expMid}`, "+${Math.round((weights.expMid-1)*100)}% vs senior"],
+                        ["", "Junior", `×${weights.expJunior}`, "+${Math.round((weights.expJunior-1)*100)}% vs senior"],
+                        ["⚠️ Deuda Técnica", "Código Limpio", `×${weights.debtClean}`, "Bien testeado, buen CI/CD"],
+                        ["", "Deuda Moderada", `×${weights.debtModerate}`, "Algunos problemas de deuda"],
+                        ["", "Deuda Pesada", `×${weights.debtHeavy}`, "Sin tests, alto acoplamiento"],
+                        ["", "Legacy Crítico", `×${weights.debtLegacy}`, "Sin documentación, obsoleto"],
+                        ["🔗 Dependencias", "Sin dependencias", `×${weights.depNone}`, "Control total del equipo"],
+                        ["", "Interna (otro equipo)", `×${weights.depInternal}`, "Prioridades cruzadas"],
+                        ["", "Externa (proveedor)", `×${weights.depExternal}`, "Terceros, APIs externas"],
+                        ["", "Múltiples bloqueantes", `×${weights.depMultiple}`, "Varias dependencias simultáneas"],
+                        ["🛡️ Ceremonias", "Code Review", `+${Math.round(weights.ceremonyCodeReview*100)}%`, "Sobre horas ideales (fijo)"],
+                        ["", "Testing / QA", `+${Math.round(weights.ceremonyTesting*100)}%`, "Sobre horas ideales (fijo)"],
+                        ["", "Documentación", `+${Math.round(weights.ceremonyDocumentation*100)}%`, "Sobre horas ideales (fijo)"],
+                        ["📐 Alcance", "Cerrado", `×${weights.scopeClosed}`, "Requisitos firmados y estables"],
+                        ["", "Pendientes menores", `×${weights.scopePending}`, "Pequeños detalles sin confirmar"],
+                        ["", "Difuso / WIP", `×${weights.scopeDiffuse}`, "El cliente no sabe el cómo"],
+                        ["", "Sin Cierre Técnico", `×${weights.scopeNoTechnicalClosure}`, "Alcance cambia cada semana"],
+                      ].map(([cat, level, factor, when], i) => (
+                        <tr key={i} style={{ background: i % 2 === 0 ? "#fffcf9" : "#fff", borderBottom: "1px solid #fdefd9" }}>
+                          <td style={{ padding: "0.35rem 0.6rem", fontWeight: cat ? 700 : 400, color: cat ? "#7c3aed" : "var(--text-soft)" }}>{cat}</td>
+                          <td style={{ padding: "0.35rem 0.6rem", color: "#374151" }}>{level}</td>
+                          <td style={{ padding: "0.35rem 0.6rem", fontWeight: 700, color: "#9a4f0f", fontFamily: "monospace" }}>{factor}</td>
+                          <td style={{ padding: "0.35rem 0.6rem", color: "var(--text-soft)", fontSize: "0.72rem", fontStyle: "italic" }}>{when}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          )}
 
-                    {/* Accordion Body (Expanded Form fields) */}
-                    {isOpen && (
-                      <div style={{ padding: "1.5rem", background: "#fffdfa" }}>
-                        
-                        <div className="form-grid" style={{ gridTemplateColumns: "1fr 1fr", gap: "1.2rem" }} onClick={(e) => e.stopPropagation()}>
-                          <div style={{ gridColumn: "span 2" }}>
-                            <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Nombre de la Tarea</label>
+          <div style={{ display: "grid", gridTemplateColumns: "2.1fr 0.9fr", gap: "2rem", alignItems: "start" }} className="responsive-grid">
+            
+            {/* Left column: Global config & Split Workspace */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              
+              {/* Global Config Card */}
+              <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "rgba(255, 255, 255, 0.5)", maxWidth: "1100px" }}>
+                <h3 style={{ margin: "0 0 1rem 0", fontSize: "1rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
+                  ⚙ Parámetros Globales de Estimación
+                </h3>
+                <div className="calculator-grid">
+                  
+                  <div>
+                    <label className="form-label">Proyecto Vinculado <InfoTooltip text="Asocia esta estimación a un proyecto existente para llevar trazabilidad." /></label>
+                    <select 
+                      value={selectedProjectId} 
+                      onChange={(e) => setSelectedProjectId(e.target.value)}
+                      style={{ width: "100%", padding: "0.55rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                    >
+                      <option value="">-- Sin Vincular / Personal --</option>
+                      {projects.map((p) => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">
+                      Nombre de Estimación
+                      <InfoTooltip text="Título o descripción breve para identificar este grupo de tareas." />
+                    </label>
+                    <input 
+                      type="text" 
+                      value={estimationContext} 
+                      onChange={(e) => setEstimationContext(e.target.value)} 
+                      placeholder="Ej. Sprint 3 - Integración de Pagos"
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Horas Productivas Diarias <InfoTooltip text="Horas reales de programación al día, excluyendo descansos o pausas." /></label>
+                    <input 
+                      type="number" 
+                      min={1} 
+                      max={12} 
+                      value={hoursPerDay} 
+                      onChange={(e) => setHoursPerDay(Number(e.target.value) || 8)} 
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Duración Sprint (Días Hábiles) <InfoTooltip text="Cuántos días laborales dura la iteración. Afecta el cálculo de fechas." /></label>
+                    <input 
+                      type="number" 
+                      min={1} 
+                      max={30} 
+                      value={sprintDays} 
+                      onChange={(e) => setSprintDays(Number(e.target.value) || 10)} 
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Colchón de Imprevistos (%) <InfoTooltip text="Margen de seguridad global extra para cubrir riesgos no previstos." /></label>
+                    <input 
+                      type="number" 
+                      min={0} 
+                      max={100} 
+                      value={bufferPercentage} 
+                      onChange={(e) => setBufferPercentage(Number(e.target.value) || 0)} 
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Fecha de Inicio <InfoTooltip text="Fecha en la que arranca el desarrollo." /></label>
+                    <input 
+                      type="date" 
+                      value={startDate} 
+                      onChange={(e) => setStartDate(e.target.value)} 
+                      style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="form-label">Calendario de Festivos (País) <InfoTooltip text="Define los días festivos a omitir del cálculo temporal si aplica." /></label>
+                    <select 
+                      value={estimationCountry} 
+                      onChange={(e) => setEstimationCountry(e.target.value)}
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                    >
+                      <option value="US">USA / Default (Federal)</option>
+                      <option value="CO">Colombia 🇨🇴</option>
+                      <option value="PE">Perú 🇵🇪</option>
+                      <option value="CL">Chile 🇨🇱</option>
+                      <option value="MX">México 🇲🇽</option>
+                      <option value="EC">Ecuador 🇪🇨</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label">Riesgo de Alcance <InfoTooltip text="Evalúa qué tan cerrados y claros están los requisitos." /></label>
+                    <select 
+                      value={scopeDefinition} 
+                      onChange={(e) => setScopeDefinition(e.target.value)}
+                      style={{ width: "100%", padding: "0.55rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                    >
+                      {scopeDefinitionLevels.map((s) => (
+                        <option key={s.key} value={s.key}>{s.label}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Team Grid composition inputs */}
+                  <div className="calculator-grid-span-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", background: "rgba(255, 156, 44, 0.05)", padding: "0.75rem", borderRadius: "10px", border: "1px solid #ffe8cc" }}>
+                    <div style={{ gridColumn: "span 3", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#9a4f0f" }}>
+                        👥 Composición del Equipo: <InfoTooltip text="Número de programadores. Afecta el rendimiento y los canales de comunicación." />
+                      </span>
+                      {/* Live factor chip */}
+                      {(() => {
+                        const size = Math.max(1, teamSeniorCount + teamMidCount + teamJuniorCount);
+                        const avg = (teamSeniorCount * weights.expSenior + teamMidCount * weights.expMid + teamJuniorCount * weights.expJunior) / size;
+                        const color = avg <= 1.05 ? "#22c55e" : avg <= 1.2 ? "#eab308" : "#ef4444";
+                        const label = avg <= 1.05 ? "Muy Ágil" : avg <= 1.2 ? "Ágil" : "Requiere más tiempo";
+                        return (
+                          <span style={{ fontSize: "0.7rem", fontWeight: 700, background: `${color}18`, color, border: `1px solid ${color}44`, borderRadius: "9999px", padding: "0.1rem 0.5rem" }}>
+                            Factor Equipo: x{avg.toFixed(2)} — {label}
+                          </span>
+                        );
+                      })()}
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, marginBottom: "0.15rem" }}>🟢 Seniors</label>
+                      <input 
+                        type="number" min={0} max={20}
+                        value={teamSeniorCount} 
+                        onChange={(e) => setTeamSeniorCount(Math.max(0, Number(e.target.value) || 0))} 
+                        style={{ width: "100%", padding: "0.35rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, marginBottom: "0.15rem" }}>🟡 Mids</label>
+                      <input 
+                        type="number" min={0} max={20}
+                        value={teamMidCount} 
+                        onChange={(e) => setTeamMidCount(Math.max(0, Number(e.target.value) || 0))} 
+                        style={{ width: "100%", padding: "0.35rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "0.72rem", fontWeight: 700, marginBottom: "0.15rem" }}>🔴 Juniors</label>
+                      <input 
+                        type="number" min={0} max={20}
+                        value={teamJuniorCount} 
+                        onChange={(e) => setTeamJuniorCount(Math.max(0, Number(e.target.value) || 0))} 
+                        style={{ width: "100%", padding: "0.35rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Calendar simulation options card */}
+                  <div className="calculator-grid-span-2" style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: "0.75rem", background: "rgba(255, 156, 44, 0.05)", padding: "0.75rem", borderRadius: "10px", border: "1px solid #ffe8cc" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#9a4f0f" }}>
+                        📅 Opciones de Calendario: <InfoTooltip text="Configura si los fines de semana y festivos se consideran días laborables en la simulación temporal." />
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", gap: "0.6rem" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <input 
+                          type="checkbox" 
+                          id="includeWeekends" 
+                          checked={includeWeekends} 
+                          onChange={(e) => setIncludeWeekends(e.target.checked)} 
+                          style={{ width: "16px", height: "16px", cursor: "pointer", flexShrink: 0 }}
+                        />
+                        <label htmlFor="includeWeekends" style={{ fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", margin: 0 }}>
+                          Incluir Fines de Semana
+                          <InfoTooltip text="Trabajar sábados y domingos (reduce la duración total del proyecto)." />
+                        </label>
+                      </div>
+
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                        <input 
+                          type="checkbox" 
+                          id="includeHolidays" 
+                          checked={includeHolidays} 
+                          onChange={(e) => setIncludeHolidays(e.target.checked)} 
+                          style={{ width: "16px", height: "16px", cursor: "pointer", flexShrink: 0 }}
+                        />
+                        <label htmlFor="includeHolidays" style={{ fontSize: "0.78rem", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", margin: 0 }}>
+                          Incluir Días Festivos (Calendario)
+                          <InfoTooltip text="Considerar los festivos nacionales del país seleccionado como días laborales hábiles." />
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Master-Detail Task Workspace Container */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <h3 style={{ margin: 0, fontSize: "1.05rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
+                    Desglose de Tareas Estimadas ({tasks.length})
+                  </h3>
+                  <button 
+                    type="button" 
+                    onClick={handleAddTask} 
+                    style={{ 
+                      padding: "0.4rem 1rem", 
+                      borderRadius: "8px", 
+                      border: "1px solid #f4d4b6", 
+                      background: "#ffe8cc", 
+                      color: "#9a4f0f", 
+                      fontWeight: 700, 
+                      fontSize: "0.82rem",
+                      cursor: "pointer" 
+                    }}
+                  >
+                    ➕ Agregar Tarea
+                  </button>
+                </div>
+
+                {/* Split Pane Work Area */}
+                <div className="split-pane-wrapper" style={{ 
+                  display: "flex", 
+                  gap: "1rem", 
+                  background: "rgba(255, 255, 255, 0.45)", 
+                  border: "1px solid #ffd8a8", 
+                  borderRadius: "14px", 
+                  padding: "1rem", 
+                  backdropFilter: "blur(12px)",
+                  minHeight: "580px"
+                }}>
+                  {/* Panel Izquierdo: Master Task list (35% width) */}
+                  <div className="split-pane-master" style={{ width: "35%", display: "flex", flexDirection: "column", gap: "0.75rem", borderRight: "1px solid #ffd8a8", paddingRight: "1rem" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)", borderBottom: "1px solid #ffd8a8", paddingBottom: "0.25rem", display: "flex", justifyContent: "space-between" }}>
+                      <span>Tareas</span>
+                      <span>Horas Estimadas</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", overflowY: "auto", maxHeight: "530px", paddingRight: "0.25rem" }}>
+                      {tasks.map((task, idx) => {
+                        const tr = taskResults.find((r) => r.task.id === task.id)!;
+                        const isActive = activeTaskIndex === idx;
+                        return (
+                          <div
+                            key={task.id}
+                            onClick={() => setActiveTaskIndex(idx)}
+                            style={{
+                              padding: "0.6rem 0.85rem",
+                              borderRadius: "10px",
+                              background: isActive ? "linear-gradient(135deg, #ffe8cc, #ffd8a8)" : "rgba(255, 255, 255, 0.6)",
+                              border: isActive ? "2px solid #ff9c2c" : "1px solid #e5e7eb",
+                              cursor: "pointer",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              transition: "all 0.2s ease"
+                            }}
+                          >
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.15rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, paddingRight: "0.5rem" }}>
+                              <span style={{ fontSize: "0.68rem", color: "var(--text-soft)", fontWeight: 700 }}>Tarea {idx + 1}</span>
+                              <strong style={{ fontSize: "0.8rem", color: isActive ? "#5f2f00" : "var(--text-strong)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {task.name || "Sin nombre"}
+                              </strong>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: isActive ? "#b45309" : "var(--text-soft)" }}>
+                                {tr.res.totalEffort.toFixed(1)}h
+                              </span>
+                              {tasks.length > 1 && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemoveTask(task.id);
+                                  }}
+                                  style={{
+                                    border: "none",
+                                    background: "none",
+                                    color: "#ef4444",
+                                    cursor: "pointer",
+                                    fontSize: "0.9rem",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    padding: "0.2rem",
+                                    borderRadius: "50%"
+                                  }}
+                                  onMouseEnter={(ev) => ev.currentTarget.style.background = "rgba(239, 68, 68, 0.1)"}
+                                  onMouseLeave={(ev) => ev.currentTarget.style.background = "none"}
+                                  title="Eliminar tarea"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Panel Derecho: Detail Form for currently selected task (65% width) */}
+                  <div className="split-pane-detail" style={{ width: "65%", display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto", maxHeight: "580px", paddingRight: "0.5rem", paddingLeft: "0.25rem" }}>
+                    {activeTask ? (
+                      <div key={activeTask.id} className="fade-in-detail" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffd8a8", paddingBottom: "0.5rem", marginBottom: "0.25rem" }}>
+                          <h4 style={{ margin: 0, fontSize: "0.92rem", color: "#5f2f00", fontFamily: "var(--display)" }}>
+                            📝 Parámetros de Simulación de Tarea
+                          </h4>
+                          {(() => {
+                            const size = Math.max(1, teamJuniorCount + teamMidCount + teamSeniorCount);
+                            const avg = (teamSeniorCount * weights.expSenior + teamMidCount * weights.expMid + teamJuniorCount * weights.expJunior) / size;
+                            const color = avg <= 1.05 ? "#22c55e" : avg <= 1.2 ? "#eab308" : "#ef4444";
+                            return (
+                              <span style={{ fontSize: "0.72rem", color: "var(--text-soft)" }}>
+                                👥 Factor Experiencia: <strong style={{ color }}>x{avg.toFixed(2)}</strong> (Global)
+                              </span>
+                            );
+                          })()}
+                        </div>
+                        <div className="task-editor-grid">
+                          
+                          
+                          <div className="task-editor-span-2">
+                            <label className="form-label">Nombre de la Tarea <InfoTooltip text="Un identificador descriptivo para esta tarea en particular." /></label>
                             <input 
                               type="text" 
-                              value={task.name} 
-                              onChange={(e) => handleUpdateTask(task.id, "name", e.target.value)} 
+                              value={activeTask.name} 
+                              onChange={(e) => handleUpdateTask(activeTask.id, "name", e.target.value)} 
                               placeholder="Ej. Integración pasarela PSE"
                               style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
                             />
                           </div>
 
                           <div>
-                            <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Esfuerzo Ideal (Horas)</label>
+                            <label className="form-label">Esfuerzo Ideal (Horas) <InfoTooltip text="Horas de programación netas en un escenario optimista perfecto." /></label>
                             <input 
                               type="number" 
                               min={0.5} 
                               step={0.5}
-                              value={task.idealHours} 
-                              onChange={(e) => handleUpdateTask(task.id, "idealHours", Number(e.target.value) || 1)} 
+                              value={activeTask.idealHours} 
+                              onChange={(e) => handleUpdateTask(activeTask.id, "idealHours", Number(e.target.value) || 1)} 
                               style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
                             />
                           </div>
 
                           <div>
-                            <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Complejidad (Coeficiente U-Factor)</label>
+                            <label className="form-label">Complejidad (U-Factor) <InfoTooltip text="Nivel de dificultad técnica o ambigüedad intrínseca de la tarea." /></label>
                             <select 
-                              value={task.complexity} 
-                              onChange={(e) => handleUpdateTask(task.id, "complexity", e.target.value)}
+                              value={activeTask.complexity} 
+                              onChange={(e) => handleUpdateTask(activeTask.id, "complexity", e.target.value)}
                               style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
                             >
-                              {COMPLEXITY_LEVELS.map((c) => (
-                                <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
-                              ))}
-                            </select>
-                            {(() => {
-                              const sel = COMPLEXITY_LEVELS.find((c) => c.key === task.complexity);
-                              return sel ? (
-                                <div style={{ marginTop: "0.3rem", padding: "0.4rem 0.6rem", background: `${sel.color}08`, border: `1px solid ${sel.color}18`, borderRadius: "6px", fontSize: "0.72rem", color: "#4b5563" }}>
-                                  <strong>{sel.icon} Detalle:</strong> {sel.desc}
-                                  <div style={{ marginTop: "0.2rem", display: "flex", flexWrap: "wrap", gap: "0.25rem" }}>
-                                    {sel.examples?.map((ex, i) => (
-                                      <span key={i} style={{ padding: "0.05rem 0.35rem", background: "#fff", border: "1px solid #e5e7eb", borderRadius: "4px", fontSize: "0.68rem" }}>{ex}</span>
-                                    ))}
-                                  </div>
-                                </div>
-                              ) : null;
-                            })()}
-                          </div>
-
-                          <div>
-                            <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Experiencia del Desarrollador</label>
-                            <select 
-                              value={task.experience} 
-                              onChange={(e) => handleUpdateTask(task.id, "experience", e.target.value)}
-                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
-                            >
-                              {TEAM_EXPERIENCE.map((e) => (
-                                <option key={e.key} value={e.key}>{e.label}</option>
+                              {complexityLevels.map((c) => (
+                                <option key={c.key} value={c.key}>{c.label}</option>
                               ))}
                             </select>
                           </div>
 
                           <div>
-                            <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Deuda Técnica del Entorno</label>
+                            <label className="form-label">Deuda Técnica del Entorno <InfoTooltip text="Estado actual del código donde se inserta esta tarea (calidad, tests)." /></label>
                             <select 
-                              value={task.techDebt} 
-                              onChange={(e) => handleUpdateTask(task.id, "techDebt", e.target.value)}
+                              value={activeTask.techDebt} 
+                              onChange={(e) => handleUpdateTask(activeTask.id, "techDebt", e.target.value)}
                               style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
                             >
-                              {TECH_DEBT.map((d) => (
-                                <option key={d.key} value={d.key}>{d.label}</option>
-                              ))}
-                            </select>
-                            {(() => {
-                              const sel = TECH_DEBT.find((d) => d.key === task.techDebt);
-                              return sel ? (
-                                <div style={{ marginTop: "0.25rem", fontSize: "0.7rem", color: "var(--text-soft)", fontStyle: "italic" }}>
-                                  ℹ {sel.desc}
-                                </div>
-                              ) : null;
-                            })()}
-                          </div>
-
-                          <div>
-                            <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Dependencias Externas</label>
-                            <select 
-                              value={task.dependencies} 
-                              onChange={(e) => handleUpdateTask(task.id, "dependencies", e.target.value)}
-                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
-                            >
-                              {DEPENDENCIES.map((d) => (
+                              {techDebtOptions.map((d) => (
                                 <option key={d.key} value={d.key}>{d.label}</option>
                               ))}
                             </select>
                           </div>
 
                           <div>
-                            <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Reuniones al día (Promedio)</label>
+                            <label className="form-label">Dependencias Externas <InfoTooltip text="Grado de dependencia de otros equipos, sistemas o APIs externas." /></label>
                             <select 
-                              value={task.meetingsPerDay} 
-                              onChange={(e) => handleUpdateTask(task.id, "meetingsPerDay", Number(e.target.value))}
+                              value={activeTask.dependencies} 
+                              onChange={(e) => handleUpdateTask(activeTask.id, "dependencies", e.target.value)}
+                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                            >
+                              {dependencyOptions.map((d) => (
+                                <option key={d.key} value={d.key}>{d.label}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="form-label">Reuniones al día (Promedio) <InfoTooltip text="Cantidades de interrupciones diarias que reducen el foco." /></label>
+                            <select 
+                              value={activeTask.meetingsPerDay} 
+                              onChange={(e) => handleUpdateTask(activeTask.id, "meetingsPerDay", Number(e.target.value))}
                               style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
                             >
                               <option value={0}>0 (Sin interrupciones)</option>
@@ -748,245 +1667,638 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                             </select>
                           </div>
 
-                          <div style={{ gridColumn: "span 2", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "0.75rem", margin: "0.5rem 0" }}>
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                          <div className="task-editor-span-2" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.5rem", margin: "0.25rem 0" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                               <input 
                                 type="checkbox" 
-                                id={`hasCodeReview-${task.id}`}
-                                checked={task.hasCodeReview}
-                                onChange={(e) => handleUpdateTask(task.id, "hasCodeReview", e.target.checked)}
-                                style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                                id={`hasCodeReview-${activeTask.id}`}
+                                checked={activeTask.hasCodeReview}
+                                onChange={(e) => handleUpdateTask(activeTask.id, "hasCodeReview", e.target.checked)}
+                                style={{ width: "14px", height: "14px", cursor: "pointer" }}
                               />
-                              <label htmlFor={`hasCodeReview-${task.id}`} style={{ fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Requiere Code Review (+15%)</label>
+                              <label htmlFor={`hasCodeReview-${activeTask.id}`} style={{ fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>Code Review (+{Math.round(weights.ceremonyCodeReview * 100)}%)</label>
                             </div>
 
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                               <input 
                                 type="checkbox" 
-                                id={`hasTesting-${task.id}`}
-                                checked={task.hasTesting}
-                                onChange={(e) => handleUpdateTask(task.id, "hasTesting", e.target.checked)}
-                                style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                                id={`hasTesting-${activeTask.id}`}
+                                checked={activeTask.hasTesting}
+                                onChange={(e) => handleUpdateTask(activeTask.id, "hasTesting", e.target.checked)}
+                                style={{ width: "14px", height: "14px", cursor: "pointer" }}
                               />
-                              <label htmlFor={`hasTesting-${task.id}`} style={{ fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Requiere Testing/QA (+25%)</label>
+                              <label htmlFor={`hasTesting-${activeTask.id}`} style={{ fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>Testing/QA (+{Math.round(weights.ceremonyTesting * 100)}%)</label>
                             </div>
 
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                               <input 
                                 type="checkbox" 
-                                id={`hasDocumentation-${task.id}`}
-                                checked={task.hasDocumentation}
-                                onChange={(e) => handleUpdateTask(task.id, "hasDocumentation", e.target.checked)}
-                                style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                                id={`hasDocumentation-${activeTask.id}`}
+                                checked={activeTask.hasDocumentation}
+                                onChange={(e) => handleUpdateTask(activeTask.id, "hasDocumentation", e.target.checked)}
+                                style={{ width: "14px", height: "14px", cursor: "pointer" }}
                               />
-                              <label htmlFor={`hasDocumentation-${task.id}`} style={{ fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Requiere Documentación (+10%)</label>
+                              <label htmlFor={`hasDocumentation-${activeTask.id}`} style={{ fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>Documentación (+{Math.round(weights.ceremonyDocumentation * 100)}%)</label>
                             </div>
 
-                            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                               <input 
                                 type="checkbox" 
-                                id={`contextSwitching-${task.id}`}
-                                checked={task.contextSwitching}
-                                onChange={(e) => handleUpdateTask(task.id, "contextSwitching", e.target.checked)}
-                                style={{ width: "16px", height: "16px", cursor: "pointer" }}
+                                id={`contextSwitching-${activeTask.id}`}
+                                checked={activeTask.contextSwitching}
+                                onChange={(e) => handleUpdateTask(activeTask.id, "contextSwitching", e.target.checked)}
+                                style={{ width: "14px", height: "14px", cursor: "pointer" }}
                               />
-                              <label htmlFor={`contextSwitching-${task.id}`} style={{ fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}>Context Switching (+15%)</label>
+                              <label htmlFor={`contextSwitching-${activeTask.id}`} style={{ fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>Context Switching (+{Math.round((weights.contextSwitchingPenalty - 1) * 100)}%)</label>
                             </div>
                           </div>
 
-                          <div style={{ gridColumn: "span 2" }}>
-                            <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Notas / Riesgos Identificados</label>
+                          <div className="task-editor-span-2">
+                            <label className="form-label">Notas / Riesgos Identificados <InfoTooltip text="Observaciones o alertas importantes sobre la ejecución de esta tarea." /></label>
                             <textarea 
                               rows={2} 
-                              value={task.notes} 
-                              onChange={(e) => handleUpdateTask(task.id, "notes", e.target.value)}
+                              value={activeTask.notes} 
+                              onChange={(e) => handleUpdateTask(activeTask.id, "notes", e.target.value)}
                               placeholder="Ej. VPN de terceros inestable, requiere aprobación del arquitecto principal..."
                               style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff", resize: "vertical" }}
                             />
                           </div>
+
                         </div>
 
-                        {/* Individual Task Result Breakdown rendered INSIDE expanded accordion */}
-                        <div style={{ marginTop: "1.5rem", padding: "1rem", background: "#fff3e6", border: "1px solid #ffd8a8", borderRadius: "10px" }}>
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.85rem", color: "#9a4f0f", fontWeight: 700, marginBottom: "0.5rem" }}>
-                            <span>Cálculo Científico de Esfuerzo (U-Factor):</span>
-                            <span>Riesgo Tarea: <strong style={{ color: riskColor, textTransform: "uppercase" }}>{tr.res.riskLevel}</strong></span>
-                          </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.5rem", textAlign: "center", fontSize: "0.78rem" }}>
-                            <div style={{ background: "#fff", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}>
-                              <span style={{ color: "var(--text-soft)", display: "block", fontSize: "0.7rem", marginBottom: "0.15rem" }}>Esfuerzo Ideal</span>
-                              <strong>{task.idealHours}h</strong>
-                            </div>
-                            <div style={{ background: "#fff", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}>
-                              <span style={{ color: "var(--text-soft)", display: "block", fontSize: "0.7rem", marginBottom: "0.15rem" }}>Factor Total</span>
-                              <strong style={{ color: "#b45309" }}>x{tr.res.combinedFactor.toFixed(2)}</strong>
-                            </div>
-                            <div style={{ background: "#fff", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}>
-                              <span style={{ color: "var(--text-soft)", display: "block", fontSize: "0.7rem", marginBottom: "0.15rem" }}>Esfuerzo Real</span>
-                              <strong>{tr.res.totalEffort.toFixed(1)}h</strong>
-                            </div>
-                            <div style={{ background: "#fff", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}>
-                              <span style={{ color: "var(--text-soft)", display: "block", fontSize: "0.7rem", marginBottom: "0.15rem" }}>Días con Buffer</span>
-                              <strong style={{ color: "#9a4f0f" }}>{tr.res.withBuffer.toFixed(1)}d</strong>
-                            </div>
-                          </div>
-                        </div>
+                        {/* Individual Task stacked horizontal bar and transparent breakdown */}
+                        {(() => {
+                          const tr = taskResults[activeTaskIndex];
+                          if (!tr) return null;
+                          const { totalEffort, breakdown, riskLevel, combinedFactor } = tr.res;
+                          
+                          const riskColors: Record<string, string> = { bajo: "#22c55e", medio: "#eab308", alto: "#ef4444", crítico: "#7f1d1d" };
+                          const riskColor = riskColors[riskLevel] || "#22c55e";
 
+                          // Segments for the stacked bar
+                          const segments = [
+                            { value: breakdown.base,             color: "#4ade80",  label: "Base" },
+                            { value: breakdown.uncertainty,      color: "#fbbf24",  label: "Complejidad" },
+                            { value: breakdown.teamOverhead,     color: "#f97316",  label: "Equipo" },
+                            { value: breakdown.debtOverhead,     color: "#a855f7",  label: "Deuda" },
+                            { value: breakdown.depOverhead,      color: "#06b6d4",  label: "Deps" },
+                            { value: breakdown.switchingOverhead, color: "#ec4899", label: "Switching" },
+                            { value: breakdown.scopeOverhead,    color: "#ef4444",  label: "Alcance" },
+                            { value: breakdown.ceremonies,       color: "#60a5fa",  label: "Ceremonias" },
+                          ].filter(s => s.value > 0.01);
+
+                          // Named breakdown rows
+                          const rows = [
+                            { icon: "🏗", label: "Base ideal (sin ajustes)",        value: breakdown.base,              color: "#15803d" },
+                            { icon: "🔬", label: `Incertidumbre (complejidad)`,     value: breakdown.uncertainty,       color: "#b45309" },
+                            { icon: "👥", label: "Overhead de equipo (exp + Brooks)", value: breakdown.teamOverhead,    color: "#c2410c" },
+                            { icon: "⚠️", label: "Deuda técnica del entorno",       value: breakdown.debtOverhead,      color: "#7c3aed" },
+                            { icon: "🔗", label: "Dependencias externas",           value: breakdown.depOverhead,       color: "#0e7490" },
+                            { icon: "🔄", label: "Context switching",               value: breakdown.switchingOverhead, color: "#be185d" },
+                            { icon: "📐", label: "Riesgo de alcance",               value: breakdown.scopeOverhead,     color: "#b91c1c" },
+                            ...(breakdown.codeReview > 0.01   ? [{ icon: "👁", label: "Code Review",        value: breakdown.codeReview,    color: "#1d4ed8" }] : []),
+                            ...(breakdown.testing > 0.01      ? [{ icon: "🧪", label: "Testing / QA",       value: breakdown.testing,       color: "#1d4ed8" }] : []),
+                            ...(breakdown.documentation > 0.01 ? [{ icon: "📄", label: "Documentación",     value: breakdown.documentation, color: "#1d4ed8" }] : []),
+                          ].filter(r => r.value > 0.01);
+
+                          return (
+                            <div style={{ marginTop: "0.5rem", padding: "1rem", background: "#fffdfa", border: "1px solid #ffd8a8", borderRadius: "10px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.82rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.75rem" }}>
+                                <span>📊 Desglose Completo de Esfuerzo:</span>
+                                <span>Crecimiento: <strong style={{ color: riskColor }}>x{combinedFactor.toFixed(2)}</strong> — Riesgo: <strong style={{ color: riskColor, textTransform: "uppercase" }}>{riskLevel}</strong></span>
+                              </div>
+                              
+                              {/* Stacked effort bar */}
+                              <div style={{ display: "flex", height: "14px", borderRadius: "7px", overflow: "hidden", border: "1px solid #ffd8a8", background: "#f3f4f6", marginBottom: "0.75rem" }}>
+                                {segments.map((s, i) => (
+                                  <div
+                                    key={i}
+                                    style={{ width: `${(s.value / totalEffort) * 100}%`, background: s.color, height: "100%", transition: "width 0.3s ease" }}
+                                    title={`${s.label}: ${s.value.toFixed(1)}h (${Math.round((s.value / totalEffort) * 100)}%)`}
+                                  />
+                                ))}
+                              </div>
+
+                              {/* Named breakdown rows */}
+                              <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+                                {rows.map((row, i) => (
+                                  <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.73rem", padding: "0.2rem 0", borderBottom: i < rows.length - 1 ? "1px solid #fff3e0" : "none" }}>
+                                    <span style={{ color: "var(--text-soft)", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                                      <span>{row.icon}</span> {row.label}
+                                    </span>
+                                    <span style={{ fontWeight: 700, color: row.value < 0.01 ? "var(--text-soft)" : row.color, minWidth: "70px", textAlign: "right" }}>
+                                      {i === 0 ? "" : "+"}{row.value.toFixed(1)}h
+                                      <span style={{ fontWeight: 400, color: "var(--text-soft)", marginLeft: "0.3rem" }}>
+                                        ({Math.round((row.value / totalEffort) * 100)}%)
+                                      </span>
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.6rem", paddingTop: "0.5rem", borderTop: "2px solid #ffd8a8", fontSize: "0.82rem", fontWeight: 700, color: "#9a4f0f" }}>
+                                <span>⏱ Esfuerzo Real Total:</span>
+                                <span style={{ fontSize: "1rem" }}>{totalEffort.toFixed(1)}h</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--text-soft)", padding: "2rem", textAlign: "center" }}>
+                        <span style={{ fontSize: "2rem" }}>📋</span>
+                        <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.9rem" }}>No hay tareas agregadas en esta estimación.</p>
                       </div>
                     )}
-
                   </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* Right column: Consolidation, Metrics & Saved Estimations */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-          
-          {/* Resumen Total Card */}
-          <div className="card" style={{ padding: "1.75rem", borderRadius: "14px", border: "2px solid #ff9c2c", background: "linear-gradient(135deg, #fffcf9, #fff6ee)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
-            <h3 style={{ margin: "0 0 1.25rem 0", color: "#5f2f00", fontFamily: "var(--display)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              📊 Consolidado del Proyecto
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f4d4b6", paddingBottom: "0.5rem" }}>
-                <span style={{ color: "var(--text-soft)" }}>Horas Ideales Estimadas:</span>
-                <strong style={{ fontSize: "1.1rem" }}>{totals.idealHours}h</strong>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f4d4b6", paddingBottom: "0.5rem" }}>
-                <span style={{ color: "var(--text-soft)" }}>Esfuerzo Real Calculado (U-Factor):</span>
-                <strong style={{ fontSize: "1.1rem", color: "#b45309" }}>{totals.adjustedHours.toFixed(1)}h</strong>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f4d4b6", paddingBottom: "0.5rem" }}>
-                <span style={{ color: "var(--text-soft)" }}>Días Hábiles con Buffer:</span>
-                <strong style={{ fontSize: "1.3rem", color: "#9a4f0f" }}>{totals.withBuffer.toFixed(1)} días</strong>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f4d4b6", paddingBottom: "0.5rem" }}>
-                <span style={{ color: "var(--text-soft)" }}>Días Calendario Aproximados:</span>
-                <strong style={{ fontSize: "1.1rem" }}>~{totals.calendarDays} días</strong>
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #f4d4b6", paddingBottom: "0.5rem", alignItems: "center" }}>
-                <span style={{ color: "var(--text-soft)" }}>Confianza de la Estimación:</span>
-                <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
-                  <strong style={{ color: totals.confidence > 60 ? "#22c55e" : totals.confidence > 35 ? "#eab308" : "#ef4444" }}>{totals.confidence}%</strong>
                 </div>
               </div>
-
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <span style={{ color: "var(--text-soft)" }}>Nivel de Riesgo del Proyecto:</span>
-                <span style={{ padding: "0.2rem 0.6rem", borderRadius: "9999px", background: totals.riskLevel === "crítico" || totals.riskLevel === "alto" ? "#fee2e2" : "#f0fdf4", color: totals.riskLevel === "crítico" || totals.riskLevel === "alto" ? "#ef4444" : "#22c55e", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase" }}>
-                  {totals.riskLevel}
-                </span>
-              </div>
             </div>
 
-            <div style={{ background: "rgba(255, 156, 44, 0.08)", border: "1px dashed #f0b07d", borderRadius: "8px", padding: "1rem", marginTop: "1rem", fontSize: "0.85rem", color: "#7a3c10", lineHeight: "140%" }}>
-              💡 <strong>Recomendación Comercial:</strong> Al negociar o armar la propuesta, comunica un rango de <strong>{totals.realDays.toFixed(0)} a {totals.withBuffer.toFixed(0)} días hábiles</strong>. Nunca des una sola cifra rígida.
-            </div>
+            {/* Right column: Consolidation, Metrics & Saved Estimations */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+              
+              {/* Resumen Total Card */}
+              <div className="card" style={{ padding: "1.75rem", borderRadius: "14px", border: "2px solid #ff9c2c", background: "linear-gradient(135deg, #fffcf9, #fff6ee)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
+                <h3 style={{ margin: "0 0 1.25rem 0", color: "#5f2f00", fontFamily: "var(--display)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  📊 Consolidado del Proyecto
+                </h3>
 
-            {/* Comparación visual de Ideal vs Ajustada */}
-            <div style={{ marginTop: "1.25rem", paddingTop: "1.25rem", borderTop: "1px solid #f4d4b6" }}>
-              <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.85rem", color: "#5f2f00", fontWeight: 700 }}>
-                Comparación: Ideal vs. Realidad Calculada
-              </h4>
-              <div style={{ display: "flex", height: "24px", background: "#f3f4f6", borderRadius: "6px", overflow: "hidden", margin: "0.5rem 0" }}>
-                <div style={{
-                  width: `${Math.max(15, Math.min(85, (totals.idealHours / Math.max(totals.adjustedHours, 1)) * 100))}%`,
-                  background: "#3b82f6",
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.72rem",
-                  fontWeight: "bold",
-                  transition: "width 0.3s ease"
-                }}>
-                  {totals.idealHours}h Ideal
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+                  <div className="summary-row">
+                    <span style={{ color: "var(--text-soft)", display: "flex", alignItems: "center" }}>Horas Ideales Estimadas <InfoTooltip text="Suma del esfuerzo neto optimista (sin imprevistos, reuniones ni deuda técnica)." />:</span>
+                    <strong style={{ fontSize: "1.1rem" }}>{totals.idealHours}h</strong>
+                  </div>
+
+                  <div className="summary-row">
+                    <span style={{ color: "var(--text-soft)", display: "flex", alignItems: "center" }}>Esfuerzo Real Calculado <InfoTooltip text="Horas reales necesarias incluyendo el U-Factor, ceremonias, deuda y comunicación." />:</span>
+                    <strong style={{ fontSize: "1.1rem", color: "#b45309" }}>{totals.adjustedHours.toFixed(1)}h</strong>
+                  </div>
+
+                  <div className="summary-row">
+                    <span style={{ color: "var(--text-soft)", display: "flex", alignItems: "center" }}>Días Hábiles con Buffer <InfoTooltip text="Duración en días laborables de esfuerzo incluyendo el colchón de imprevistos." />:</span>
+                    <strong style={{ fontSize: "1.3rem", color: "#9a4f0f" }}>{totals.withBuffer.toFixed(1)} días</strong>
+                  </div>
+
+                  <div className="summary-row">
+                    <span style={{ color: "var(--text-soft)", display: "flex", alignItems: "center" }}>Días Calendario Aproximados <InfoTooltip text="Estimación del tiempo de entrega incluyendo fines de semana y festivos." />:</span>
+                    <strong style={{ fontSize: "1.1rem" }}>~{totals.calendarDays} días</strong>
+                  </div>
+
+                  <div className="summary-row">
+                    <span style={{ color: "var(--text-soft)", display: "flex", alignItems: "center" }}>Confianza de la Estimación <InfoTooltip text="Nivel de certeza basado en la proporción de horas base vs overhead añadido." />:</span>
+                    <strong style={{ color: totals.confidence > 60 ? "#22c55e" : totals.confidence > 35 ? "#eab308" : "#ef4444", fontSize: "1.1rem" }}>{totals.confidence}%</strong>
+                  </div>
+
+                  <div className="summary-row" style={{ borderBottom: "none" }}>
+                    <span style={{ color: "var(--text-soft)", display: "flex", alignItems: "center" }}>Nivel de Riesgo del Proyecto <InfoTooltip text="Clasificación general de riesgo técnico y de alcance para reportar." />:</span>
+                    <span style={{ padding: "0.2rem 0.6rem", borderRadius: "9999px", background: totals.riskLevel === "crítico" || totals.riskLevel === "alto" ? "#fee2e2" : "#f0fdf4", color: totals.riskLevel === "crítico" || totals.riskLevel === "alto" ? "#ef4444" : "#22c55e", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase" }}>
+                      {totals.riskLevel}
+                    </span>
+                  </div>
                 </div>
-                <div style={{
-                  flexGrow: 1,
-                  background: "#ff9c2c",
-                  color: "#fff",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontSize: "0.72rem",
-                  fontWeight: "bold",
-                  transition: "width 0.3s ease"
-                }}>
-                  {totals.adjustedHours.toFixed(1)}h Real
-                </div>
-              </div>
-              <p style={{ margin: 0, fontSize: "0.76rem", color: "var(--text-soft)", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: "0.3rem" }}>
-                <span>💡</span>
-                <span>
-                  {totals.adjustedHours > totals.idealHours * 2.5 ? (
-                    <>Tu estimación ideal subestima el esfuerzo real en un <strong>{Math.round(((totals.adjustedHours - totals.idealHours) / totals.idealHours) * 100)}%</strong>. Comunica esto al negocio con datos.</>
-                  ) : totals.adjustedHours > totals.idealHours * 1.5 ? (
-                    <>Hay un recargo del <strong>{Math.round(((totals.adjustedHours - totals.idealHours) / totals.idealHours) * 100)}%</strong> sobre el ideal debido a la complejidad y riesgos detectados.</>
-                  ) : (
-                    <>La diferencia es del <strong>{Math.round(((totals.adjustedHours - totals.idealHours) / totals.idealHours) * 100)}%</strong>. Tareas rutinarias con baja fricción. Buen escenario.</>
-                  )}
-                </span>
-              </p>
-            </div>
-          </div>
 
-          {/* Saved Estimations List */}
-          <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
-            <h3 style={{ margin: "0 0 1rem 0", fontSize: "1rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
-              💾 Estimaciones Guardadas en Sistema ({estimations.length})
-            </h3>
-            {loadingEstimations ? (
-              <p className="loading">Cargando...</p>
-            ) : estimations.length === 0 ? (
-              <p style={{ color: "var(--text-soft)", fontSize: "0.85rem", fontStyle: "italic" }}>No hay estimaciones guardadas todavía.</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: "300px", overflowY: "auto" }}>
-                {estimations.map((est) => (
-                  <div 
-                    key={est.id} 
-                    style={{ 
-                      padding: "0.75rem", 
-                      borderRadius: "8px", 
-                      border: "1px solid #f4d4b6", 
-                      background: "#fffdfa", 
-                      display: "flex", 
-                      justifyContent: "space-between", 
-                      alignItems: "center" 
-                    }}
-                  >
-                    <div style={{ cursor: "pointer", flex: 1 }} onClick={() => loadSavedData(est)}>
-                      <strong style={{ fontSize: "0.85rem", color: "#9a4f0f", display: "block" }}>{est.projectName}</strong>
-                      <span style={{ fontSize: "0.75rem", color: "var(--text-soft)" }}>
-                        {Number(est.totalAdjustedHours).toFixed(1)}h | Riesgo: {est.riskLevel.toUpperCase()}
-                      </span>
+                <div style={{ background: "rgba(255, 156, 44, 0.08)", border: "1px dashed #f0b07d", borderRadius: "8px", padding: "1rem", marginTop: "1rem", fontSize: "0.85rem", color: "#7a3c10", lineHeight: "140%" }}>
+                  💡 <strong>Recomendación Comercial:</strong> Al negociar o armar la propuesta, comunica un rango de <strong>{totals.realDays.toFixed(0)} a {totals.withBuffer.toFixed(0)} días hábiles</strong>. Nunca des una sola cifra rígida.
+                </div>
+
+                {/* Warning PM banners based on Scope Definition */}
+                {scopeDefinition === "diffuse" && (
+                  <div style={{
+                    marginTop: "1rem",
+                    padding: "0.75rem 1rem",
+                    background: "#fffbeb",
+                    border: "1px solid #fde68a",
+                    color: "#b45309",
+                    borderRadius: "8px",
+                    fontSize: "0.82rem",
+                    lineHeight: "1.4"
+                  }}>
+                    ⚠️ <strong>Aviso del PM:</strong> El alcance de este proyecto está catalogado como <strong>Difuso (WIP)</strong>. Se aconseja incorporar un colchón de imprevistos más amplio y solicitar definiciones clave al cliente.
+                  </div>
+                )}
+                {scopeDefinition === "no_closure" && (
+                  <div style={{
+                    marginTop: "1rem",
+                    padding: "0.75rem 1rem",
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    color: "#b91c1c",
+                    borderRadius: "8px",
+                    fontSize: "0.82rem",
+                    lineHeight: "1.4"
+                  }}>
+                    🚨 <strong>Alerta Crítica del PM:</strong> El proyecto no cuenta con <strong>Cierre Técnico</strong>. Se recomienda alertar al PM inmediatamente para negociar un cierre técnico, dar tiempo al cliente para organizarse o congelar avances.
+                  </div>
+                )}
+
+                {/* Comparación visual de Ideal vs Ajustada */}
+                <div style={{ marginTop: "1.25rem", paddingTop: "1.25rem", borderTop: "1px solid #f4d4b6" }}>
+                  <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.85rem", color: "#5f2f00", fontWeight: 700 }}>
+                    Comparación: Ideal vs. Realidad Calculada
+                  </h4>
+                  <div style={{ display: "flex", height: "24px", background: "#f3f4f6", borderRadius: "6px", overflow: "hidden", margin: "0.5rem 0" }}>
+                    <div style={{
+                      width: `${Math.max(15, Math.min(85, (totals.idealHours / Math.max(totals.adjustedHours, 1)) * 100))}%`,
+                      background: "#3b82f6",
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "0.72rem",
+                      fontWeight: "bold",
+                      transition: "width 0.3s ease"
+                    }}>
+                      {totals.idealHours}h Ideal
                     </div>
-                    
-                    <button 
-                      type="button" 
-                      onClick={() => setDeleteTargetId(est.id)} 
-                      style={{ color: "#ef4444", border: "none", background: "none", cursor: "pointer", fontSize: "0.9rem" }}
-                      title="Eliminar estimación"
-                    >
-                      🗑
-                    </button>
+                    <div style={{
+                      flexGrow: 1,
+                      background: "#ff9c2c",
+                      color: "#fff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: "0.72rem",
+                      fontWeight: "bold",
+                      transition: "width 0.3s ease"
+                    }}>
+                      {totals.adjustedHours.toFixed(1)}h Real
+                    </div>
                   </div>
-                ))}
+                  <p style={{ margin: 0, fontSize: "0.76rem", color: "var(--text-soft)", lineHeight: 1.4, display: "flex", alignItems: "flex-start", gap: "0.3rem" }}>
+                    <span>💡</span>
+                    <span>
+                      {totals.adjustedHours > totals.idealHours * 2.5 ? (
+                        <>Tu estimación ideal subestima el esfuerzo real en un <strong>{Math.round(((totals.adjustedHours - totals.idealHours) / totals.idealHours) * 100)}%</strong>. Comunica esto al negocio con datos.</>
+                      ) : totals.adjustedHours > totals.idealHours * 1.5 ? (
+                        <>Hay un recargo del <strong>{Math.round(((totals.adjustedHours - totals.idealHours) / totals.idealHours) * 100)}%</strong> sobre el ideal debido a la complejidad y riesgos detectados.</>
+                      ) : (
+                        <>La diferencia es del <strong>{Math.round(((totals.adjustedHours - totals.idealHours) / totals.idealHours) * 100)}%</strong>. Tareas rutinarias con baja fricción. Buen escenario.</>
+                      )}
+                    </span>
+                  </p>
+                </div>
               </div>
-            )}
+
+              {/* Saved Estimations List */}
+              <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+                <h3 style={{ margin: "0 0 1rem 0", fontSize: "1rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
+                  💾 Estimaciones Guardadas en Sistema ({estimations.length})
+                </h3>
+                {loadingEstimations ? (
+                  <p className="loading">Cargando...</p>
+                ) : estimations.length === 0 ? (
+                  <p style={{ color: "var(--text-soft)", fontSize: "0.85rem", fontStyle: "italic" }}>No hay estimaciones guardadas todavía.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: "300px", overflowY: "auto" }}>
+                    {estimations.map((est) => (
+                      <div 
+                        key={est.id} 
+                        style={{ 
+                          padding: "0.75rem", 
+                          borderRadius: "8px", 
+                          border: "1px solid #f4d4b6", 
+                          background: "#fffdfa", 
+                          display: "flex", 
+                          justifyContent: "space-between", 
+                          alignItems: "center" 
+                        }}
+                      >
+                        <div style={{ cursor: "pointer", flex: 1 }} onClick={() => loadSavedData(est)}>
+                          <strong style={{ fontSize: "0.85rem", color: "#9a4f0f", display: "block" }}>{est.projectName}</strong>
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-soft)" }}>
+                            {Number(est.totalAdjustedHours).toFixed(1)}h | Riesgo: {est.riskLevel.toUpperCase()}
+                          </span>
+                        </div>
+                        
+                        <button 
+                          type="button" 
+                          onClick={() => setDeleteTargetId(est.id)} 
+                          style={{ color: "#ef4444", border: "none", background: "none", cursor: "pointer", fontSize: "0.9rem" }}
+                          title="Eliminar estimación"
+                        >
+                          🗑
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+            </div>
+
           </div>
-
         </div>
+      ) : (
+        /* Weights Config Tab */
+        <div className="card glass-card fade-in-tab" style={{ padding: "1.75rem", borderRadius: "14px", border: "1px solid #ffd8a8", background: "#fffdfb" }}>
+          <h3 style={{ margin: "0 0 1.5rem 0", color: "#5f2f00", fontFamily: "var(--display)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            ⚙️ Configuración y Calibración de Pesos (Factores Científicos)
+          </h3>
+          
+          <p style={{ fontSize: "0.85rem", color: "var(--text-soft)", margin: "-0.5rem 0 1.5rem 0", lineHeight: "1.4" }}>
+            Calibra los multiplicadores de la fórmula científica U-Factor de Synaptica. Estos coeficientes determinan cómo se escala el esfuerzo real de desarrollo según la complejidad del código, el seniority disponible, la deuda técnica, las dependencias y los riesgos de alcance.
+          </p>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+            
+            {/* 1. Complejidad (U-Factor) */}
+            <div>
+              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
+                1. Complejidad del Trabajo (U-Factor base)
+              </h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Rutinaria (Routine)</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="5.0"
+                    value={weights.compRoutine}
+                    onChange={(e) => setWeights({ ...weights, compRoutine: Number(e.target.value) || 1.3 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Incógnitas Conocidas (Known Unknowns)</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="5.0"
+                    value={weights.compKnownUnknowns}
+                    onChange={(e) => setWeights({ ...weights, compKnownUnknowns: Number(e.target.value) || 2.0 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Territorio Inexplorado (Unknown Unknowns)</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="10.0"
+                    value={weights.compUnknownUnknowns}
+                    onChange={(e) => setWeights({ ...weights, compUnknownUnknowns: Number(e.target.value) || 3.5 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+              </div>
+            </div>
 
-      </div>
+            {/* 2. Experiencia (Seniority) */}
+            <div>
+              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
+                2. Coeficientes de Seniority / Experiencia
+              </h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Senior (5+ años)</label>
+                  <input
+                    type="number" step="0.05" min="0.5" max="3.0"
+                    value={weights.expSenior}
+                    onChange={(e) => setWeights({ ...weights, expSenior: Number(e.target.value) || 1.0 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Mid-Level (2-5 años)</label>
+                  <input
+                    type="number" step="0.05" min="0.5" max="3.0"
+                    value={weights.expMid}
+                    onChange={(e) => setWeights({ ...weights, expMid: Number(e.target.value) || 1.25 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Junior (&lt;2 años)</label>
+                  <input
+                    type="number" step="0.05" min="0.5" max="3.0"
+                    value={weights.expJunior}
+                    onChange={(e) => setWeights({ ...weights, expJunior: Number(e.target.value) || 1.6 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Deuda Técnica */}
+            <div>
+              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
+                3. Fricción por Deuda Técnica
+              </h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Código Limpio</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="3.0"
+                    value={weights.debtClean}
+                    onChange={(e) => setWeights({ ...weights, debtClean: Number(e.target.value) || 1.0 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Deuda Moderada</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="3.0"
+                    value={weights.debtModerate}
+                    onChange={(e) => setWeights({ ...weights, debtModerate: Number(e.target.value) || 1.3 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Deuda Pesada</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="3.0"
+                    value={weights.debtHeavy}
+                    onChange={(e) => setWeights({ ...weights, debtHeavy: Number(e.target.value) || 1.6 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Legacy Crítico</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="4.0"
+                    value={weights.debtLegacy}
+                    onChange={(e) => setWeights({ ...weights, debtLegacy: Number(e.target.value) || 2.0 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 4. Dependencias */}
+            <div>
+              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
+                4. Bloqueos por Dependencias Externas
+              </h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Sin dependencias</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="3.0"
+                    value={weights.depNone}
+                    onChange={(e) => setWeights({ ...weights, depNone: Number(e.target.value) || 1.0 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Interna (Otro equipo)</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="3.0"
+                    value={weights.depInternal}
+                    onChange={(e) => setWeights({ ...weights, depInternal: Number(e.target.value) || 1.2 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Externa (Proveedor/API)</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="3.0"
+                    value={weights.depExternal}
+                    onChange={(e) => setWeights({ ...weights, depExternal: Number(e.target.value) || 1.4 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Múltiples bloqueantes</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="4.0"
+                    value={weights.depMultiple}
+                    onChange={(e) => setWeights({ ...weights, depMultiple: Number(e.target.value) || 1.6 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 5. Ceremonias, Contexto & Brooks' Law */}
+            <div>
+              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
+                5. Ceremonias, Contexto y Ley de Brooks
+              </h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Code Review (Proporción, ej: 0.15 = 15%)</label>
+                  <input
+                    type="number" step="0.01" min="0.0" max="1.0"
+                    value={weights.ceremonyCodeReview}
+                    onChange={(e) => setWeights({ ...weights, ceremonyCodeReview: Number(e.target.value) || 0.15 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Testing/QA (Proporción, ej: 0.25 = 25%)</label>
+                  <input
+                    type="number" step="0.01" min="0.0" max="1.0"
+                    value={weights.ceremonyTesting}
+                    onChange={(e) => setWeights({ ...weights, ceremonyTesting: Number(e.target.value) || 0.25 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Documentación (Proporción, ej: 0.10 = 10%)</label>
+                  <input
+                    type="number" step="0.01" min="0.0" max="1.0"
+                    value={weights.ceremonyDocumentation}
+                    onChange={(e) => setWeights({ ...weights, ceremonyDocumentation: Number(e.target.value) || 0.10 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Recargo por Context Switching</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="2.0"
+                    value={weights.contextSwitchingPenalty}
+                    onChange={(e) => setWeights({ ...weights, contextSwitchingPenalty: Number(e.target.value) || 1.15 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Recargo Canal Comunicación Brooks</label>
+                  <input
+                    type="number" step="0.01" min="0.0" max="0.5"
+                    value={weights.brooksFactor}
+                    onChange={(e) => setWeights({ ...weights, brooksFactor: Number(e.target.value) || 0.08 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* 6. Riesgo de Alcance */}
+            <div>
+              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
+                6. Coeficientes por Claridad de Alcance
+              </h4>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Cerrado y Acotado</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="3.0"
+                    value={weights.scopeClosed}
+                    onChange={(e) => setWeights({ ...weights, scopeClosed: Number(e.target.value) || 1.0 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Pendientes Menores</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="3.0"
+                    value={weights.scopePending}
+                    onChange={(e) => setWeights({ ...weights, scopePending: Number(e.target.value) || 1.25 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Difuso / WIP</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="4.0"
+                    value={weights.scopeDiffuse}
+                    onChange={(e) => setWeights({ ...weights, scopeDiffuse: Number(e.target.value) || 1.6 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Sin Cierre Técnico</label>
+                  <input
+                    type="number" step="0.05" min="1.0" max="5.0"
+                    value={weights.scopeNoTechnicalClosure}
+                    onChange={(e) => setWeights({ ...weights, scopeNoTechnicalClosure: Number(e.target.value) || 2.0 })}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                  />
+                </div>
+              </div>
+            </div>
+
+          </div>
+          
+          <div style={{ display: "flex", gap: "1rem", marginTop: "2rem", borderTop: "1px solid #ffd8a8", paddingTop: "1.5rem" }}>
+            <button
+              type="button"
+              onClick={() => handleSaveWeights(weights)}
+              style={{
+                padding: "0.6rem 1.5rem",
+                borderRadius: "8px",
+                border: "none",
+                background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                color: "#fff",
+                fontWeight: 700,
+                cursor: "pointer"
+              }}
+            >
+              💾 Guardar Calibración
+            </button>
+            <button
+              type="button"
+              onClick={handleResetWeights}
+              style={{
+                padding: "0.6rem 1.5rem",
+                borderRadius: "8px",
+                border: "1px solid #f4d4b6",
+                background: "#ffe8cc",
+                color: "#9a4f0f",
+                fontWeight: 700,
+                cursor: "pointer"
+              }}
+            >
+              🔄 Restaurar Predeterminados
+            </button>
+          </div>
+        </div>
+      )}
 
       <ConfirmDialog
         open={deleteTargetId !== null}

@@ -48,6 +48,86 @@ const payrollQuerySchema = z.object({
   month: z.coerce.number().min(1).max(12),
 });
 
+const defaultConfigs = [
+  {
+    country: "Default",
+    weeklyExtraHoursLimit: 12,
+    diurnalMultiplier: 1.50,
+    nocturnalMultiplier: 1.50,
+    diurnalHolidayMultiplier: 1.50,
+    nocturnalHolidayMultiplier: 1.50,
+    diurnalStart: "06:00:00",
+    diurnalEnd: "21:00:00",
+  },
+  {
+    country: "Colombia",
+    weeklyExtraHoursLimit: 12,
+    diurnalMultiplier: 1.25,
+    nocturnalMultiplier: 1.75,
+    diurnalHolidayMultiplier: 2.00,
+    nocturnalHolidayMultiplier: 2.50,
+    diurnalStart: "06:00:00",
+    diurnalEnd: "19:00:00",
+  },
+  {
+    country: "Peru",
+    weeklyExtraHoursLimit: 12,
+    diurnalMultiplier: 1.25,
+    nocturnalMultiplier: 1.60,
+    diurnalHolidayMultiplier: 2.00,
+    nocturnalHolidayMultiplier: 2.00,
+    diurnalStart: "06:00:00",
+    diurnalEnd: "22:00:00",
+  },
+  {
+    country: "Chile",
+    weeklyExtraHoursLimit: 12,
+    diurnalMultiplier: 1.50,
+    nocturnalMultiplier: 1.50,
+    diurnalHolidayMultiplier: 1.50,
+    nocturnalHolidayMultiplier: 1.50,
+    diurnalStart: "06:00:00",
+    diurnalEnd: "21:00:00",
+  },
+  {
+    country: "Mexico",
+    weeklyExtraHoursLimit: 9,
+    diurnalMultiplier: 2.00,
+    nocturnalMultiplier: 2.00,
+    diurnalHolidayMultiplier: 3.00,
+    nocturnalHolidayMultiplier: 3.00,
+    diurnalStart: "06:00:00",
+    diurnalEnd: "20:00:00",
+  },
+  {
+    country: "Ecuador",
+    weeklyExtraHoursLimit: 12,
+    diurnalMultiplier: 1.50,
+    nocturnalMultiplier: 1.50,
+    diurnalHolidayMultiplier: 2.00,
+    nocturnalHolidayMultiplier: 2.00,
+    diurnalStart: "06:00:00",
+    diurnalEnd: "24:00:00",
+  },
+];
+
+async function ensureDefaultConfigs() {
+  const configs = await prisma.extraHoursConfig.findMany();
+  const requiredCountries = ["Default", "Colombia", "Peru", "Chile", "Mexico", "Ecuador"];
+  const existingCountries = configs.map((c) => c.country);
+  const missingCountries = requiredCountries.filter((c) => !existingCountries.includes(c));
+
+  if (missingCountries.length > 0) {
+    for (const defaultC of defaultConfigs) {
+      if (missingCountries.includes(defaultC.country)) {
+        await prisma.extraHoursConfig.create({
+          data: defaultC,
+        });
+      }
+    }
+  }
+}
+
 export async function extraHoursRoutes(app: FastifyInstance) {
   // 1. Obtener listado de horas extras (con filtros por rol)
   app.get(
@@ -111,6 +191,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.CONSULTANT])],
     },
     async (request, reply) => {
+      await ensureDefaultConfigs();
       const payload = extraHourPayloadSchema.parse(request.body);
 
       const [project, consultant] = await Promise.all([
@@ -209,6 +290,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.CONSULTANT])],
     },
     async (request) => {
+      await ensureDefaultConfigs();
       const payload = calculatePayloadSchema.parse(request.body);
 
       const consultant = await prisma.consultant.findUnique({
@@ -266,72 +348,8 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.CONSULTANT, AppRole.FINANCE])],
     },
     async () => {
-      let configs = await prisma.extraHoursConfig.findMany();
-
-      if (configs.length === 0) {
-        // Inicializar configuraciones por defecto para los países soportados
-        const defaultConfigs = [
-          {
-            country: "Default",
-            weeklyExtraHoursLimit: 12,
-            diurnalMultiplier: 1.50,
-            nocturnalMultiplier: 1.50,
-            diurnalHolidayMultiplier: 1.50,
-            nocturnalHolidayMultiplier: 1.50,
-            diurnalStart: "06:00:00",
-            diurnalEnd: "21:00:00",
-          },
-          {
-            country: "Colombia",
-            weeklyExtraHoursLimit: 12,
-            diurnalMultiplier: 1.25,
-            nocturnalMultiplier: 1.75,
-            diurnalHolidayMultiplier: 2.00,
-            nocturnalHolidayMultiplier: 2.50,
-            diurnalStart: "06:00:00",
-            diurnalEnd: "19:00:00", // post-reforma inicia a las 19:00
-          },
-          {
-            country: "Peru",
-            weeklyExtraHoursLimit: 12,
-            diurnalMultiplier: 1.25,
-            nocturnalMultiplier: 1.60,
-            diurnalHolidayMultiplier: 2.00,
-            nocturnalHolidayMultiplier: 2.00,
-            diurnalStart: "06:00:00",
-            diurnalEnd: "22:00:00",
-          },
-          {
-            country: "Chile",
-            weeklyExtraHoursLimit: 12,
-            diurnalMultiplier: 1.50,
-            nocturnalMultiplier: 1.50,
-            diurnalHolidayMultiplier: 1.50,
-            nocturnalHolidayMultiplier: 1.50,
-            diurnalStart: "06:00:00",
-            diurnalEnd: "21:00:00",
-          },
-          {
-            country: "Mexico",
-            weeklyExtraHoursLimit: 9,
-            diurnalMultiplier: 2.00,
-            nocturnalMultiplier: 2.00,
-            diurnalHolidayMultiplier: 3.00,
-            nocturnalHolidayMultiplier: 3.00,
-            diurnalStart: "06:00:00",
-            diurnalEnd: "20:00:00",
-          },
-        ];
-
-        for (const defaultC of defaultConfigs) {
-          await prisma.extraHoursConfig.create({
-            data: defaultC,
-          });
-        }
-
-        configs = await prisma.extraHoursConfig.findMany();
-      }
-
+      await ensureDefaultConfigs();
+      const configs = await prisma.extraHoursConfig.findMany();
       return { data: configs };
     },
   );
@@ -343,6 +361,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.CONSULTANT, AppRole.FINANCE])],
     },
     async (request) => {
+      await ensureDefaultConfigs();
       const { country } = z.object({ country: z.string() }).parse(request.params);
       let config = await prisma.extraHoursConfig.findUnique({
         where: { country },
