@@ -41,6 +41,24 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
 
   // Navigation states
   const [selectedDate, setSelectedDate] = useState(() => new Date());
+
+  // Date helper utilities
+  const getDaysOfWeek = (baseDate: Date) => {
+    const date = new Date(baseDate);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Monday is start
+    const monday = new Date(date.setDate(diff));
+
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+      const nextDay = new Date(monday);
+      nextDay.setDate(monday.getDate() + i);
+      weekDays.push(nextDay);
+    }
+    return weekDays;
+  };
+
+  const weekDays = useMemo(() => getDaysOfWeek(selectedDate), [selectedDate]);
   
   // Activity Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -325,23 +343,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
     }
   }, [consultants, myConsultant, filterConsultantId, formConsultantId]);
 
-  // Date helper utilities
-  const getDaysOfWeek = (baseDate: Date) => {
-    const date = new Date(baseDate);
-    const day = date.getDay();
-    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Monday is start
-    const monday = new Date(date.setDate(diff));
-
-    const weekDays = [];
-    for (let i = 0; i < 7; i++) {
-      const nextDay = new Date(monday);
-      nextDay.setDate(monday.getDate() + i);
-      weekDays.push(nextDay);
-    }
-    return weekDays;
-  };
-
-  const weekDays = useMemo(() => getDaysOfWeek(selectedDate), [selectedDate]);
+  // Date helper utilities (moved above)
 
   // Change selected week
   const navigateWeek = (weeks: number) => {
