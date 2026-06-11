@@ -1695,5 +1695,13 @@ th.sortable:hover { background: #fff0e0; }
   }
 }
 
+@media (max-width: 900px) {
+  .flex-right-mobile-full {
+    margin-left: 0 !important;
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 
 
