@@ -34,10 +34,12 @@ import {
   type ChangeRequestType,
   type ProjectPhase,
   type HealthStatus,
+  getAuditLogs,
+  type AuditLog,
 } from "../../services/api";
 import { useToast } from "../../hooks/useToast";
 
-type SubTab = "resumen" | "hitos" | "recursos" | "riesgos" | "issues" | "cambios";
+type SubTab = "resumen" | "hitos" | "recursos" | "riesgos" | "issues" | "cambios" | "historial";
 
 function fmt(n: number, currency = "USD") {
   return new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
@@ -785,6 +787,136 @@ function CambiosTab({ projectId, changeRequests, canWrite, onReload }: {
   );
 }
 
+function HistorialTab({ projectId, onError }: { projectId: string; onError: (msg: string) => void }) {
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    getAuditLogs({ entityId: projectId })
+      .then((data) => {
+        if (active) setLogs(data);
+      })
+      .catch((err) => {
+        if (active) onError(err instanceof Error ? err.message : "Error al cargar historial");
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [projectId, onError]);
+
+  if (loading) return <p className="loading">Cargando bitácora de auditoría...</p>;
+  if (logs.length === 0) return <p style={{ fontStyle: "italic", color: "var(--text-soft)", textAlign: "center", padding: "2rem" }}>No hay registros de auditoría para este proyecto.</p>;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", padding: "1rem 0" }}>
+      <div style={{ position: "relative", paddingLeft: "2.5rem", display: "flex", flexDirection: "column", gap: "2.5rem" }}>
+        {/* Vertical Line */}
+        <div style={{
+          position: "absolute",
+          left: "11px",
+          top: "8px",
+          bottom: "8px",
+          width: "2px",
+          background: "linear-gradient(to bottom, var(--accent, #3b82f6), #cbd5e1)"
+        }} />
+
+        {logs.map((log) => {
+          const date = new Date(log.createdAt).toLocaleString("es-CO", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit"
+          });
+
+          // Format diff/detail if present
+          let detailsText = "";
+          if (log.diff) {
+            try {
+              const diffObj = typeof log.diff === "string" ? JSON.parse(log.diff) : log.diff;
+              detailsText = Object.keys(diffObj)
+                .map((key) => `• Modificado "${key}": ${JSON.stringify(diffObj[key])}`)
+                .join("\n");
+            } catch {
+              detailsText = JSON.stringify(log.diff);
+            }
+          }
+
+          return (
+            <div key={log.id} style={{ position: "relative", display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+              {/* Dot indicator */}
+              <div style={{
+                position: "absolute",
+                left: "-33px",
+                top: "4px",
+                width: "16px",
+                height: "16px",
+                borderRadius: "50%",
+                background: "#fff",
+                border: "3px solid var(--accent, #3b82f6)",
+                boxShadow: "0 0 0 4px rgba(59, 130, 246, 0.15)",
+                zIndex: 2
+              }} />
+
+              {/* Time header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-soft)" }}>
+                  📅 {date}
+                </span>
+                <span style={{
+                  fontSize: "0.72rem",
+                  fontWeight: 600,
+                  color: "#1e293b",
+                  background: "#e2e8f0",
+                  padding: "0.15rem 0.5rem",
+                  borderRadius: "20px"
+                }}>
+                  👤 {log.changedBy}
+                </span>
+              </div>
+
+              {/* Card wrapper */}
+              <div className="card" style={{
+                padding: "1rem",
+                borderRadius: "10px",
+                border: "1px solid #cbd5e1",
+                background: "#f8fafc",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+                margin: 0
+              }}>
+                <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.88rem", fontWeight: 700, color: "var(--text-strong)", textTransform: "capitalize" }}>
+                  Acción: {log.action.toLowerCase().replace(/_/g, " ")}
+                </h4>
+                {detailsText ? (
+                  <pre style={{
+                    margin: 0,
+                    fontSize: "0.78rem",
+                    color: "#475569",
+                    whiteSpace: "pre-wrap",
+                    fontFamily: "var(--font-mono, monospace)",
+                    background: "#f1f5f9",
+                    padding: "0.5rem",
+                    borderRadius: "6px",
+                    border: "1px solid #cbd5e1"
+                  }}>{detailsText}</pre>
+                ) : (
+                  <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b" }}>
+                    Modificación de entidad {log.entity} sin detalles específicos de diferencias.
+                  </p>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 export function ProjectDetailTab({
@@ -825,6 +957,7 @@ export function ProjectDetailTab({
     { key: "riesgos", label: `Riesgos (${detail.risks.length})` },
     { key: "issues", label: `Incidentes (${detail.issues.length})` },
     { key: "cambios", label: `Cambios (${detail.changeRequests.length})` },
+    { key: "historial", label: "Historial" },
   ];
 
   return (
@@ -893,6 +1026,9 @@ export function ProjectDetailTab({
         )}
         {activeTab === "cambios" && (
           <CambiosTab projectId={projectId} changeRequests={detail.changeRequests} canWrite={canWrite} onReload={() => void load()} />
+        )}
+        {activeTab === "historial" && (
+          <HistorialTab projectId={projectId} onError={onError} />
         )}
       </div>
     </section>

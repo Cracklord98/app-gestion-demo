@@ -958,10 +958,11 @@ export type AuditLog = {
   id: string;
   entity: string;
   entityId: string;
-  action: "CREATE" | "UPDATE" | "DELETE";
+  action: string;
   changedBy: string;
-  before: unknown;
-  after: unknown;
+  before: any;
+  after: any;
+  diff?: any;
   createdAt: string;
 };
 
@@ -1788,5 +1789,48 @@ export async function createCustomHoliday(payload: {
 
 export async function deleteCustomHoliday(id: string): Promise<void> {
   await request<void>(`/api/custom-holidays/${id}`, "DELETE");
+}
+
+// ─── Approval Delegations ─────────────────────────────────────────────────────
+
+export type ApprovalDelegation = {
+  id: string;
+  projectId: string;
+  fromUserEmail: string;
+  toUserEmail: string;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+  project?: Project;
+};
+
+export async function listDelegations(): Promise<ApprovalDelegation[]> {
+  const response = await request<ApiEnvelope<ApprovalDelegation[]>>("/api/delegations");
+  return response.data;
+}
+
+export async function createDelegation(payload: {
+  projectId: string;
+  toUserEmail: string;
+  startDate: string;
+  endDate: string;
+}): Promise<ApprovalDelegation> {
+  const response = await request<ApiEnvelope<ApprovalDelegation>>("/api/delegations", "POST", payload);
+  return response.data;
+}
+
+export async function deleteDelegation(id: string): Promise<void> {
+  await request<void>(`/api/delegations/${id}`, "DELETE");
+}
+
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+
+export async function getAuditLogs(params?: { entityId?: string; entity?: string }): Promise<AuditLog[]> {
+  const query = new URLSearchParams();
+  if (params?.entityId) query.set("entityId", params.entityId);
+  if (params?.entity) query.set("entity", params.entity);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  const response = await request<ApiEnvelope<AuditLog[]>>(`/api/audit${suffix}`);
+  return response.data;
 }
 

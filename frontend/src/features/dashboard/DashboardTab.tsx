@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getStatsOverview,
   type Expense, type FxConfig, type Forecast,
-  type Project, type StatsOverview, type TimeEntry,
+  type Project, type StatsOverview, type TimeEntry, type ExtraHourEntry,
 } from "../../services/api";
 import { DateRangePicker } from "../../components/DateRangePicker";
 import { readPersistedRange, type DateRange } from "../../components/dateRangeUtils";
@@ -111,6 +111,184 @@ function BudgetChart({ rows }: { rows: BudgetChartRow[] }) {
           <line x1={158} y1={0} x2={158} y2={9} stroke="#6b7280" strokeWidth={2} strokeDasharray="3,2" />
           <text x={162} y={8} fontSize={9} fill="#6b7280">Proyectado</text>
         </g>
+      </svg>
+    </div>
+  );
+}
+
+function ExtraHoursTrendChart({ data }: { data: { month: string; hours: number }[] }) {
+  const W = 500;
+  const H = 200;
+  const PAD_L = 40;
+  const PAD_R = 20;
+  const PAD_T = 20;
+  const PAD_B = 30;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+
+  const maxVal = Math.max(...data.map(d => d.hours), 10);
+  const getX = (i: number) => PAD_L + (i / 11) * chartW;
+  const getY = (v: number) => PAD_T + chartH - (v / maxVal) * chartH;
+
+  const points = data.map((d, i) => `${getX(i)},${getY(d.hours)}`).join(" ");
+  const areaPoints = `${getX(0)},${PAD_T + chartH} ${points} ${getX(11)},${PAD_T + chartH}`;
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", maxWidth: W, height: "auto", display: "block" }}>
+        <defs>
+          <linearGradient id="lineGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ff9c2c" stopOpacity="0.4" />
+            <stop offset="100%" stopColor="#ff9c2c" stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        
+        {/* Grid Lines */}
+        {[0, 0.25, 0.5, 0.75, 1].map((p, i) => {
+          const val = p * maxVal;
+          const y = getY(val);
+          return (
+            <g key={i}>
+              <line x1={PAD_L} y1={y} x2={W - PAD_R} y2={y} stroke="#e2e8f0" strokeDasharray="3 3" />
+              <text x={PAD_L - 8} y={y + 4} textAnchor="end" fontSize={9} fill="#64748b">{val.toFixed(0)}h</text>
+            </g>
+          );
+        })}
+
+        {/* Area under the line */}
+        <polygon points={areaPoints} fill="url(#lineGrad)" />
+
+        {/* Trend line */}
+        <polyline points={points} fill="none" stroke="#9a4f0f" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" />
+
+        {/* Dots and tooltips */}
+        {data.map((d, i) => (
+          <g key={i}>
+            <circle cx={getX(i)} cy={getY(d.hours)} r={4} fill="#ff9c2c" stroke="#9a4f0f" strokeWidth={2} />
+            {d.hours > 0 && (
+              <text x={getX(i)} y={getY(d.hours) - 8} textAnchor="middle" fontSize={8} fontWeight={700} fill="#5f2f00">
+                {d.hours.toFixed(0)}
+              </text>
+            )}
+          </g>
+        ))}
+
+        {/* X Labels */}
+        {data.map((d, i) => (
+          <text key={i} x={getX(i)} y={H - PAD_B + 16} textAnchor="middle" fontSize={9} fill="#64748b">
+            {d.month}
+          </text>
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function ExpensesDonutChart({ data }: { data: { category: string; amount: number; pct: number }[] }) {
+  const colors = ["#ff9c2c", "#9a4f0f", "#3b82f6", "#10b981", "#8b5cf6", "#f43f5e", "#6b7280"];
+  
+  if (data.length === 0) {
+    return <p style={{ color: "#9ca3af", fontSize: "0.85rem", textAlign: "center", padding: "2rem" }}>Sin gastos registrados</p>;
+  }
+
+  let cumulativePercent = 0;
+
+  const getCoordinatesForPercent = (percent: number) => {
+    const x = Math.cos(2 * Math.PI * percent);
+    const y = Math.sin(2 * Math.PI * percent);
+    return [x, y];
+  };
+
+  const slices = data.map((d, i) => {
+    const startPercent = cumulativePercent;
+    cumulativePercent += d.pct / 100;
+    const endPercent = cumulativePercent;
+
+    const [startX, startY] = getCoordinatesForPercent(startPercent);
+    const [endX, endY] = getCoordinatesForPercent(endPercent);
+
+    const largeArcFlag = d.pct > 50 ? 1 : 0;
+    const R = 50;
+    const cx = 80;
+    const cy = 100;
+
+    const x1 = cx + startX * R;
+    const y1 = cy + startY * R;
+    const x2 = cx + endX * R;
+    const y2 = cy + endY * R;
+
+    const pathData = d.pct >= 99.9
+      ? `M ${cx} ${cy - R} A ${R} ${R} 0 1 1 ${cx - 0.01} ${cy - R}`
+      : `M ${cx} ${cy} L ${x1} ${y1} A ${R} ${R} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+
+    return {
+      pathData,
+      color: colors[i % colors.length],
+      category: d.category,
+      pct: d.pct,
+      amount: d.amount
+    };
+  });
+
+  return (
+    <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
+      <svg width={160} height={200} style={{ display: "block" }}>
+        {slices.map((slice, i) => (
+          <path key={i} d={slice.pathData} fill={slice.color} stroke="#fff" strokeWidth={1.5} />
+        ))}
+        <circle cx={80} cy={100} r={25} fill="#fff" />
+      </svg>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.4rem", fontSize: "0.75rem", flex: 1, minWidth: "120px" }}>
+        {slices.slice(0, 5).map((slice, i) => (
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+            <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: slice.color, flexShrink: 0 }} />
+            <span style={{ fontWeight: 600, color: "var(--text-strong)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{slice.category}:</span>
+            <span style={{ color: "var(--text-soft)" }}>${slice.amount.toLocaleString()} ({slice.pct.toFixed(0)}%)</span>
+          </div>
+        ))}
+        {slices.length > 5 && (
+          <div style={{ fontSize: "0.7rem", color: "var(--text-soft)", fontStyle: "italic" }}>
+            + {slices.length - 5} más categorías
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ExtraHoursByConsultantChart({ data }: { data: { name: string; hours: number }[] }) {
+  const BAR_HEIGHT = 20;
+  const BAR_GAP = 8;
+  const LABEL_W = 100;
+  const CHART_W = 200;
+  const PAD_R = 40;
+  const W = LABEL_W + CHART_W + PAD_R;
+  const H = data.length * (BAR_HEIGHT + BAR_GAP) + BAR_GAP;
+
+  const maxVal = Math.max(...data.map(d => d.hours), 5);
+  const scale = (v: number) => (v / maxVal) * CHART_W;
+
+  if (data.length === 0) {
+    return <p style={{ color: "#9ca3af", fontSize: "0.85rem", textAlign: "center", padding: "2rem" }}>Sin horas extras aprobadas</p>;
+  }
+
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <svg width={W} height={H} style={{ display: "block" }}>
+        {data.map((d, i) => {
+          const y = BAR_GAP + i * (BAR_HEIGHT + BAR_GAP);
+          return (
+            <g key={i}>
+              <text x={LABEL_W - 6} y={y + BAR_HEIGHT / 2 + 4} textAnchor="end" fontSize={10} fill="var(--text-strong)">
+                {d.name.length > 12 ? d.name.slice(0, 11) + "…" : d.name}
+              </text>
+              <rect x={LABEL_W} y={y} width={scale(d.hours)} height={BAR_HEIGHT} rx={4} fill="#ff9c2c" />
+              <text x={LABEL_W + scale(d.hours) + 6} y={y + BAR_HEIGHT / 2 + 4} fontSize={10} fontWeight={700} fill="#9a4f0f">
+                {d.hours.toFixed(1)}h
+              </text>
+            </g>
+          );
+        })}
       </svg>
     </div>
   );
@@ -245,6 +423,22 @@ export function DashboardTab({
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [tablePage, setTablePage] = useState(1);
 
+  // --- Extra Hours state & loader for Trend and Consultant metrics ---
+  const [extraHours, setExtraHours] = useState<ExtraHourEntry[]>([]);
+  useEffect(() => {
+    let active = true;
+    import("../../services/api").then(({ listExtraHours }) => {
+      listExtraHours().then((data) => {
+        if (active) setExtraHours(data);
+      }).catch(() => {});
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+
+
   // Saved views
   const [savedViews, setSavedViews] = useState<SavedView[]>(loadViews);
   const [viewName, setViewName] = useState("");
@@ -368,6 +562,55 @@ export function DashboardTab({
       }))
       .sort((a, b) => b.totalHours - a.totalHours);
   }, [dashboardForecasts]);
+
+  const monthlyExtraHoursData = useMemo(() => {
+    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const currentYear = new Date().getFullYear();
+    const dataMap = new Map<number, number>();
+    for (let i = 0; i < 12; i++) {
+      dataMap.set(i, 0);
+    }
+    const approvedEH = extraHours.filter(eh => eh.status === "APPROVED");
+    for (const eh of approvedEH) {
+      const ehDate = new Date(eh.date);
+      if (ehDate.getFullYear() === currentYear) {
+        const m = ehDate.getMonth();
+        dataMap.set(m, (dataMap.get(m) || 0) + Number(eh.totalHours));
+      }
+    }
+    return Array.from(dataMap.entries()).map(([mIdx, hours]) => ({
+      month: months[mIdx],
+      hours
+    }));
+  }, [extraHours]);
+
+  const expensesCategoryData = useMemo(() => {
+    const grouped = new Map<string, number>();
+    for (const exp of dashboardExpenses) {
+      const cat = exp.category || "Otros";
+      const amt = Number(exp.amount) || 0;
+      grouped.set(cat, (grouped.get(cat) || 0) + amt);
+    }
+    const total = Array.from(grouped.values()).reduce((sum, v) => sum + v, 0);
+    return Array.from(grouped.entries()).map(([category, amount]) => ({
+      category,
+      amount,
+      pct: total > 0 ? (amount / total) * 100 : 0
+    })).sort((a, b) => b.amount - a.amount);
+  }, [dashboardExpenses]);
+
+  const extraHoursByConsultantData = useMemo(() => {
+    const grouped = new Map<string, number>();
+    const approvedEH = extraHours.filter(eh => eh.status === "APPROVED");
+    for (const eh of approvedEH) {
+      const name = eh.consultant?.fullName || "Consultor";
+      grouped.set(name, (grouped.get(name) || 0) + Number(eh.totalHours));
+    }
+    return Array.from(grouped.entries())
+      .map(([name, hours]) => ({ name, hours }))
+      .sort((a, b) => b.hours - a.hours)
+      .slice(0, 5);
+  }, [extraHours]);
 
   // Merge stats or local computation
   const displayProjects = stats?.projects ?? dashboardProjectSummary.map((row) => ({
@@ -971,7 +1214,7 @@ export function DashboardTab({
                 const healthResult = backendHealthToResult(row.healthStatus as "GREEN" | "YELLOW" | "RED");
                 return (
                   <tr key={row.projectId}>
-                    <td className="sticky-0" style={{ textAlign: "center" }}>
+                    <td className="sticky-0" style={{ textAlign: "center" }} data-label="Salud">
                       <span
                         style={{
                           display: "inline-block", width: "0.7rem", height: "0.7rem",
@@ -981,17 +1224,17 @@ export function DashboardTab({
                         aria-label={`Salud: ${healthResult.label}`}
                       />
                     </td>
-                    <td className="sticky-1" style={{ fontWeight: 600, fontSize: "0.82rem" }}>{row.company}</td>
-                    <td className="sticky-2" style={{ fontWeight: 600 }}>{row.projectName}</td>
-                    <td>{fmt(row.budget, dc)}</td>
-                    <td>{fmt(row.spent, dc)}</td>
-                    <td style={{ color: row.remainingBudget < 0 ? "#dc2626" : "inherit" }}>{fmt(row.remainingBudget, dc)}</td>
-                    <td>{fmt(row.revenueRecognized, dc)}</td>
-                    <td style={{ color: row.grossMarginActual >= 0 ? undefined : "#dc2626" }}>
-                      {`${fmt(row.grossMarginActual, dc)}${row.grossMarginActualPct !== null ? ` (${row.grossMarginActualPct.toFixed(1)}%)` : ""}`}
+                    <td className="sticky-1" style={{ fontWeight: 600, fontSize: "0.82rem" }} data-label="Empresa">{row.company}</td>
+                    <td className="sticky-2" style={{ fontWeight: 600 }} data-label="Proyecto">{row.projectName}</td>
+                    <td data-label="Presupuesto">{fmt(row.budget, dc)}</td>
+                    <td data-label="Gasto real">{fmt(row.spent, dc)}</td>
+                    <td style={{ color: row.remainingBudget < 0 ? "#dc2626" : "inherit" }} data-label="Disponible">{fmt(row.remainingBudget, dc)}</td>
+                    <td data-label="Ingresos">{fmt(row.revenueRecognized, dc)}</td>
+                    <td style={{ color: row.grossMarginActual >= 0 ? undefined : "#dc2626" }} data-label="Margen bruto">
+                      {`${fmt(row.grossMarginActual, dc)}${row.grossMarginActualPct != null ? ` (${row.grossMarginActualPct.toFixed(1)}%)` : ""}`}
                     </td>
-                    <td>{`${fmt(row.projectedTotal, dc)} (${row.projectedPct.toFixed(1)}%)`}</td>
-                    <td><AlertBadge level={row.alertLevel} /></td>
+                    <td data-label="Total proyectado">{`${fmt(row.projectedTotal, dc)} (${row.projectedPct.toFixed(1)}%)`}</td>
+                    <td data-label="Alerta"><AlertBadge level={row.alertLevel} /></td>
                   </tr>
                 );
               })}
@@ -1115,6 +1358,35 @@ export function DashboardTab({
           />
         </article>
       )}
+
+      {/* ── Métricas y Análisis Visual ── */}
+      <section className="grid two-col" style={{ marginTop: "1rem" }}>
+        <article className="card">
+          <h3>📈 Tendencia Mensual de Horas Extras (Año en Curso)</h3>
+          <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "1rem" }}>
+            Muestra el consolidado de horas extras aprobadas mes a mes durante el presente año.
+          </p>
+          <ExtraHoursTrendChart data={monthlyExtraHoursData} />
+        </article>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          <article className="card">
+            <h3>🍩 Distribución de Gastos por Categoría</h3>
+            <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "1rem" }}>
+              Desglose de gastos registrados en el período seleccionado.
+            </p>
+            <ExpensesDonutChart data={expensesCategoryData} />
+          </article>
+          
+          <article className="card">
+            <h3>📊 Horas Extras Aprobadas por Consultor (Top 5)</h3>
+            <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "1rem" }}>
+              Comparativa de consultores con mayor volumen de horas extras aprobadas.
+            </p>
+            <ExtraHoursByConsultantChart data={extraHoursByConsultantData} />
+          </article>
+        </div>
+      </section>
     </section>
     </div>
   );

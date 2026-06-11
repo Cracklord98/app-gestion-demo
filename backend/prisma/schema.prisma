@@ -185,6 +185,7 @@ model Project {
   extraHourEntries ExtraHourEntry[]
   estimations      Estimation[]
   activities       Activity[]
+  delegations      ApprovalDelegation[]
 }
 
 model Consultant {
@@ -680,4 +681,20 @@ model CustomHoliday {
   updatedAt DateTime @updatedAt
 
   @@unique([date, country])
+}
+
+model ApprovalDelegation {
+  id             String   @id @default(cuid())
+  projectId      String
+  fromUserEmail  String
+  toUserEmail    String
+  startDate      DateTime
+  endDate        DateTime
+  createdAt      DateTime @default(now())
+
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([fromUserEmail])
+  @@index([toUserEmail])
 }

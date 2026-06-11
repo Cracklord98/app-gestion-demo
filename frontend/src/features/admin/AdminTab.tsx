@@ -10,7 +10,7 @@ const emptyForm = {
   displayName: "",
   microsoftOid: "",
   active: true,
-  role: "VIEWER" as AppRole,
+  roles: ["VIEWER"] as AppRole[],
   country: "Default",
 };
 
@@ -30,11 +30,15 @@ export function AdminTab({
 
   // Estados para la edición en línea de usuarios registrados
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [editRole, setEditRole] = useState<AppRole>("VIEWER");
+  const [editRoles, setEditRoles] = useState<AppRole[]>([]);
   const [editCountry, setEditCountry] = useState<string>("Default");
 
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
+    if (form.roles.length === 0) {
+      onError("Por favor selecciona al menos un rol para el usuario.");
+      return;
+    }
     setSubmitting(true);
     try {
       await createAdminUser({
@@ -42,7 +46,7 @@ export function AdminTab({
         displayName: form.displayName,
         microsoftOid: form.microsoftOid || undefined,
         active: form.active,
-        roles: [form.role],
+        roles: form.roles,
         country: form.country,
       });
       setForm(emptyForm);
@@ -64,10 +68,14 @@ export function AdminTab({
   }
 
   async function handleSaveEdit(userId: string) {
+    if (editRoles.length === 0) {
+      onError("Por favor selecciona al menos un rol.");
+      return;
+    }
     setSubmitting(true);
     try {
       await updateAdminUser(userId, {
-        roles: [editRole],
+        roles: editRoles,
         country: editCountry === "Default" ? null : editCountry,
       });
       setEditingUserId(null);
@@ -81,7 +89,7 @@ export function AdminTab({
 
   function startEdit(user: AdminUser) {
     setEditingUserId(user.id);
-    setEditRole(user.roles[0] || "VIEWER");
+    setEditRoles(user.roles || []);
     setEditCountry(user.country || "Default");
   }
 
@@ -99,9 +107,28 @@ export function AdminTab({
             <input placeholder="Correo" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} required />
             <input placeholder="Nombre" value={form.displayName} onChange={(e) => setForm((p) => ({ ...p, displayName: e.target.value }))} required />
             <input placeholder="Microsoft OID (opcional)" value={form.microsoftOid} onChange={(e) => setForm((p) => ({ ...p, microsoftOid: e.target.value }))} />
-            <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value as AppRole }))}>
-              {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", margin: "0.5rem 0" }}>
+              <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong)" }}>Roles *</label>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "0.8rem", background: "rgba(0,0,0,0.02)", padding: "0.5rem", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                {roleOptions.map((r) => (
+                  <label key={r} style={{ display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.82rem", cursor: "pointer", fontWeight: 500 }}>
+                    <input
+                      type="checkbox"
+                      checked={form.roles.includes(r)}
+                      onChange={(e) => {
+                        const nextRoles = e.target.checked
+                          ? [...form.roles, r]
+                          : form.roles.filter((role) => role !== r);
+                        setForm((p) => ({ ...p, roles: nextRoles }));
+                      }}
+                    />
+                    {r}
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <select value={form.country} onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}>
               <option value="Default">País: Default</option>
               <option value="Colombia">Colombia 🇨🇴</option>
@@ -145,9 +172,23 @@ export function AdminTab({
                         <td>{user.email}</td>
                         <td>
                           {isEditing ? (
-                            <select value={editRole} onChange={(e) => setEditRole(e.target.value as AppRole)}>
-                              {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
-                            </select>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", background: "#f8fafc", padding: "0.4rem", borderRadius: "6px", border: "1px solid #e2e8f0" }}>
+                              {roleOptions.map((r) => (
+                                <label key={r} style={{ display: "flex", alignItems: "center", gap: "0.25rem", fontSize: "0.78rem", cursor: "pointer", fontWeight: 500 }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={editRoles.includes(r)}
+                                    onChange={(e) => {
+                                      const next = e.target.checked
+                                        ? [...editRoles, r]
+                                        : editRoles.filter((x) => x !== r);
+                                      setEditRoles(next);
+                                    }}
+                                  />
+                                  {r}
+                                </label>
+                              ))}
+                            </div>
                           ) : (
                             user.roles.join(", ")
                           )}

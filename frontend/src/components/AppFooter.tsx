@@ -22,6 +22,7 @@ export interface AppFooterProps {
   backendOk?: boolean;
   appVersion?: string;
   environment?: string;
+  onOpenFeedback?: () => void;
 }
 
 function PyramidLogoSmall() {
@@ -45,6 +46,7 @@ export function AppFooter({
   backendOk,
   appVersion = "1.0.0",
   environment = "Demo",
+  onOpenFeedback,
 }: AppFooterProps) {
   const year = new Date().getFullYear();
 
@@ -114,7 +116,16 @@ export function AppFooter({
           </span>
         </div>
         <p className="app-footer__bar-right">
-          Construido con React + TypeScript · Synaptica {year}
+          {onOpenFeedback && (
+            <button
+              type="button"
+              onClick={onOpenFeedback}
+              className="app-footer__feedback-btn"
+            >
+              💬 Enviar Feedback
+            </button>
+          )}
+          <span>Construido con React + TypeScript · Synaptica {year}</span>
         </p>
       </div>
     </footer>

@@ -17,7 +17,7 @@ const querySchema = z.object({
 export async function auditRoutes(app: FastifyInstance) {
   app.get(
     "/",
-    { preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.FINANCE])] },
+    { preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.FINANCE, AppRole.PM])] },
     async (request) => {
       const query = querySchema.parse(request.query);
       const skip = (query.page - 1) * query.pageSize;

@@ -51,6 +51,25 @@ export async function timeEntriesRoutes(app: FastifyInstance) {
     async (request, reply) => {
     const payload = timeEntryPayloadSchema.parse(request.body);
 
+    const entryYear = payload.workDate.getUTCFullYear();
+    const entryMonth = payload.workDate.getUTCMonth() + 1;
+
+    const isClosed = await prisma.monthlySnapshot.findUnique({
+      where: {
+        projectId_year_month: {
+          projectId: payload.projectId,
+          year: entryYear,
+          month: entryMonth,
+        },
+      },
+    });
+
+    if (isClosed) {
+      return reply.status(400).send({
+        message: `No se pueden registrar horas en un mes cerrado para este proyecto (${entryYear}-${String(entryMonth).padStart(2, "0")}).`,
+      });
+    }
+
     const [project, consultant] = await Promise.all([
       prisma.project.findUnique({ where: { id: payload.projectId } }),
       prisma.consultant.findUnique({ where: { id: payload.consultantId } }),
@@ -154,6 +173,25 @@ export async function timeEntriesRoutes(app: FastifyInstance) {
       const existing = await prisma.timeEntry.findUnique({ where: { id } });
       if (!existing) {
         return reply.status(404).send({ message: "Time entry not found" });
+      }
+
+      const entryYear = existing.workDate.getUTCFullYear();
+      const entryMonth = existing.workDate.getUTCMonth() + 1;
+
+      const isClosed = await prisma.monthlySnapshot.findUnique({
+        where: {
+          projectId_year_month: {
+            projectId: existing.projectId,
+            year: entryYear,
+            month: entryMonth,
+          },
+        },
+      });
+
+      if (isClosed) {
+        return reply.status(400).send({
+          message: "No se pueden eliminar horas de un mes cerrado para este proyecto.",
+        });
       }
 
       try {

@@ -194,6 +194,25 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       await ensureDefaultConfigs();
       const payload = extraHourPayloadSchema.parse(request.body);
 
+      const entryYear = payload.date.getUTCFullYear();
+      const entryMonth = payload.date.getUTCMonth() + 1;
+
+      const isClosed = await prisma.monthlySnapshot.findUnique({
+        where: {
+          projectId_year_month: {
+            projectId: payload.projectId,
+            year: entryYear,
+            month: entryMonth,
+          },
+        },
+      });
+
+      if (isClosed) {
+        return reply.status(400).send({
+          message: `No se pueden registrar horas extra en un mes que ya ha sido cerrado para este proyecto (${entryYear}-${String(entryMonth).padStart(2, "0")}).`,
+        });
+      }
+
       const [project, consultant] = await Promise.all([
         prisma.project.findUnique({ where: { id: payload.projectId } }),
         prisma.consultant.findUnique({ where: { id: payload.consultantId } }),
@@ -465,12 +484,46 @@ export async function extraHoursRoutes(app: FastifyInstance) {
         return reply.status(409).send({ message: "Una solicitud rechazada no puede ser aprobada" });
       }
 
+      if (existing.projectId) {
+        const entryYear = existing.date.getUTCFullYear();
+        const entryMonth = existing.date.getUTCMonth() + 1;
+        const isClosed = await prisma.monthlySnapshot.findUnique({
+          where: {
+            projectId_year_month: {
+              projectId: existing.projectId,
+              year: entryYear,
+              month: entryMonth,
+            },
+          },
+        });
+        if (isClosed) {
+          return reply.status(400).send({
+            message: "No se pueden realizar cambios en solicitudes pertenecientes a un mes cerrado.",
+          });
+        }
+      }
+
       // Lógica de transición de estados
       if (existing.status === ExtraHourStatus.PENDING_PM) {
-        // Nivel 1: Requiere aprobación del PM del proyecto o Admin
+        // Nivel 1: Requiere aprobación del PM del proyecto, Admin o Delegado
         const isPM = existing.project?.projectManagerEmail?.toLowerCase() === email;
-        if (!isPM && !isAdmin) {
-          return reply.status(403).send({ message: "Solo el supervisor (PM) de este proyecto o el Administrador pueden otorgar la aprobación operativa." });
+        let hasDelegation = false;
+        if (!isPM && !isAdmin && existing.project?.id) {
+          const activeDelegation = await prisma.approvalDelegation.findFirst({
+            where: {
+              projectId: existing.project.id,
+              toUserEmail: email,
+              startDate: { lte: new Date() },
+              endDate: { gte: new Date() },
+            },
+          });
+          if (activeDelegation) {
+            hasDelegation = true;
+          }
+        }
+
+        if (!isPM && !isAdmin && !hasDelegation) {
+          return reply.status(403).send({ message: "Solo el supervisor (PM) de este proyecto, un consultor con delegación activa o el Administrador pueden otorgar la aprobación operativa." });
         }
 
         const entry = await prisma.extraHourEntry.update({
@@ -528,6 +581,25 @@ export async function extraHoursRoutes(app: FastifyInstance) {
         return reply.status(404).send({ message: "Solicitud no encontrada" });
       }
 
+      if (existing.projectId) {
+        const entryYear = existing.date.getUTCFullYear();
+        const entryMonth = existing.date.getUTCMonth() + 1;
+        const isClosed = await prisma.monthlySnapshot.findUnique({
+          where: {
+            projectId_year_month: {
+              projectId: existing.projectId,
+              year: entryYear,
+              month: entryMonth,
+            },
+          },
+        });
+        if (isClosed) {
+          return reply.status(400).send({
+            message: "No se pueden realizar cambios en solicitudes pertenecientes a un mes cerrado.",
+          });
+        }
+      }
+
       if (existing.status === ExtraHourStatus.APPROVED || existing.status === ExtraHourStatus.REJECTED) {
         return reply.status(409).send({ message: "Solo solicitudes pendientes pueden ser rechazadas" });
       }
@@ -535,8 +607,22 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       // Validar quién tiene permiso de rechazar
       if (existing.status === ExtraHourStatus.PENDING_PM) {
         const isPM = existing.project?.projectManagerEmail?.toLowerCase() === email;
-        if (!isPM && !isAdmin) {
-          return reply.status(403).send({ message: "Solo el PM de este proyecto o el Administrador pueden rechazar en este nivel." });
+        let hasDelegation = false;
+        if (!isPM && !isAdmin && existing.project?.id) {
+          const activeDelegation = await prisma.approvalDelegation.findFirst({
+            where: {
+              projectId: existing.project.id,
+              toUserEmail: email,
+              startDate: { lte: new Date() },
+              endDate: { gte: new Date() },
+            },
+          });
+          if (activeDelegation) {
+            hasDelegation = true;
+          }
+        }
+        if (!isPM && !isAdmin && !hasDelegation) {
+          return reply.status(403).send({ message: "Solo el PM de este proyecto, un consultor con delegación activa o el Administrador pueden rechazar en este nivel." });
         }
       } else {
         if (!isFinance && !isAdmin) {
@@ -679,6 +765,25 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       const existing = await prisma.extraHourEntry.findUnique({ where: { id } });
       if (!existing) {
         return reply.status(404).send({ message: "Solicitud no encontrada" });
+      }
+
+      if (existing.projectId) {
+        const entryYear = existing.date.getUTCFullYear();
+        const entryMonth = existing.date.getUTCMonth() + 1;
+        const isClosed = await prisma.monthlySnapshot.findUnique({
+          where: {
+            projectId_year_month: {
+              projectId: existing.projectId,
+              year: entryYear,
+              month: entryMonth,
+            },
+          },
+        });
+        if (isClosed) {
+          return reply.status(400).send({
+            message: "No se pueden eliminar registros de horas extra de un período de nómina cerrado.",
+          });
+        }
       }
 
       if (existing.status === ExtraHourStatus.APPROVED) {

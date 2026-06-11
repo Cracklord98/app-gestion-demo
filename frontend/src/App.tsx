@@ -39,6 +39,7 @@ import { ExtraHoursTab } from "./features/extraHours/ExtraHoursTab";
 import { EstimationCalculatorTab } from "./features/estimations/EstimationCalculatorTab";
 import { ActivitiesTab } from "./features/activities/ActivitiesTab";
 import type { TabId } from "./types";
+import { RagChat } from "./components/RagChat";
 import "./App.css";
 
 // ── Logo ─────────────────────────────────────────────────────────────────────
@@ -250,7 +251,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => typeof window !== "undefined" && window.innerWidth <= 860);
   const [fxDrawerOpen, setFxDrawerOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
@@ -265,7 +266,82 @@ function App() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // --- Global Feedback States ---
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [feedbackCategory, setFeedbackCategory] = useState("BUG");
+  const [feedbackNotes, setFeedbackNotes] = useState("");
+  const [sendingFeedback, setSendingFeedback] = useState(false);
+
+  // --- RAG Chatbot State ---
+  const [chatOpen, setChatOpen] = useState(false);
+
+  // --- Keyboard Shortcuts Help State ---
+  const [shortcutsHelpOpen, setShortcutsHelpOpen] = useState(false);
+
   const { toasts, show: showToast, dismiss } = useToastController();
+
+  // --- Feedback Submit Handler ---
+  const handleFeedbackSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!feedbackNotes.trim()) return;
+    setSendingFeedback(true);
+    setTimeout(() => {
+      console.log("Feedback submitted:", { category: feedbackCategory, notes: feedbackNotes });
+      showToast("¡Gracias por tus comentarios! Feedback registrado.", "success");
+      setFeedbackNotes("");
+      setFeedbackOpen(false);
+      setSendingFeedback(false);
+    }, 800);
+  };
+
+  // --- Global Keyboard Shortcuts Hook ---
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check for Alt modifier
+      if (e.altKey) {
+        const key = e.key.toLowerCase();
+        if (key === "n") {
+          e.preventDefault();
+          setActiveTab("dashboard");
+        } else if (key === "h") {
+          e.preventDefault();
+          setActiveTab("timeEntries");
+        } else if (key === "f") {
+          e.preventDefault();
+          setActiveTab("forecasts");
+        } else if (key === "c") {
+          e.preventDefault();
+          setActiveTab("consultants");
+        }
+      }
+      // Check for Ctrl+K
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setChatOpen((o) => !o);
+      }
+      // Check for ESC
+      if (e.key === "Escape") {
+        setFeedbackOpen(false);
+        setShortcutsHelpOpen(false);
+        setChatOpen(false);
+      }
+      // Check for "?"
+      if (e.key === "?") {
+        const activeElem = document.activeElement;
+        const isInput = activeElem && (
+          activeElem.tagName === "INPUT" ||
+          activeElem.tagName === "TEXTAREA" ||
+          activeElem.getAttribute("contenteditable") === "true"
+        );
+        if (!isInput) {
+          e.preventDefault();
+          setShortcutsHelpOpen((o) => !o);
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   const permissions = useMemo(() => authUser?.permissions ?? [], [authUser?.permissions]);
   const can = useCallback((p: string) => permissions.includes(p), [permissions]);
@@ -502,7 +578,7 @@ function App() {
               })}
             </div>
           )}
-          <button type="button" className="ghost" onClick={() => setFxDrawerOpen(true)}
+          <button type="button" className="ghost fx-toggle-btn" onClick={() => setFxDrawerOpen(true)}
             title="Conversor de divisas" style={{ fontSize: "0.82rem" }}>
             ⊗ FX
           </button>
@@ -920,7 +996,104 @@ function App() {
         backendOk={health?.ok === true}
         appVersion="1.0.0"
         environment={import.meta.env.MODE === "production" ? "Producción" : "Demo"}
+        onOpenFeedback={() => setFeedbackOpen(true)}
       />
+
+      <RagChat
+        projects={projectsHook.projects}
+        fxConfigs={fxHook.fxConfigs}
+        isOpen={chatOpen}
+        onClose={() => setChatOpen(false)}
+      />
+
+      {/* Shortcuts Help Modal */}
+      {shortcutsHelpOpen && (
+        <div className="modal-overlay" style={{ zIndex: 10001 }}>
+          <div className="modal-card" style={{ maxWidth: "450px" }}>
+            <div className="modal-header">
+              <h3 style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>⌨️ Atajos de Teclado</h3>
+              <button type="button" className="ghost" onClick={() => setShortcutsHelpOpen(false)} style={{ padding: "0.2rem 0.5rem" }}>✕</button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", fontSize: "0.85rem", padding: "0.5rem 0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e2e8f0", paddingBottom: "0.3rem" }}>
+                <strong>Alt + N</strong> <span>Dashboard</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e2e8f0", paddingBottom: "0.3rem" }}>
+                <strong>Alt + H</strong> <span>Horas</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e2e8f0", paddingBottom: "0.3rem" }}>
+                <strong>Alt + F</strong> <span>Proyecciones</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e2e8f0", paddingBottom: "0.3rem" }}>
+                <strong>Alt + C</strong> <span>Consultores</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e2e8f0", paddingBottom: "0.3rem" }}>
+                <strong>Ctrl + K</strong> <span>Abrir Asistente RAG</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px dashed #e2e8f0", paddingBottom: "0.3rem" }}>
+                <strong>Esc</strong> <span>Cerrar diálogos flotantes</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <strong>?</strong> <span>Mostrar esta ayuda</span>
+              </div>
+            </div>
+            <div className="modal-actions" style={{ marginTop: "1rem" }}>
+              <button type="button" onClick={() => setShortcutsHelpOpen(false)} style={{ width: "100%", background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)", border: "none" }}>Entendido</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global RAG Chat FAB */}
+      <button
+        type="button"
+        onClick={() => setChatOpen((o) => !o)}
+        className="rag-chat-fab"
+        title="Preguntar al Asistente IA (Ctrl+K)"
+        aria-label="Preguntar al Asistente IA"
+      >
+        <span>🤖</span>
+        <strong>Preguntar a la IA</strong>
+      </button>
+
+      {/* Feedback Modal */}
+      {feedbackOpen && (
+        <div className="modal-overlay" style={{ zIndex: 10001 }}>
+          <form onSubmit={handleFeedbackSubmit} className="modal-card" style={{ maxWidth: "450px" }}>
+            <div className="modal-header">
+              <h3>💬 Enviar Feedback del Sistema</h3>
+              <button type="button" className="ghost" onClick={() => setFeedbackOpen(false)} style={{ padding: "0.2rem 0.5rem" }}>✕</button>
+            </div>
+            <div className="form-grid" style={{ gap: "0.8rem" }}>
+              <div>
+                <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Categoría *</label>
+                <select value={feedbackCategory} onChange={(e) => setFeedbackCategory(e.target.value)}>
+                  <option value="BUG">Bug / Error de Sistema</option>
+                  <option value="SUGGESTION">Sugerencia de Mejora</option>
+                  <option value="AESTHETIC">UI/UX o Aspecto Estético</option>
+                  <option value="OTHER">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Observaciones y Comentarios *</label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Describe detalladamente qué problema encontraste o qué mejora sugieres..."
+                  value={feedbackNotes}
+                  onChange={(e) => setFeedbackNotes(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-actions" style={{ marginTop: "1rem" }}>
+              <button type="button" className="ghost" onClick={() => setFeedbackOpen(false)}>Cancelar</button>
+              <button type="submit" disabled={sendingFeedback} style={{ background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)", border: "none" }}>
+                {sendingFeedback ? "Enviando..." : "Enviar Comentarios"}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
 
       <ToastContainer toasts={toasts} onDismiss={dismiss} />
     </div>

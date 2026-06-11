@@ -20,7 +20,8 @@ import {
   type ExtraHourEntry,
   type ExtraHoursConfig,
   type ExtraHoursCalculationResult,
-  type PayrollConsolidationRow
+  type PayrollConsolidationRow,
+  type ApprovalDelegation
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 
@@ -414,12 +415,75 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
   const [configDiurnalEnd, setConfigDiurnalEnd] = useState<string>("21:00");
   const [savingConfig, setSavingConfig] = useState(false);
 
+  // --- 6. Delegations state ---
+  const [delegations, setDelegations] = useState<ApprovalDelegation[]>([]);
+  const [loadingDelegations, setLoadingDelegations] = useState(false);
+  const [delegateProjectId, setDelegateProjectId] = useState("");
+  const [delegateToEmail, setDelegateToEmail] = useState("");
+  const [delegateStartDate, setDelegateStartDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [delegateEndDate, setDelegateEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+  const [savingDelegation, setSavingDelegation] = useState(false);
+
   // Show a success message that auto-dismisses
   const triggerSuccess = (msg: string) => {
     setSuccessMessage(msg);
     setTimeout(() => {
       setSuccessMessage(null);
     }, 5000);
+  };
+
+  const loadDelegationsList = useCallback(async () => {
+    if (!can("extrahours:review") && !authUser?.roles.includes("ADMIN")) return;
+    setLoadingDelegations(true);
+    try {
+      const { listDelegations } = await import("../../services/api");
+      const data = await listDelegations();
+      setDelegations(data);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Error al cargar delegaciones");
+    } finally {
+      setLoadingDelegations(false);
+    }
+  }, [onError, can, authUser]);
+
+  const handleAddDelegation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!delegateProjectId || !delegateToEmail || !delegateStartDate || !delegateEndDate) {
+      onError("Por favor completa todos los campos.");
+      return;
+    }
+    setSavingDelegation(true);
+    try {
+      const { createDelegation } = await import("../../services/api");
+      await createDelegation({
+        projectId: delegateProjectId,
+        toUserEmail: delegateToEmail,
+        startDate: delegateStartDate,
+        endDate: delegateEndDate,
+      });
+      triggerSuccess("Delegación registrada con éxito.");
+      setDelegateProjectId("");
+      setDelegateToEmail("");
+      await loadDelegationsList();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Error al registrar delegación");
+    } finally {
+      setSavingDelegation(false);
+    }
+  };
+
+  const handleDeleteDelegation = async (id: string) => {
+    if (!window.confirm("¿Está seguro de que desea eliminar esta delegación?")) {
+      return;
+    }
+    try {
+      const { deleteDelegation } = await import("../../services/api");
+      await deleteDelegation(id);
+      triggerSuccess("Delegación eliminada con éxito.");
+      await loadDelegationsList();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Error al eliminar delegación");
+    }
   };
 
   // Fetch entries
@@ -477,7 +541,10 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
       void loadConfigs();
       void loadCustomHolidaysList();
     }
-  }, [loadEntries, loadConfigs, loadCustomHolidaysList, can]);
+    if (can("extrahours:review") || authUser?.roles.includes("ADMIN")) {
+      void loadDelegationsList();
+    }
+  }, [loadEntries, loadConfigs, loadCustomHolidaysList, loadDelegationsList, can, authUser]);
 
 
   // Handle selected country changes in config
@@ -882,6 +949,16 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                   style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem", borderRadius: "8px" }}
                 >
                   📁 Cierre de Nómina
+                </button>
+              )}
+              {(can("projects:write") || authUser?.roles.includes("ADMIN")) && (
+                <button
+                  type="button"
+                  className={activeSubTab === "delegations" ? "" : "ghost"}
+                  onClick={() => { setActiveSubTab("delegations"); void loadDelegationsList(); }}
+                  style={{ fontSize: "0.85rem", padding: "0.4rem 0.8rem", borderRadius: "8px" }}
+                >
+                  🤝 Delegaciones
                 </button>
               )}
             </div>
@@ -1783,6 +1860,162 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 </div>
               </div>
 
+            </div>
+
+          </div>
+
+        </div>
+      )}
+
+      {/* --- DELEGATIONS SUB-TAB --- */}
+      {activeSubTab === "delegations" && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+          
+          {/* Header */}
+          <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "rgba(255, 255, 255, 0.55)" }}>
+            <h3 style={{ margin: 0, fontSize: "1.15rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
+              🤝 Delegación de Aprobaciones
+            </h3>
+            <p style={{ color: "var(--text-soft)", fontSize: "0.82rem", marginTop: "0.25rem" }}>
+              Permite a los Directores de Proyecto (PM) delegar temporalmente la aprobación Nivel 1 a un consultor normal para un proyecto y rango de fechas específico.
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.8fr", gap: "2rem", alignItems: "start" }}>
+            
+            {/* Left Column: Create Delegation */}
+            <form onSubmit={handleAddDelegation} className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff", display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
+                ➕ Registrar Nueva Delegación
+              </h4>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Proyecto *</label>
+                  <select
+                    value={delegateProjectId}
+                    onChange={(e) => setDelegateProjectId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Selecciona --</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Delegar a (Consultor) *</label>
+                  <select
+                    value={delegateToEmail}
+                    onChange={(e) => setDelegateToEmail(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Selecciona --</option>
+                    {consultants
+                      .filter(c => c.email && c.email.toLowerCase() !== authUser?.email?.toLowerCase())
+                      .map((c) => (
+                        <option key={c.id} value={c.email}>{c.fullName} ({c.email})</option>
+                      ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Fecha Inicio *</label>
+                  <input
+                    type="date"
+                    required
+                    value={delegateStartDate}
+                    onChange={(e) => setDelegateStartDate(e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Fecha Fin *</label>
+                  <input
+                    type="date"
+                    required
+                    value={delegateEndDate}
+                    onChange={(e) => setDelegateEndDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={savingDelegation}
+                style={{
+                  background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                  border: "none",
+                  marginTop: "0.5rem",
+                  width: "100%"
+                }}
+              >
+                {savingDelegation ? "Guardando..." : "Delegar Aprobación"}
+              </button>
+            </form>
+
+            {/* Right Column: Delegations List */}
+            <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+              <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
+                📋 Delegaciones Activas y Registradas
+              </h4>
+
+              <div style={{ marginTop: "1rem" }} className="table-container">
+                {loadingDelegations ? (
+                  <p style={{ textAlign: "center", color: "var(--text-soft)", fontSize: "0.8rem", padding: "1rem" }}>
+                    Cargando delegaciones...
+                  </p>
+                ) : delegations.length === 0 ? (
+                  <p style={{ textAlign: "center", color: "var(--text-soft)", fontSize: "0.8rem", padding: "1.5rem" }}>
+                    No hay delegaciones de aprobación registradas.
+                  </p>
+                ) : (
+                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #e2e8f0", textAlign: "left" }}>
+                        <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600 }}>Proyecto</th>
+                        <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600 }}>Delegado Por</th>
+                        <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600 }}>Delegado A</th>
+                        <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600 }}>Rango</th>
+                        <th style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600, textAlign: "right" }}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {delegations.map((d) => {
+                        const project = projects.find(p => p.id === d.projectId);
+                        const startFormatted = new Date(d.startDate).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+                        const endFormatted = new Date(d.endDate).toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" });
+                        return (
+                          <tr key={d.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                            <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-strong)", fontWeight: 600 }}>{project ? project.name : d.projectId}</td>
+                            <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-normal)" }}>{d.fromUserEmail}</td>
+                            <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-normal)", fontWeight: 600 }}>{d.toUserEmail}</td>
+                            <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", color: "var(--text-soft)" }}>{startFormatted} al {endFormatted}</td>
+                            <td style={{ padding: "0.5rem 0.75rem", fontSize: "0.78rem", textAlign: "right" }}>
+                              <button
+                                type="button"
+                                className="ghost"
+                                onClick={() => handleDeleteDelegation(d.id)}
+                                style={{
+                                  color: "#ef4444",
+                                  padding: "0.25rem 0.5rem",
+                                  fontSize: "0.75rem",
+                                  border: "none",
+                                  background: "none",
+                                  cursor: "pointer"
+                                }}
+                              >
+                                🗑️ Eliminar
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
             </div>
 
           </div>
