@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { type Project, type FxConfig } from "../services/api";
+import { type Project, type FxConfig, type Consultant, type StatsProjectRowEnriched } from "../services/api";
 
 type Message = {
   id: string;
@@ -11,13 +11,14 @@ type Message = {
 
 type RagChatProps = {
   projects: Project[];
+  statsProjects?: StatsProjectRowEnriched[];
   fxConfigs: FxConfig[];
-  consultants?: any[];
+  consultants?: Consultant[];
   isOpen: boolean;
   onClose: () => void;
 };
 
-export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose }: RagChatProps) {
+export function RagChat({ projects, statsProjects = [], fxConfigs, consultants = [], isOpen, onClose }: RagChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "initial",
@@ -29,12 +30,21 @@ export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, isTyping]);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
 
   if (!isOpen) return null;
 
@@ -44,7 +54,7 @@ export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose
 
     const userText = input.trim();
     const userMsg: Message = {
-      id: Math.random().toString(),
+      id: `${Date.now()}-${Math.random()}`,
       sender: "user",
       text: userText,
       timestamp: new Date()
@@ -53,24 +63,28 @@ export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose
     setInput("");
     setIsTyping(true);
 
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
     // Simulate RAG retrieval and generation
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       let botText = "";
       let sources: string[] = [];
 
       const query = userText.toLowerCase();
 
       // 1. Check if user is asking about a specific project
-      let matchedProject = null;
+      let matchedProject: Project | null = null;
       for (const p of projects) {
-        if (query.includes(p.name.toLowerCase()) || (p.code && query.includes(p.code.toLowerCase()))) {
+        if (query.includes(p.name.toLowerCase())) {
           matchedProject = p;
           break;
         }
       }
 
       // 2. Check if user is asking about a specific consultant
-      let matchedConsultant = null;
+      let matchedConsultant: Consultant | null = null;
       if (consultants && consultants.length > 0) {
         for (const c of consultants) {
           const nameLower = c.fullName.toLowerCase();
@@ -83,29 +97,34 @@ export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose
       }
 
       if (matchedProject) {
-        const dc = matchedProject.displayCurrency || "USD";
-        const budgetVal = Number(matchedProject.budget || 0).toLocaleString("es-CO");
-        const spentVal = Number(matchedProject.spent || 0).toLocaleString("es-CO");
-        const remVal = Number(matchedProject.remainingBudget || 0).toLocaleString("es-CO");
+        // Enrich from statsProjects if available
+        const statsRow = statsProjects.find(s => s.projectId === matchedProject!.id);
+        const dc = statsRow?.displayCurrency || matchedProject.currency || "USD";
+        const budgetVal = Number(statsRow?.budget ?? matchedProject.budget ?? 0).toLocaleString("es-CO");
+        const spentVal = Number(statsRow?.spent ?? 0).toLocaleString("es-CO");
+        const remVal = Number(statsRow?.remainingBudget ?? (Number(matchedProject.budget || 0))).toLocaleString("es-CO");
         const statusText = matchedProject.status === "ACTIVE" ? "Activo 🟢" : "Completado 🔵";
 
         botText = `Encontré información del proyecto **${matchedProject.name}**:\n\n` +
-          `• **Código**: ${matchedProject.code || "—"}\n` +
-          `• **Cliente**: ${matchedProject.clientName || matchedProject.company || "—"}\n` +
+          `• **ID**: ${matchedProject.id}\n` +
+          `• **Cliente**: ${matchedProject.company || "—"}\n` +
           `• **Estado**: ${statusText}\n` +
           `• **Presupuesto**: $${budgetVal} ${dc}\n` +
           `• **Gastado**: $${spentVal} ${dc}\n` +
           `• **Disponible**: $${remVal} ${dc}\n\n` +
-          `${matchedProject.remainingBudget < 0 ? "⚠️ ¡Atención! El proyecto ha superado su presupuesto." : "El presupuesto se encuentra dentro de los límites normales."}`;
+          `${(statsRow?.remainingBudget ?? 0) < 0 ? "⚠️ ¡Atención! El proyecto ha superado su presupuesto." : "El presupuesto se encuentra dentro de los límites normales."}`;
         
-        sources = [`Base de datos: Tabla Project (ID: ${matchedProject.id})`, `Campos: budget, spent, remainingBudget`];
+        sources = [`Base de datos: Tabla Project (ID: ${matchedProject.id})`, `Cálculo en Tiempo Real: Módulo de Estadísticas`];
 
       } else if (matchedConsultant) {
         const rateVal = Number(matchedConsultant.hourlyRate || 0).toLocaleString("es-CO");
         const emailText = matchedConsultant.email || "Sin correo registrado";
+        const specText = matchedConsultant.skills && matchedConsultant.skills.length > 0
+          ? matchedConsultant.skills.join(", ")
+          : (matchedConsultant.role || "General");
         botText = `Aquí tienes los detalles del consultor **${matchedConsultant.fullName}**:\n\n` +
           `• **Rol/Nivel**: ${matchedConsultant.role || "Consultor"}\n` +
-          `• **Especialidad**: ${matchedConsultant.specialization || "General"}\n` +
+          `• **Especialidad/Habilidades**: ${specText}\n` +
           `• **Correo**: ${emailText}\n` +
           `• **Tarifa Estándar**: $${rateVal} COP/hora\n` +
           `• **Estado**: Activo en plataforma`;
@@ -113,7 +132,9 @@ export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose
         sources = [`Base de datos: Tabla Consultant (ID: ${matchedConsultant.id})`, `Campos: fullName, role, hourlyRate`];
 
       } else if (query.includes("alerta") || query.includes("riesgo") || query.includes("excedido") || query.includes("limite")) {
-        const projectsInRisk = projects.filter(p => p.alertLevel === "warn" || p.alertLevel === "exceeded" || p.remainingBudget < 0);
+        const projectsInRisk = statsProjects.length > 0 
+          ? statsProjects.filter(p => p.alertLevel === "warning" || p.alertLevel === "exceeded" || p.remainingBudget < 0)
+          : [];
         if (projectsInRisk.length === 0) {
           botText = "¡Excelentes noticias! Actualmente no hay proyectos registrados con nivel de alerta crítica o presupuesto excedido.";
         } else {
@@ -121,7 +142,7 @@ export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose
             projectsInRisk.map(p => {
               const statusSymbol = p.alertLevel === "exceeded" || p.remainingBudget < 0 ? "🔴 EXCEDIDO" : "🟡 ADVERTENCIA";
               const pctText = p.projectedPct ? `(${p.projectedPct.toFixed(1)}% del presupuesto)` : "";
-              return `• **${p.name}**: ${statusSymbol} ${pctText}`;
+              return `• **${p.projectName}**: ${statusSymbol} ${pctText}`;
             }).join("\n");
         }
         sources = ["Motor de Reglas Financieras", "Cálculo de Proyecciones de Costo"];
@@ -136,7 +157,9 @@ export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose
 
       } else if (query.includes("presupuesto") || query.includes("costo") || query.includes("budget")) {
         const totalBudget = projects.reduce((acc, p) => acc + Number(p.budget || 0), 0);
-        const totalSpent = projects.reduce((acc, p) => acc + Number(p.spent || 0), 0);
+        const totalSpent = statsProjects.length > 0
+          ? statsProjects.reduce((acc, p) => acc + p.spent, 0)
+          : 0;
         botText = `El resumen financiero consolidado de todo el portafolio es:\n\n` +
           `• **Presupuesto Total**: $${totalBudget.toLocaleString("es-CO")} USD\n` +
           `• **Gasto Real Acumulado**: $${totalSpent.toLocaleString("es-CO")} USD\n` +
@@ -168,7 +191,7 @@ export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose
       }
 
       const botMsg: Message = {
-        id: Math.random().toString(),
+        id: `${Date.now()}-${Math.random()}`,
         sender: "bot",
         text: botText,
         sources,
@@ -179,6 +202,7 @@ export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose
       setIsTyping(false);
     }, 1000);
   };
+
 
   return (
     <div style={{

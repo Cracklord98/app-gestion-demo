@@ -1001,6 +1001,7 @@ function App() {
 
       <RagChat
         projects={projectsHook.projects}
+        statsProjects={statsHook.stats?.projects}
         fxConfigs={fxHook.fxConfigs}
         consultants={consultantsHook.consultants}
         isOpen={chatOpen}

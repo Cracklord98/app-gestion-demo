@@ -352,7 +352,7 @@ const LEGISLATIONS: Record<string, LegislationInfo> = {
 
 export function ExtraHoursTab({ projects, consultants, authUser, can, onError, configModeOnly = false }: ExtraHoursTabProps) {
   // Sub-navigation tabs
-  const [activeSubTab, setActiveSubTab] = useState<"report" | "pm" | "finance" | "payroll" | "config" | "holidays">(
+  const [activeSubTab, setActiveSubTab] = useState<"report" | "pm" | "finance" | "payroll" | "config" | "holidays" | "delegations">(
     configModeOnly ? "config" : "report"
   );
 
@@ -1907,7 +1907,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 <div>
                   <label className="form-label" style={{ fontSize: "0.8rem", fontWeight: 700 }}>Delegar a (Consultor) *</label>
                   <select
-                    value={delegateToEmail}
+                    value={delegateToEmail || ""}
                     onChange={(e) => setDelegateToEmail(e.target.value)}
                     required
                   >
@@ -1915,7 +1915,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     {consultants
                       .filter(c => c.email && c.email.toLowerCase() !== authUser?.email?.toLowerCase())
                       .map((c) => (
-                        <option key={c.id} value={c.email}>{c.fullName} ({c.email})</option>
+                        <option key={c.id} value={c.email || ""}>{c.fullName} ({c.email})</option>
                       ))}
                   </select>
                 </div>

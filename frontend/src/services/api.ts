@@ -74,6 +74,8 @@ export type Consultant = {
   createdAt: string;
   updatedAt: string;
   identification?: string | null;
+  skills?: string[];
+  seniority?: string | null;
 };
 
 export type TimeEntryStatus = "PENDING" | "APPROVED" | "REJECTED";
