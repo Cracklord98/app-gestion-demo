@@ -1002,6 +1002,7 @@ function App() {
       <RagChat
         projects={projectsHook.projects}
         fxConfigs={fxHook.fxConfigs}
+        consultants={consultantsHook.consultants}
         isOpen={chatOpen}
         onClose={() => setChatOpen(false)}
       />

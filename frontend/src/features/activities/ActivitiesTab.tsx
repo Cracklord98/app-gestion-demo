@@ -20,6 +20,17 @@ import { SearchableSelect } from "../../components/SearchableSelect";
 import { listCustomHolidays, type CustomHoliday } from "../../services/api";
 import type { TabId } from "../../types";
 
+function MicrosoftTeamsIcon({ size = 20 }: { size?: number }) {
+  return (
+    <svg viewBox="0 0 24 24" width={size} height={size} xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+      <path fill="#5059C9" d="M12.5 4.5A2.5 2.5 0 0 1 15 7v10a2.5 2.5 0 0 1-2.5 2.5h-5A2.5 2.5 0 0 1 5 17V7a2.5 2.5 0 0 1 2.5-2.5h5z"/>
+      <path fill="#7B83EB" d="M12.5 4.5h-5A2.5 2.5 0 0 0 5 7v10a2.5 2.5 0 0 0 2.5 2.5h5V4.5z"/>
+      <path fill="#4B53BC" d="M17.5 7a1.5 1.5 0 0 1 1.5 1.5v7a1.5 1.5 0 0 1-1.5 1.5H12V7h5.5z"/>
+      <path fill="#fff" d="M9.5 9v1.2H8v1.3h1.5v3h1.5v-3H12.5v-1.3H11V9H9.5z"/>
+    </svg>
+  );
+}
+
 type ActivitiesTabProps = {
   projects: Project[];
   consultants: Consultant[];
@@ -92,11 +103,13 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncSelectedIds, setSyncSelectedIds] = useState<string[]>([]);
   const [syncProjectId, setSyncProjectId] = useState("");
+  const [syncConsultantId, setSyncConsultantId] = useState("");
   const [syncingInProgress, setSyncingInProgress] = useState(false);
 
   const { instance, accounts } = useMsal();
 
-  const loadTeamsEvents = useCallback(async () => {
+  const loadTeamsEvents = useCallback(async (targetConsId: string) => {
+    if (!targetConsId) return;
     setSyncLoading(true);
     setSyncSelectedIds([]);
     try {
@@ -144,54 +157,57 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
       }
 
       if (!isRealMsal) {
-        // Fallback to high-fidelity mock events
+        // Fallback to high-fidelity mock events customized for the selected consultant
+        const targetCons = consultants.find(c => c.id === targetConsId);
+        const consName = targetCons ? targetCons.fullName : "Consultor";
+
         const mockMeetings = [
           {
-            id: "mock-1",
-            subject: "Daily Standup - Synaptica",
+            id: `mock-${targetConsId}-1`,
+            subject: `Daily Standup - ${consName}`,
             start: new Date(weekDays[0].getTime()).toISOString().replace(/T.*/, "T09:00:00.000Z"),
             end: new Date(weekDays[0].getTime()).toISOString().replace(/T.*/, "T09:30:00.000Z"),
-            bodyPreview: "Sincronización diaria del equipo de desarrollo y revisión de tableros.",
+            bodyPreview: `Sincronización diaria de ${consName} para revisar el tablero Kanban y avances del sprint.`,
             duration: 0.5
           },
           {
-            id: "mock-2",
-            subject: "Diseño de Arquitectura ERP",
+            id: `mock-${targetConsId}-2`,
+            subject: `Revisión de Requerimientos - ${consName}`,
             start: new Date(weekDays[0].getTime()).toISOString().replace(/T.*/, "T14:00:00.000Z"),
             end: new Date(weekDays[0].getTime()).toISOString().replace(/T.*/, "T15:30:00.000Z"),
-            bodyPreview: "Discusión sobre el modelo de datos, diagrama entidad-relación y flujo de caja.",
+            bodyPreview: `Sesión de refinamiento y detalle técnico de requerimientos asignados a ${consName}.`,
             duration: 1.5
           },
           {
-            id: "mock-3",
-            subject: "Demo de Avance Sprint 3",
+            id: `mock-${targetConsId}-3`,
+            subject: `Demo de Avance Sprint - ${consName}`,
             start: new Date(weekDays[1].getTime()).toISOString().replace(/T.*/, "T10:00:00.000Z"),
             end: new Date(weekDays[1].getTime()).toISOString().replace(/T.*/, "T11:00:00.000Z"),
-            bodyPreview: "Presentación de los entregables a los stakeholders y feedback inicial.",
+            bodyPreview: `Presentación a stakeholders de los entregables desarrollados por ${consName}.`,
             duration: 1.0
           },
           {
-            id: "mock-4",
-            subject: "Reunión Técnica con Cliente",
+            id: `mock-${targetConsId}-4`,
+            subject: `Reunión Técnica con Cliente (${consName.split(" ")[0]})`,
             start: new Date(weekDays[2].getTime()).toISOString().replace(/T.*/, "T15:00:00.000Z"),
             end: new Date(weekDays[2].getTime()).toISOString().replace(/T.*/, "T16:30:00.000Z"),
-            bodyPreview: "Resolver dudas sobre la integración con Microsoft Entra ID y seguridad de base de datos.",
+            bodyPreview: `Alineación de arquitectura y seguridad de datos para el módulo de facturación.`,
             duration: 1.5
           },
           {
-            id: "mock-5",
-            subject: "Capacitación: Seguridad en la Nube",
+            id: `mock-${targetConsId}-5`,
+            subject: `Capacitación: Seguridad en Nube`,
             start: new Date(weekDays[3].getTime()).toISOString().replace(/T.*/, "T11:00:00.000Z"),
             end: new Date(weekDays[3].getTime()).toISOString().replace(/T.*/, "T12:00:00.000Z"),
-            bodyPreview: "Buenas prácticas en IAM, rotación de secretos y configuración de VPC.",
+            bodyPreview: `Buenas prácticas de IAM y rotación de credenciales.`,
             duration: 1.0
           },
           {
-            id: "mock-6",
-            subject: "Sprint Planning & Retrospective",
+            id: `mock-${targetConsId}-6`,
+            subject: `Alineación Semanal de Equipo`,
             start: new Date(weekDays[4].getTime()).toISOString().replace(/T.*/, "T14:00:00.000Z"),
             end: new Date(weekDays[4].getTime()).toISOString().replace(/T.*/, "T16:00:00.000Z"),
-            bodyPreview: "Planificación de las metas del próximo Sprint y lecciones aprendidas.",
+            bodyPreview: `Cierre de semana, lecciones aprendidas y retrospectiva del equipo de desarrollo.`,
             duration: 2.0
           }
         ];
@@ -202,7 +218,8 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
       const enrichedEvents = fetchedEvents.map(ev => {
         const isImported = activities.some(act => 
           act.title.toLowerCase() === ev.subject.toLowerCase() && 
-          act.scheduledDate.slice(0, 10) === ev.start.slice(0, 10)
+          act.scheduledDate.slice(0, 10) === ev.start.slice(0, 10) &&
+          act.consultantId === targetConsId
         );
         return { ...ev, isImported };
       });
@@ -213,22 +230,31 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
     } finally {
       setSyncLoading(false);
     }
-  }, [weekDays, activities, accounts, instance, onError]);
+  }, [weekDays, activities, accounts, instance, onError, consultants]);
 
+  // Set initial sync consultant ID
   useEffect(() => {
     if (teamsModalOpen) {
-      void loadTeamsEvents();
+      const initialConsId = filterConsultantId || myConsultant?.id || consultants[0]?.id || "";
+      setSyncConsultantId(initialConsId);
     }
-  }, [teamsModalOpen, loadTeamsEvents]);
+  }, [teamsModalOpen, filterConsultantId, myConsultant, consultants]);
+
+  // Load events when modal opens OR selected consultant changes
+  useEffect(() => {
+    if (teamsModalOpen && syncConsultantId) {
+      void loadTeamsEvents(syncConsultantId);
+    }
+  }, [teamsModalOpen, syncConsultantId, loadTeamsEvents]);
 
   const handleImportMeetings = async () => {
     if (syncSelectedIds.length === 0) {
       onError("Por favor selecciona al menos una reunión.");
       return;
     }
-    const consultantId = filterConsultantId || myConsultant?.id || consultants[0]?.id;
+    const consultantId = syncConsultantId;
     if (!consultantId) {
-      onError("No hay un consultor activo para asignar estas reuniones.");
+      onError("Por favor selecciona un consultor para asignar estas reuniones.");
       return;
     }
 
@@ -776,9 +802,9 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               type="button"
               onClick={() => setTeamsModalOpen(true)}
               style={{
-                background: "#e0e7ff",
-                color: "#4f46e5",
-                border: "1px solid #c7d2fe",
+                background: "#f0f2ff",
+                color: "#3f47c9",
+                border: "1px solid #cbd2f6",
                 fontSize: "0.85rem",
                 padding: "0.5rem 1rem",
                 borderRadius: "8px",
@@ -786,10 +812,13 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                 fontWeight: 600,
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "0.3rem"
+                gap: "0.45rem",
+                transition: "all 0.15s ease",
+                boxShadow: "0 2px 4px rgba(79, 89, 201, 0.08)"
               }}
+              className="teams-sync-btn"
             >
-              👥 Sincronizar Teams
+              <MicrosoftTeamsIcon size={16} /> Sincronizar Teams
             </button>
 
             <button
@@ -1825,8 +1854,8 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               padding: "1rem 1.5rem", 
               borderBottom: "1px solid #c7d2fe" 
             }}>
-              <h3 style={{ margin: 0, color: "#3730a3", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 700 }}>
-                👥 Sincronizar Reuniones de Teams
+              <h3 style={{ margin: 0, color: "#3730a3", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "0.6rem", fontWeight: 700 }}>
+                <MicrosoftTeamsIcon size={22} /> Sincronizar Reuniones de Teams
               </h3>
               <button type="button" className="ghost" onClick={() => setTeamsModalOpen(false)} style={{ padding: "0.25rem 0.5rem", color: "#3730a3" }}>✕</button>
             </div>
@@ -1841,16 +1870,29 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                 </span>
               </div>
 
-              {/* Default Project selector */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-soft)" }}>Asociar actividades importadas al Proyecto:</label>
-                <SearchableSelect
-                  options={projects.map((p) => ({ value: p.id, label: p.name }))}
-                  value={syncProjectId}
-                  onChange={(val) => setSyncProjectId(val)}
-                  placeholder="Buscar proyecto..."
-                  emptyLabel="-- No vincular a proyecto --"
-                />
+              {/* Grid: Consultant & Project selector */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }} className="grid-one-col-mobile">
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#3730a3" }}>Consultor a Sincronizar *</label>
+                  <SearchableSelect
+                    options={consultants.map((c) => ({ value: c.id, label: c.fullName }))}
+                    value={syncConsultantId}
+                    onChange={(val) => setSyncConsultantId(val)}
+                    placeholder="Buscar consultor..."
+                    emptyLabel=""
+                  />
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-soft)" }}>Asociar actividades al Proyecto:</label>
+                  <SearchableSelect
+                    options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                    value={syncProjectId}
+                    onChange={(val) => setSyncProjectId(val)}
+                    placeholder="Buscar proyecto..."
+                    emptyLabel="-- No vincular a proyecto --"
+                  />
+                </div>
               </div>
 
               {/* List of events */}

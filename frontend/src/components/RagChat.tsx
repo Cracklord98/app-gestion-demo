@@ -12,16 +12,17 @@ type Message = {
 type RagChatProps = {
   projects: Project[];
   fxConfigs: FxConfig[];
+  consultants?: any[];
   isOpen: boolean;
   onClose: () => void;
 };
 
-export function RagChat({ projects, fxConfigs, isOpen, onClose }: RagChatProps) {
+export function RagChat({ projects, fxConfigs, consultants = [], isOpen, onClose }: RagChatProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "initial",
       sender: "bot",
-      text: "¡Hola! Soy el asistente RAG de Synaptica. Puedo responder tus preguntas sobre los proyectos, presupuestos o tasas de cambio de esta demo. Intenta preguntar por 'proyectos', 'presupuesto' o 'tasas de cambio'.",
+      text: "¡Hola! Soy el asistente inteligente de Synaptica. Puedo responder tus preguntas sobre los proyectos, presupuestos, consultores o tasas de cambio de esta demo. Intenta preguntar por 'proyectos en riesgo', el nombre de algún proyecto o un consultor.",
       timestamp: new Date()
     }
   ]);
@@ -59,34 +60,110 @@ export function RagChat({ projects, fxConfigs, isOpen, onClose }: RagChatProps) 
 
       const query = userText.toLowerCase();
 
-      if (query.includes("proyecto") || query.includes("cuántos") || query.includes("lista")) {
+      // 1. Check if user is asking about a specific project
+      let matchedProject = null;
+      for (const p of projects) {
+        if (query.includes(p.name.toLowerCase()) || (p.code && query.includes(p.code.toLowerCase()))) {
+          matchedProject = p;
+          break;
+        }
+      }
+
+      // 2. Check if user is asking about a specific consultant
+      let matchedConsultant = null;
+      if (consultants && consultants.length > 0) {
+        for (const c of consultants) {
+          const nameLower = c.fullName.toLowerCase();
+          const first = nameLower.split(" ")[0];
+          if (query.includes(nameLower) || (first && first.length > 2 && query.includes(first))) {
+            matchedConsultant = c;
+            break;
+          }
+        }
+      }
+
+      if (matchedProject) {
+        const dc = matchedProject.displayCurrency || "USD";
+        const budgetVal = Number(matchedProject.budget || 0).toLocaleString("es-CO");
+        const spentVal = Number(matchedProject.spent || 0).toLocaleString("es-CO");
+        const remVal = Number(matchedProject.remainingBudget || 0).toLocaleString("es-CO");
+        const statusText = matchedProject.status === "ACTIVE" ? "Activo 🟢" : "Completado 🔵";
+
+        botText = `Encontré información del proyecto **${matchedProject.name}**:\n\n` +
+          `• **Código**: ${matchedProject.code || "—"}\n` +
+          `• **Cliente**: ${matchedProject.clientName || matchedProject.company || "—"}\n` +
+          `• **Estado**: ${statusText}\n` +
+          `• **Presupuesto**: $${budgetVal} ${dc}\n` +
+          `• **Gastado**: $${spentVal} ${dc}\n` +
+          `• **Disponible**: $${remVal} ${dc}\n\n` +
+          `${matchedProject.remainingBudget < 0 ? "⚠️ ¡Atención! El proyecto ha superado su presupuesto." : "El presupuesto se encuentra dentro de los límites normales."}`;
+        
+        sources = [`Base de datos: Tabla Project (ID: ${matchedProject.id})`, `Campos: budget, spent, remainingBudget`];
+
+      } else if (matchedConsultant) {
+        const rateVal = Number(matchedConsultant.hourlyRate || 0).toLocaleString("es-CO");
+        const emailText = matchedConsultant.email || "Sin correo registrado";
+        botText = `Aquí tienes los detalles del consultor **${matchedConsultant.fullName}**:\n\n` +
+          `• **Rol/Nivel**: ${matchedConsultant.role || "Consultor"}\n` +
+          `• **Especialidad**: ${matchedConsultant.specialization || "General"}\n` +
+          `• **Correo**: ${emailText}\n` +
+          `• **Tarifa Estándar**: $${rateVal} COP/hora\n` +
+          `• **Estado**: Activo en plataforma`;
+        
+        sources = [`Base de datos: Tabla Consultant (ID: ${matchedConsultant.id})`, `Campos: fullName, role, hourlyRate`];
+
+      } else if (query.includes("alerta") || query.includes("riesgo") || query.includes("excedido") || query.includes("limite")) {
+        const projectsInRisk = projects.filter(p => p.alertLevel === "warn" || p.alertLevel === "exceeded" || p.remainingBudget < 0);
+        if (projectsInRisk.length === 0) {
+          botText = "¡Excelentes noticias! Actualmente no hay proyectos registrados con nivel de alerta crítica o presupuesto excedido.";
+        } else {
+          botText = `Se detectaron **${projectsInRisk.length} proyectos en riesgo**:\n\n` +
+            projectsInRisk.map(p => {
+              const statusSymbol = p.alertLevel === "exceeded" || p.remainingBudget < 0 ? "🔴 EXCEDIDO" : "🟡 ADVERTENCIA";
+              const pctText = p.projectedPct ? `(${p.projectedPct.toFixed(1)}% del presupuesto)` : "";
+              return `• **${p.name}**: ${statusSymbol} ${pctText}`;
+            }).join("\n");
+        }
+        sources = ["Motor de Reglas Financieras", "Cálculo de Proyecciones de Costo"];
+
+      } else if (query.includes("proyecto") || query.includes("cuántos") || query.includes("lista")) {
         const count = projects.length;
         const activeCount = projects.filter(p => p.status === "ACTIVE").length;
-        botText = `Actualmente hay ${count} proyectos en el sistema, de los cuales ${activeCount} están activos.`;
-        if (projects.length > 0) {
-          botText += ` Algunos proyectos destacados son: ${projects.slice(0, 3).map(p => p.name).join(", ")}.`;
-        }
+        botText = `Actualmente hay **${count} proyectos** registrados en total, de los cuales **${activeCount}** se encuentran en estado activo.\n\n` +
+          `Algunos proyectos en curso:\n` +
+          projects.slice(0, 4).map(p => `• ${p.name} (Cliente: ${p.company || "—"})`).join("\n");
         sources = ["Base de datos: Tabla Project", "Controlador: listProjects"];
+
       } else if (query.includes("presupuesto") || query.includes("costo") || query.includes("budget")) {
-        const totalBudget = projects.reduce((acc, p) => acc + Number(p.budget), 0);
-        botText = `El presupuesto total consolidado de todos los proyectos registrados es de $${totalBudget.toLocaleString("es-CO")} ${projects[0]?.currency || "USD"}.`;
-        sources = ["Modelo Prisma: Project.budget", "Cálculo en vivo de Agregación"];
+        const totalBudget = projects.reduce((acc, p) => acc + Number(p.budget || 0), 0);
+        const totalSpent = projects.reduce((acc, p) => acc + Number(p.spent || 0), 0);
+        botText = `El resumen financiero consolidado de todo el portafolio es:\n\n` +
+          `• **Presupuesto Total**: $${totalBudget.toLocaleString("es-CO")} USD\n` +
+          `• **Gasto Real Acumulado**: $${totalSpent.toLocaleString("es-CO")} USD\n` +
+          `• **Eficiencia General**: ${totalBudget > 0 ? Math.round((totalSpent / totalBudget) * 100) : 0}% ejecutado.`;
+        sources = ["Agregación de Presupuestos BAC/spent", "Módulo Financiero"];
+
       } else if (query.includes("tasa") || query.includes("dolar") || query.includes("divisa") || query.includes("cambio") || query.includes("fx")) {
         if (fxConfigs.length === 0) {
-          botText = "No hay tasas de cambio (FX) configuradas actualmente.";
+          botText = "No hay tasas de cambio (FX) configuradas actualmente en el sistema.";
         } else {
-          botText = `Las tasas de cambio configuradas son:\n` + 
-            fxConfigs.map(fx => `• ${fx.baseCode} a ${fx.quoteCode}: ${Number(fx.rate).toLocaleString("es-CO")}`).join("\n");
+          botText = `Las tasas de cambio (FX) configuradas son:\n\n` +
+            fxConfigs.map(fx => `• **1 ${fx.baseCode}** = ${Number(fx.rate).toLocaleString("es-CO", { maximumFractionDigits: 4 })} ${fx.quoteCode}`).join("\n");
         }
-        sources = ["Base de datos: Tabla FxConfig", "Módulo Financiero"];
-      } else if (query.includes("ayuda") || query.includes("hola") || query.includes("qué haces")) {
-        botText = "Puedo ayudarte con información consolidada sobre tus proyectos. Prueba a preguntar:\n" +
-          "1. ¿Cuántos proyectos hay registrados?\n" +
-          "2. ¿Cuál es el presupuesto total consolidado?\n" +
-          "3. Ver tasas de cambio configuradas.";
+        sources = ["Base de datos: Tabla FxConfig", "Módulo de Conversión Multimoneda"];
+
+      } else if (query.includes("ayuda") || query.includes("hola") || query.includes("qué haces") || query.includes("buenos dias")) {
+        botText = "¡Hola! Soy el asistente inteligente de Synaptica. Puedo consultar en tiempo real los datos del portafolio. Intenta preguntarme cosas como:\n\n" +
+          "• *'¿Qué proyectos están en riesgo?'*\n" +
+          "• *'Presupuesto de [nombre del proyecto]'*\n" +
+          "• *'¿Cuánto es el presupuesto total consolidado?'*\n" +
+          "• *'Información sobre el consultor [nombre]'*\n" +
+          "• *'Ver tasas de cambio (FX) configuradas'*";
         sources = ["Documentación del Asistente RAG"];
+
       } else {
-        botText = "Lo siento, no encontré documentos específicos con esa palabra clave en esta demo. Intenta preguntar sobre 'proyectos', 'presupuesto' o 'tasas de cambio'.";
+        botText = "Lo siento, no encontré registros específicos para esa consulta en la base de datos de esta demo.\n\n" +
+          "Intenta preguntar sobre 'proyectos en riesgo', el nombre de un proyecto (ej. 'Portal Clientes'), o un consultor (ej. 'Sandra' o 'Carlos').";
         sources = ["Búsqueda Semántica Vacía"];
       }
 
@@ -137,13 +214,51 @@ export function RagChat({ projects, fxConfigs, isOpen, onClose }: RagChatProps) 
             <span style={{ fontSize: "0.65rem", opacity: 0.9 }}>Búsqueda Semántica Demo</span>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: "1rem" }}
-        >
-          ✕
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
+          <button
+            type="button"
+            onClick={() => {
+              setMessages([
+                {
+                  id: "initial",
+                  sender: "bot",
+                  text: "Conversación reiniciada. ¿En qué puedo ayudarte hoy?",
+                  timestamp: new Date()
+                }
+              ]);
+            }}
+            title="Limpiar conversación"
+            style={{
+              background: "none",
+              border: "none",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: "0.95rem",
+              padding: "0.2rem",
+              opacity: 0.8,
+              display: "flex",
+              alignItems: "center"
+            }}
+          >
+            🗑️
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#fff",
+              cursor: "pointer",
+              fontSize: "1rem",
+              padding: "0.2rem",
+              display: "flex",
+              alignItems: "center"
+            }}
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Messages */}
