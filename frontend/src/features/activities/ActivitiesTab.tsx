@@ -116,6 +116,18 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
   // Navigation states
   const [selectedDate, setSelectedDate] = useState(() => new Date());
 
+  // Daily shift config state
+  const [shiftStart, setShiftStart] = useState(() => localStorage.getItem("syn_shift_start") || "08:00");
+  const [shiftEnd, setShiftEnd] = useState(() => localStorage.getItem("syn_shift_end") || "17:00");
+  const [shiftConfigOpen, setShiftConfigOpen] = useState(false);
+
+  const saveShiftConfig = (start: string, end: string) => {
+    setShiftStart(start);
+    setShiftEnd(end);
+    localStorage.setItem("syn_shift_start", start);
+    localStorage.setItem("syn_shift_end", end);
+  };
+
   // Date helper utilities
   const getDaysOfWeek = (baseDate: Date) => {
     const date = new Date(baseDate);
@@ -922,6 +934,15 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
           Limpiar filtros
         </button>
 
+        <button
+          type="button"
+          onClick={() => setShiftConfigOpen(!shiftConfigOpen)}
+          className="ghost"
+          style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem", display: "inline-flex", alignItems: "center", gap: "0.25rem" }}
+        >
+          ⚙️ Jornada: {shiftStart} - {shiftEnd}
+        </button>
+
         <div style={{ marginLeft: "auto", display: "flex", gap: "0.75rem", alignItems: "center" }} className="flex-right-mobile-full">
           <button
             type="button"
@@ -968,13 +989,50 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
         </div>
       </div>
 
+      {shiftConfigOpen && (
+        <div className="card glass-card" style={{ padding: "0.75rem 1rem", border: "1px solid #f4d4b6", marginTop: "-0.5rem", marginBottom: "0.5rem", display: "flex", gap: "1rem", alignItems: "center" }}>
+          <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#9a4f0f" }}>Configuración de Jornada Normal:</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <label style={{ fontSize: "0.75rem", color: "var(--text-soft)" }}>Inicio:</label>
+            <select
+              value={shiftStart}
+              onChange={(e) => saveShiftConfig(e.target.value, shiftEnd)}
+              style={{ padding: "0.25rem 0.5rem", borderRadius: "6px", fontSize: "0.8rem" }}
+            >
+              {["06:00", "07:00", "08:00", "09:00", "10:00"].map((h) => <option key={h} value={h}>{h}</option>)}
+            </select>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <label style={{ fontSize: "0.75rem", color: "var(--text-soft)" }}>Fin:</label>
+            <select
+              value={shiftEnd}
+              onChange={(e) => saveShiftConfig(shiftStart, e.target.value)}
+              style={{ padding: "0.25rem 0.5rem", borderRadius: "6px", fontSize: "0.8rem" }}
+            >
+              {["15:00", "16:00", "17:00", "18:00", "19:00", "20:00"].map((h) => <option key={h} value={h}>{h}</option>)}
+            </select>
+          </div>
+          <button
+            type="button"
+            className="ghost"
+            onClick={() => setShiftConfigOpen(false)}
+            style={{ fontSize: "0.75rem", padding: "0.25rem 0.5rem", marginLeft: "auto" }}
+          >
+            Listo
+          </button>
+        </div>
+      )}
+
       {/* --- WEEK CALENDAR VIEW --- */}
       {view === "week" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           
           {/* Week Selector Controls */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6" }}>
-            <button type="button" className="ghost" onClick={() => navigateWeek(-1)} style={{ padding: "0.3rem 0.6rem" }}>◀ Semana anterior</button>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button type="button" className="ghost" onClick={() => navigateWeek(-1)} style={{ padding: "0.3rem 0.6rem" }}>◀ Semana anterior</button>
+              <button type="button" className="ghost" onClick={() => setSelectedDate(new Date())} style={{ padding: "0.3rem 0.6rem", fontWeight: 700 }}>📅 Hoy</button>
+            </div>
             <strong style={{ fontSize: "1rem", color: "var(--text-strong)" }}>
               Semana del {weekDays[0].toLocaleDateString("es-CO", { day: "numeric", month: "short" })} al {weekDays[6].toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}
             </strong>
@@ -1131,7 +1189,10 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
           
           {/* Month Navigator */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6" }}>
-            <button type="button" className="ghost" onClick={() => navigateMonth(-1)} style={{ padding: "0.3rem 0.6rem" }}>◀ Mes anterior</button>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button type="button" className="ghost" onClick={() => navigateMonth(-1)} style={{ padding: "0.3rem 0.6rem" }}>◀ Mes anterior</button>
+              <button type="button" className="ghost" onClick={() => setSelectedDate(new Date())} style={{ padding: "0.3rem 0.6rem", fontWeight: 700 }}>📅 Hoy</button>
+            </div>
             <strong style={{ fontSize: "1rem", color: "var(--text-strong)", textTransform: "capitalize" }}>
               {monthLabel}
             </strong>

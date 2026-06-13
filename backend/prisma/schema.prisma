@@ -193,6 +193,7 @@ model Consultant {
   fullName       String
   email          String?
   role           String
+  company        String?
   hourlyRate     Decimal? @db.Decimal(14, 2)
   rateCurrency   String   @default("USD")
   country        String?
@@ -202,6 +203,7 @@ model Consultant {
   maxHoursPerDay Decimal? @db.Decimal(4, 2)
   active         Boolean  @default(true)
   allowWeekendWork Boolean @default(false)
+  isInternal     Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

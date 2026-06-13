@@ -6,6 +6,7 @@ import {
 } from "../../services/api";
 import { DateRangePicker } from "../../components/DateRangePicker";
 import { readPersistedRange, type DateRange } from "../../components/dateRangeUtils";
+import { SearchableSelect } from "../../components/SearchableSelect";
 import type { TabId } from "../../types";
 import { formatISODateRange } from "../../utils/periodUtils";
 import { backendHealthToResult, HEALTH_CRITERIA_TOOLTIP } from "../../utils/projectHealth";
@@ -77,11 +78,11 @@ function BudgetChart({ rows }: { rows: BudgetChartRow[] }) {
   const scale = (v: number) => (v / maxVal) * CHART_WIDTH;
   const svgH = rows.length * (BAR_HEIGHT + BAR_GAP) + BAR_GAP + 20;
   const color = (level: BudgetChartRow["alertLevel"]) =>
-    level === "exceeded" ? "#dc2626" : level === "warning" ? "#f59e0b" : "#2563eb";
+    level === "exceeded" ? "#ef4444" : level === "warning" ? "#f59e0b" : "#16a34a";
 
   return (
     <div style={{ overflowX: "auto" }}>
-      <svg width={W} height={svgH} style={{ display: "block", fontFamily: "inherit" }}>
+      <svg viewBox={`0 0 ${W} ${svgH}`} style={{ width: "100%", height: "auto", maxWidth: W, display: "block", fontFamily: "inherit" }}>
         {rows.map((row, i) => {
           const y = BAR_GAP + i * (BAR_HEIGHT + BAR_GAP);
           const c = color(row.alertLevel);
@@ -106,7 +107,7 @@ function BudgetChart({ rows }: { rows: BudgetChartRow[] }) {
         <g transform={`translate(${LABEL_WIDTH},${svgH - 14})`}>
           <rect width={10} height={8} rx={2} fill="#e5e7eb" />
           <text x={13} y={8} fontSize={9} fill="#6b7280">Presupuesto</text>
-          <rect x={78} width={10} height={8} rx={2} fill="#2563eb" opacity={0.85} />
+          <rect x={78} width={10} height={8} rx={2} fill="#16a34a" opacity={0.85} />
           <text x={91} y={8} fontSize={9} fill="#6b7280">Gasto real</text>
           <line x1={158} y1={0} x2={158} y2={9} stroke="#6b7280" strokeWidth={2} strokeDasharray="3,2" />
           <text x={162} y={8} fontSize={9} fill="#6b7280">Proyectado</text>
@@ -414,6 +415,8 @@ export function DashboardTab({
   const [dateRange, setDateRange] = useState<DateRange>(initial);
   const [company, setCompany] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [projectStatus, setProjectStatus] = useState("");
+  const [projectType, setProjectType] = useState("");
 
   const statsFilters = { company, projectId, from: dateRange.from, to: dateRange.to };
 
@@ -459,13 +462,21 @@ export function DashboardTab({
     return Array.from(unique).sort((a, b) => a.localeCompare(b));
   }, [projects]);
 
+  const companyOptions = useMemo(() => companies.map((c) => ({ value: c, label: c })), [companies]);
+
+  const projectOptions = useMemo(() => {
+    return projects.map((p) => ({ value: p.id, label: p.name }));
+  }, [projects]);
+
   const dashboardProjects = useMemo(() =>
     projects.filter((p) => {
-      if (company && p.company !== company) return false;
-      if (projectId && p.id !== projectId) return false;
+      if (company && !p.company.toLowerCase().includes(company.toLowerCase())) return false;
+      if (projectId && p.id !== projectId && !p.name.toLowerCase().includes(projectId.toLowerCase())) return false;
+      if (projectStatus && p.status !== projectStatus) return false;
+      if (projectType && p.projectType !== projectType) return false;
       return true;
     }),
-  [projects, company, projectId]);
+  [projects, company, projectId, projectStatus, projectType]);
 
   const dashboardProjectIds = useMemo(() => new Set(dashboardProjects.map((p) => p.id)), [dashboardProjects]);
 
@@ -895,21 +906,21 @@ export function DashboardTab({
 
       {/* Tareas 9 + 14: Mini-cards riesgos/issues/cambios + EVM */}
       <div className="grid three-col">
-        <article className="card" style={{ background: risksSummary.openHighRisks > 0 ? "#fef2f2" : "#f0fdf4", border: `1px solid ${risksSummary.openHighRisks > 0 ? "#fca5a5" : "#86efac"}` }}>
+        <article className="card" style={{ textAlign: "center", background: risksSummary.openHighRisks > 0 ? "#fef2f2" : "#f0fdf4", border: `1px solid ${risksSummary.openHighRisks > 0 ? "#fca5a5" : "#86efac"}` }}>
           <h3 style={{ fontSize: "0.78rem", marginBottom: "0.35rem" }}>⚠️ Riesgos altos abiertos</h3>
           <p style={{ fontSize: "1.6rem", fontWeight: 800, color: risksSummary.openHighRisks > 0 ? "#dc2626" : "#16a34a", margin: 0 }}>
             {risksSummary.openHighRisks}
           </p>
           <p style={{ fontSize: "0.68rem", color: "#6b7280", marginTop: "0.1rem" }}>Score ≥ 6</p>
         </article>
-        <article className="card" style={{ background: risksSummary.openIssues > 0 ? "#fffbeb" : "#f0fdf4", border: `1px solid ${risksSummary.openIssues > 0 ? "#fcd34d" : "#86efac"}` }}>
+        <article className="card" style={{ textAlign: "center", background: risksSummary.openIssues > 0 ? "#fffbeb" : "#f0fdf4", border: `1px solid ${risksSummary.openIssues > 0 ? "#fcd34d" : "#86efac"}` }}>
           <h3 style={{ fontSize: "0.78rem", marginBottom: "0.35rem" }}>🐛 Incidentes abiertos</h3>
           <p style={{ fontSize: "1.6rem", fontWeight: 800, color: risksSummary.openIssues > 0 ? "#b45309" : "#16a34a", margin: 0 }}>
             {risksSummary.openIssues}
           </p>
           <p style={{ fontSize: "0.68rem", color: "#6b7280", marginTop: "0.1rem" }}>En curso o sin resolver</p>
         </article>
-        <article className="card" style={{ background: risksSummary.pendingChgs > 0 ? "#eff6ff" : "#f9fafb", border: `1px solid ${risksSummary.pendingChgs > 0 ? "#93c5fd" : "#e5e7eb"}` }}>
+        <article className="card" style={{ textAlign: "center", background: risksSummary.pendingChgs > 0 ? "#eff6ff" : "#f9fafb", border: `1px solid ${risksSummary.pendingChgs > 0 ? "#93c5fd" : "#e5e7eb"}` }}>
           <h3 style={{ fontSize: "0.78rem", marginBottom: "0.35rem" }}>📋 Cambios pendientes</h3>
           <p style={{ fontSize: "1.6rem", fontWeight: 800, color: risksSummary.pendingChgs > 0 ? "#1d4ed8" : "#6b7280", margin: 0 }}>
             {risksSummary.pendingChgs}
@@ -923,88 +934,143 @@ export function DashboardTab({
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "0.5rem", marginBottom: "0.75rem" }}>
           <h3 style={{ margin: 0 }}>Filtros del tablero</h3>
 
-          {/* Saved views */}
-          <div style={{ position: "relative" }}>
-            <button type="button" className="ghost"
-              onClick={() => setViewMenuOpen((o) => !o)}
-              style={{ fontSize: "0.8rem" }}>
-              📑 Mis vistas {savedViews.length > 0 ? `(${savedViews.length})` : ""}
+          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+            {/* Botón Limpiar */}
+            <button
+              type="button"
+              className="ghost"
+              onClick={() => {
+                setCompany("");
+                setProjectId("");
+                setProjectStatus("");
+                setProjectType("");
+                setDateRange({ from: "", to: "" });
+                setTablePage(1);
+              }}
+              style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem", borderRadius: "8px", display: "flex", alignItems: "center", gap: "0.3rem", height: "34px" }}
+            >
+              🧹 Limpiar
             </button>
-            {viewMenuOpen && (
-              <div style={{
-                position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 100,
-                background: "#fff", border: "1px solid #f4d4b6", borderRadius: "10px",
-                boxShadow: "0 6px 20px rgba(15,23,42,0.1)", minWidth: "15rem",
-                padding: "0.75rem",
-              }}>
-                {savedViews.length === 0 ? (
-                  <p style={{ fontSize: "0.8rem", color: "#9ca3af", margin: 0 }}>Sin vistas guardadas</p>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginBottom: "0.5rem" }}>
-                    {savedViews.map((v) => (
-                      <div key={v.name} style={{ display: "flex", gap: "0.3rem", alignItems: "center" }}>
-                        <button type="button" className="ghost"
-                          onClick={() => applyView(v)}
-                          style={{ flex: 1, textAlign: "left", fontSize: "0.78rem" }}>
-                          {v.name}
-                        </button>
-                        <button type="button" className="ghost"
-                          onClick={() => deleteView(v.name)}
-                          style={{ fontSize: "0.7rem", padding: "0.15rem 0.4rem", color: "#dc2626" }}>
-                          ✕
-                        </button>
-                      </div>
-                    ))}
+
+            {/* Saved views */}
+            <div style={{ position: "relative" }}>
+              <button type="button" className="ghost"
+                onClick={() => setViewMenuOpen((o) => !o)}
+                style={{ fontSize: "0.8rem" }}>
+                📑 Mis vistas {savedViews.length > 0 ? `(${savedViews.length})` : ""}
+              </button>
+              {viewMenuOpen && (
+                <div style={{
+                  position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 100,
+                  background: "#fff", border: "1px solid #f4d4b6", borderRadius: "10px",
+                  boxShadow: "0 6px 20px rgba(15,23,42,0.1)", minWidth: "15rem",
+                  padding: "0.75rem",
+                }}>
+                  {savedViews.length === 0 ? (
+                    <p style={{ fontSize: "0.8rem", color: "#9ca3af", margin: 0 }}>Sin vistas guardadas</p>
+                  ) : (
+                    <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", marginBottom: "0.5rem" }}>
+                      {savedViews.map((v) => (
+                        <div key={v.name} style={{ display: "flex", gap: "0.3rem", alignItems: "center" }}>
+                          <button type="button" className="ghost"
+                            onClick={() => applyView(v)}
+                            style={{ flex: 1, textAlign: "left", fontSize: "0.78rem" }}>
+                            {v.name}
+                          </button>
+                          <button type="button" className="ghost"
+                            onClick={() => deleteView(v.name)}
+                            style={{ fontSize: "0.7rem", padding: "0.15rem 0.4rem", color: "#dc2626" }}>
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div style={{ borderTop: "1px solid #f4d4b6", paddingTop: "0.5rem", display: "flex", gap: "0.3rem" }}>
+                    <input
+                      placeholder="Nombre de la vista"
+                      value={viewName}
+                      onChange={(e) => setViewName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") saveCurrentView(); }}
+                      style={{ fontSize: "0.78rem", padding: "0.35rem 0.5rem" }}
+                    />
+                    <button type="button" onClick={saveCurrentView}
+                      style={{ fontSize: "0.78rem", padding: "0.35rem 0.6rem", whiteSpace: "nowrap" }}>
+                      Guardar
+                    </button>
                   </div>
-                )}
-                <div style={{ borderTop: "1px solid #f4d4b6", paddingTop: "0.5rem", display: "flex", gap: "0.3rem" }}>
-                  <input
-                    placeholder="Nombre de la vista"
-                    value={viewName}
-                    onChange={(e) => setViewName(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") saveCurrentView(); }}
-                    style={{ fontSize: "0.78rem", padding: "0.35rem 0.5rem" }}
-                  />
-                  <button type="button" onClick={saveCurrentView}
-                    style={{ fontSize: "0.78rem", padding: "0.35rem 0.6rem", whiteSpace: "nowrap" }}>
-                    Guardar
-                  </button>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="filters-bar">
-          <select value={company}
-            onChange={(e) => { setCompany(e.target.value); setProjectId(""); setTablePage(1); }}
-            style={{ flex: "1 1 10rem", minWidth: "9rem" }}>
-            <option value="">Todas las empresas</option>
-            {companies.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select value={projectId}
-            onChange={(e) => { setProjectId(e.target.value); setTablePage(1); }}
-            style={{ flex: "1 1 12rem", minWidth: "9rem" }}>
-            <option value="">Todos los proyectos</option>
-            {dashboardProjects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-
-          {/* Tarea 4: DateRangePicker */}
-          <DateRangePicker
-            value={dateRange}
-            onChange={(r) => { setDateRange(r); setTablePage(1); }}
-          />
-
-          <select value={baseCurrency}
-            onChange={(e) => void changeBaseCurrency(e.target.value)}
-            style={{ flex: "0 0 auto", minWidth: "8rem" }}>
-            {["COP","USD","EUR","MXN","PEN","CLP"].map((c) => <option key={c} value={c}>Ver en {c}</option>)}
-          </select>
-
-          <button type="button" className="ghost"
-            onClick={() => { setCompany(""); setProjectId(""); setDateRange({ from: "", to: "" }); setTablePage(1); }}>
-            Limpiar
-          </button>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", alignItems: "flex-end" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Empresa</label>
+            <SearchableSelect
+              options={companyOptions}
+              value={company}
+              onChange={(val) => { setCompany(val); setProjectId(""); setTablePage(1); }}
+              placeholder="Buscar o escribir empresa..."
+              emptyLabel="Todas las empresas"
+              allowFreeText={true}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Proyecto</label>
+            <SearchableSelect
+              options={projectOptions}
+              value={projectId}
+              onChange={(val) => { setProjectId(val); setTablePage(1); }}
+              placeholder="Buscar o escribir proyecto..."
+              emptyLabel="Todos los proyectos"
+              allowFreeText={true}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Estado del Proyecto</label>
+            <select
+              value={projectStatus}
+              onChange={(e) => { setProjectStatus(e.target.value); setTablePage(1); }}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+            >
+              <option value="">Todos los estados</option>
+              <option value="ACTIVE">Activos</option>
+              <option value="PAUSED">En Pausa</option>
+              <option value="CLOSED">Cerrados</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Tipo de Proyecto</label>
+            <select
+              value={projectType}
+              onChange={(e) => { setProjectType(e.target.value); setTablePage(1); }}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+            >
+              <option value="">Todos los tipos</option>
+              <option value="FIXED_PRICE">Precio Fijo (Fixed Price)</option>
+              <option value="TIME_AND_MATERIAL">Tiempo y Materiales (T&M)</option>
+              <option value="STAFFING">Staffing / Augmentation</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Rango de Fechas</label>
+            <DateRangePicker
+              value={dateRange}
+              onChange={(r) => { setDateRange(r); setTablePage(1); }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Moneda Base</label>
+            <select
+              value={baseCurrency}
+              onChange={(e) => void changeBaseCurrency(e.target.value)}
+              style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+            >
+              {["COP","USD","EUR","MXN","PEN","CLP"].map((c) => <option key={c} value={c}>Ver en {c}</option>)}
+            </select>
+          </div>
         </div>
 
         {stats && (
@@ -1343,21 +1409,38 @@ export function DashboardTab({
         </article>
       </section>
 
-      {/* ── Budget chart ── */}
-      {displayProjects.length > 0 && (
+      {/* ── Gráficos Principales (Presupuesto vs Gasto + Horas Extras Aprobadas) ── */}
+      <section className="grid two-col">
+        {displayProjects.length > 0 ? (
+          <article className="card">
+            <h3>Presupuesto vs Gasto real por proyecto</h3>
+            <div style={{ marginTop: "0.5rem" }}>
+              <BudgetChart
+                rows={displayProjects.map((r) => ({
+                  projectName: r.projectName,
+                  budget: r.budget,
+                  spent: r.spent,
+                  projectedTotal: r.projectedTotal,
+                  alertLevel: r.alertLevel,
+                }))}
+              />
+            </div>
+          </article>
+        ) : (
+          <article className="card">
+            <h3>Presupuesto vs Gasto real por proyecto</h3>
+            <p style={{ color: "#9ca3af", fontSize: "0.85rem", textAlign: "center", padding: "2rem" }}>Sin datos para mostrar</p>
+          </article>
+        )}
+
         <article className="card">
-          <h3>Presupuesto vs Gasto real por proyecto</h3>
-          <BudgetChart
-            rows={displayProjects.map((r) => ({
-              projectName: r.projectName,
-              budget: r.budget,
-              spent: r.spent,
-              projectedTotal: r.projectedTotal,
-              alertLevel: r.alertLevel,
-            }))}
-          />
+          <h3>📊 Horas Extras Aprobadas por Consultor (Top 5)</h3>
+          <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "1rem" }}>
+            Comparativa de consultores con mayor volumen de horas extras aprobadas.
+          </p>
+          <ExtraHoursByConsultantChart data={extraHoursByConsultantData} />
         </article>
-      )}
+      </section>
 
       {/* ── Métricas y Análisis Visual ── */}
       <section className="grid two-col" style={{ marginTop: "1rem" }}>
@@ -1369,23 +1452,13 @@ export function DashboardTab({
           <ExtraHoursTrendChart data={monthlyExtraHoursData} />
         </article>
         
-        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          <article className="card">
-            <h3>🍩 Distribución de Gastos por Categoría</h3>
-            <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "1rem" }}>
-              Desglose de gastos registrados en el período seleccionado.
-            </p>
-            <ExpensesDonutChart data={expensesCategoryData} />
-          </article>
-          
-          <article className="card">
-            <h3>📊 Horas Extras Aprobadas por Consultor (Top 5)</h3>
-            <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "1rem" }}>
-              Comparativa de consultores con mayor volumen de horas extras aprobadas.
-            </p>
-            <ExtraHoursByConsultantChart data={extraHoursByConsultantData} />
-          </article>
-        </div>
+        <article className="card">
+          <h3>🍩 Distribución de Gastos por Categoría</h3>
+          <p style={{ fontSize: "0.78rem", color: "var(--text-soft)", marginBottom: "1rem" }}>
+            Desglose de gastos registrados en el período seleccionado.
+          </p>
+          <ExpensesDonutChart data={expensesCategoryData} />
+        </article>
       </section>
     </section>
     </div>

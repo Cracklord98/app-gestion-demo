@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, useMemo } from "react";
 import type { FormEvent } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import {
@@ -107,13 +107,23 @@ export function CapacityTab({
   consultants,
   canWrite,
   onError,
+  preselectedConsultantId,
+  onClearPreselectedConsultant,
 }: {
   projects: Project[];
   consultants: Consultant[];
   canWrite: boolean;
   onError: (msg: string) => void;
+  preselectedConsultantId?: string | null;
+  onClearPreselectedConsultant?: () => void;
 }) {
   const [subTab, setSubTab] = useState<SubTab>("overview");
+
+  useEffect(() => {
+    if (preselectedConsultantId) {
+      setSubTab("assignments");
+    }
+  }, [preselectedConsultantId]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -142,13 +152,20 @@ export function CapacityTab({
       </nav>
 
       {subTab === "overview" && (
-        <OverviewPanel onError={onError} />
+        <OverviewPanel projects={projects} consultants={consultants} onError={onError} />
       )}
       {subTab === "byProject" && (
         <ByProjectPanel onError={onError} />
       )}
       {subTab === "assignments" && (
-        <AssignmentsPanel projects={projects} consultants={consultants} canWrite={canWrite} onError={onError} />
+        <AssignmentsPanel
+          projects={projects}
+          consultants={consultants}
+          canWrite={canWrite}
+          onError={onError}
+          preselectedConsultantId={preselectedConsultantId}
+          onClearPreselectedConsultant={onClearPreselectedConsultant}
+        />
       )}
       {subTab === "blocks" && (
         <BlocksPanel consultants={consultants} canWrite={canWrite} onError={onError} />
@@ -160,7 +177,15 @@ export function CapacityTab({
 
 // ─── Overview Panel ───────────────────────────────────────────────────────────
 
-function OverviewPanel({ onError }: { onError: (msg: string) => void }) {
+function OverviewPanel({
+  projects,
+  consultants,
+  onError,
+}: {
+  projects: Project[];
+  consultants: Consultant[];
+  onError: (msg: string) => void;
+}) {
   const [from, setFrom] = useState(firstDayOfMonth());
   const [to, setTo] = useState(lastDayOfMonth());
   const [statusFilter, setStatusFilter] = useState<AvailabilityStatus | "">("");
@@ -191,8 +216,25 @@ function OverviewPanel({ onError }: { onError: (msg: string) => void }) {
 
   useEffect(() => { void load(); }, [from, to, statusFilter, countryFilter, seniorityFilter, skillFilter, within]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const countries = overview ? Array.from(new Set(overview.consultants.map((c) => c.country).filter(Boolean) as string[])).sort() : [];
-  const seniorities = overview ? Array.from(new Set(overview.consultants.map((c) => c.seniority).filter(Boolean) as string[])).sort() : [];
+  const countries = useMemo(() => {
+    const list = new Set<string>();
+    // Predefinir una lista de países comunes de Latinoamérica y operación:
+    ["Colombia", "Peru", "Argentina", "Chile", "Mexico", "Ecuador", "Bolivia", "Panama", "Costa Rica", "España", "Estados Unidos"].forEach(c => list.add(c));
+    // Más cualquier otro país presente en los consultores o proyectos:
+    consultants.forEach((c) => { if (c.country) list.add(c.country); });
+    projects.forEach((p) => { if (p.country) list.add(p.country); });
+    return Array.from(list).sort((a, b) => a.localeCompare(b));
+  }, [consultants, projects]);
+
+  const seniorities = useMemo(() => {
+    const list = new Set<string>();
+    // Opción predefinida de seniorities:
+    ["Junior", "Mid", "Senior", "Lead"].forEach(s => list.add(s));
+    // Más cualquier otro seniority presente en los consultores:
+    consultants.forEach((c) => { if (c.seniority) list.add(c.seniority); });
+    return Array.from(list).sort((a, b) => a.localeCompare(b));
+  }, [consultants]);
+
   const bench = overview?.consultants.filter((c) => c.availabilityStatus === "FREE") ?? [];
 
   function handleExport() {
@@ -226,35 +268,77 @@ function OverviewPanel({ onError }: { onError: (msg: string) => void }) {
     <>
       {/* Filters */}
       <article className="card">
-        <h3>Filtros</h3>
-        <div className="form-grid filters-grid">
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-            <label style={{ fontSize: "0.75rem", color: "#6b7280" }}>Desde</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-            <label style={{ fontSize: "0.75rem", color: "#6b7280" }}>Hasta</label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
-          </div>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as AvailabilityStatus | "")}>
-            <option value="">Todos los estados</option>
-            <option value="FREE">Libre</option>
-            <option value="PARTIAL">Parcial</option>
-            <option value="FULL">Completo</option>
-            <option value="OVERLOADED">Sobrecargado</option>
-          </select>
-          <select value={countryFilter} onChange={(e) => setCountryFilter(e.target.value)}>
-            <option value="">Todos los países</option>
-            {countries.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <select value={seniorityFilter} onChange={(e) => setSeniorityFilter(e.target.value)}>
-            <option value="">Todos los seniority</option>
-            {seniorities.map((s) => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <input placeholder="Filtrar por skill" value={skillFilter} onChange={(e) => setSkillFilter(e.target.value)} />
-          <button type="button" className="ghost" onClick={() => { setFrom(firstDayOfMonth()); setTo(lastDayOfMonth()); setStatusFilter(""); setCountryFilter(""); setSeniorityFilter(""); setSkillFilter(""); }}>
-            Limpiar
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+          <h3 style={{ margin: 0 }}>Filtros</h3>
+          <button type="button" className="ghost"
+            onClick={() => {
+              setFrom(firstDayOfMonth());
+              setTo(lastDayOfMonth());
+              setStatusFilter("");
+              setCountryFilter("");
+              setSeniorityFilter("");
+              setSkillFilter("");
+            }}
+            style={{ fontSize: "0.8rem", padding: "0.4rem 0.8rem", borderRadius: "8px", height: "34px", display: "flex", alignItems: "center", gap: "0.3rem" }}
+          >
+            🧹 Limpiar
           </button>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", alignItems: "flex-end" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Desde</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }} />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Hasta</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }} />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Estado</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as AvailabilityStatus | "")}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+            >
+              <option value="">Todos los estados</option>
+              <option value="FREE">Libre</option>
+              <option value="PARTIAL">Parcial</option>
+              <option value="FULL">Completo</option>
+              <option value="OVERLOADED">Sobrecargado</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>País</label>
+            <select
+              value={countryFilter}
+              onChange={(e) => setCountryFilter(e.target.value)}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+            >
+              <option value="">Todos los países</option>
+              {countries.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Seniority</label>
+            <select
+              value={seniorityFilter}
+              onChange={(e) => setSeniorityFilter(e.target.value)}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+            >
+              <option value="">Todos los seniority</option>
+              {seniorities.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Skill / Especialidad</label>
+            <input
+              placeholder="Ej: React, SQL..."
+              value={skillFilter}
+              onChange={(e) => setSkillFilter(e.target.value)}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+            />
+          </div>
         </div>
       </article>
 
@@ -486,14 +570,14 @@ function ByProjectPanel({ onError }: { onError: (msg: string) => void }) {
     <>
       <article className="card">
         <h3>Filtros de período</h3>
-        <div className="form-grid filters-grid">
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-            <label style={{ fontSize: "0.75rem", color: "#6b7280" }}>Desde</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Desde</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }} />
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-            <label style={{ fontSize: "0.75rem", color: "#6b7280" }}>Hasta</label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Hasta</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }} />
           </div>
         </div>
       </article>
@@ -593,11 +677,15 @@ function AssignmentsPanel({
   consultants,
   canWrite,
   onError,
+  preselectedConsultantId,
+  onClearPreselectedConsultant,
 }: {
   projects: Project[];
   consultants: Consultant[];
   canWrite: boolean;
   onError: (msg: string) => void;
+  preselectedConsultantId?: string | null;
+  onClearPreselectedConsultant?: () => void;
 }) {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -609,6 +697,24 @@ function AssignmentsPanel({
   const [cancelTarget, setCancelTarget] = useState<Assignment | null>(null);
   const [completeTarget, setCompleteTarget] = useState<Assignment | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Assignment | null>(null);
+
+  const [multipleMode, setMultipleMode] = useState(false);
+  const [selectedConsultantIds, setSelectedConsultantIds] = useState<string[]>([]);
+  const [consultantSearch, setConsultantSearch] = useState("");
+
+  useEffect(() => {
+    if (preselectedConsultantId) {
+      setFilterConsultant(preselectedConsultantId);
+      setMultipleMode(false);
+      setForm((p) => ({
+        ...p,
+        consultantId: preselectedConsultantId,
+      }));
+      if (onClearPreselectedConsultant) {
+        onClearPreselectedConsultant();
+      }
+    }
+  }, [preselectedConsultantId, onClearPreselectedConsultant]);
 
   async function reload() {
     setLoading(true);
@@ -632,18 +738,44 @@ function AssignmentsPanel({
     e.preventDefault();
     setSubmitting(true);
     try {
-      await createAssignment({
-        projectId: form.projectId,
-        consultantId: form.consultantId,
-        startDate: form.startDate,
-        endDate: form.endDate,
-        allocationMode: form.allocationMode,
-        allocationPct: form.allocationMode === "PERCENTAGE" ? Number(form.allocationPct) : undefined,
-        hoursPerPeriod: form.allocationMode === "HOURS" ? Number(form.hoursPerPeriod) : undefined,
-        periodUnit: form.allocationMode === "HOURS" ? form.periodUnit : undefined,
-        role: form.role || undefined,
-        note: form.note || undefined,
-      });
+      if (multipleMode) {
+        if (selectedConsultantIds.length === 0) {
+          throw new Error("Selecciona al menos un consultor.");
+        }
+        await Promise.all(
+          selectedConsultantIds.map((cId) =>
+            createAssignment({
+              projectId: form.projectId,
+              consultantId: cId,
+              startDate: form.startDate,
+              endDate: form.endDate,
+              allocationMode: form.allocationMode,
+              allocationPct: form.allocationMode === "PERCENTAGE" ? Number(form.allocationPct) : undefined,
+              hoursPerPeriod: form.allocationMode === "HOURS" ? Number(form.hoursPerPeriod) : undefined,
+              periodUnit: form.allocationMode === "HOURS" ? form.periodUnit : undefined,
+              role: form.role || undefined,
+              note: form.note || undefined,
+            })
+          )
+        );
+        setSelectedConsultantIds([]);
+      } else {
+        if (!form.consultantId) {
+          throw new Error("Selecciona un consultor.");
+        }
+        await createAssignment({
+          projectId: form.projectId,
+          consultantId: form.consultantId,
+          startDate: form.startDate,
+          endDate: form.endDate,
+          allocationMode: form.allocationMode,
+          allocationPct: form.allocationMode === "PERCENTAGE" ? Number(form.allocationPct) : undefined,
+          hoursPerPeriod: form.allocationMode === "HOURS" ? Number(form.hoursPerPeriod) : undefined,
+          periodUnit: form.allocationMode === "HOURS" ? form.periodUnit : undefined,
+          role: form.role || undefined,
+          note: form.note || undefined,
+        });
+      }
       setForm(emptyAssignmentForm);
       await reload();
     } catch (err) {
@@ -699,10 +831,83 @@ function AssignmentsPanel({
               <option value="" disabled hidden>Selecciona proyecto...</option>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <select value={form.consultantId} onChange={(e) => setForm((p) => ({ ...p, consultantId: e.target.value }))} required>
-              <option value="" disabled hidden>Selecciona consultor...</option>
-              {consultants.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.fullName} — {c.role}</option>)}
-            </select>
+
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <label className="check" style={{ userSelect: "none", fontSize: "0.82rem" }}>
+                <input
+                  type="checkbox"
+                  checked={multipleMode}
+                  onChange={(e) => {
+                    setMultipleMode(e.target.checked);
+                    setSelectedConsultantIds([]);
+                  }}
+                />
+                Asignar múltiples consultores
+              </label>
+            </div>
+
+            {!multipleMode ? (
+              <select value={form.consultantId} onChange={(e) => setForm((p) => ({ ...p, consultantId: e.target.value }))} required={!multipleMode}>
+                <option value="" disabled hidden>Selecciona consultor...</option>
+                {consultants.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.fullName} — {c.role}</option>)}
+              </select>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", border: "1px solid #f1c79d", borderRadius: "10px", padding: "0.75rem", background: "#fffdfa" }}>
+                <input
+                  type="text"
+                  placeholder="Buscar consultor por nombre/rol..."
+                  value={consultantSearch}
+                  onChange={(e) => setConsultantSearch(e.target.value)}
+                  style={{ padding: "0.4rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", fontSize: "0.82rem", width: "100%", boxSizing: "border-box" }}
+                />
+                <div style={{ display: "flex", gap: "0.4rem" }}>
+                  <button
+                    type="button"
+                    className="ghost"
+                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                    onClick={() => {
+                      const filtered = consultants.filter((c) => c.active && (c.fullName.toLowerCase().includes(consultantSearch.toLowerCase()) || c.role.toLowerCase().includes(consultantSearch.toLowerCase())));
+                      setSelectedConsultantIds(filtered.map((c) => c.id));
+                    }}
+                  >
+                    Seleccionar todos
+                  </button>
+                  <button
+                    type="button"
+                    className="ghost"
+                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                    onClick={() => setSelectedConsultantIds([])}
+                  >
+                    Desmarcar todos
+                  </button>
+                </div>
+                <div style={{ maxHeight: "150px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.4rem", padding: "0.25rem" }}>
+                  {consultants
+                    .filter((c) => c.active)
+                    .filter((c) => c.fullName.toLowerCase().includes(consultantSearch.toLowerCase()) || c.role.toLowerCase().includes(consultantSearch.toLowerCase()))
+                    .map((c) => {
+                      const isChecked = selectedConsultantIds.includes(c.id);
+                      return (
+                        <label key={c.id} className="check" style={{ fontSize: "0.82rem", userSelect: "none" }}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              setSelectedConsultantIds((prev) =>
+                                isChecked ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                              );
+                            }}
+                          />
+                          <span>{c.fullName} <span style={{ color: "#9a4f0f", fontSize: "0.75rem" }}>({c.role})</span></span>
+                        </label>
+                      );
+                    })}
+                </div>
+                <span style={{ fontSize: "0.75rem", color: "#6b7280", fontWeight: 600 }}>
+                  {selectedConsultantIds.length} seleccionados
+                </span>
+              </div>
+            )}
             <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} required />
             <input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} required />
             <select value={form.allocationMode} onChange={(e) => setForm((p) => ({ ...p, allocationMode: e.target.value as AllocationMode }))}>
@@ -729,21 +934,30 @@ function AssignmentsPanel({
 
       <article className="card" style={canWrite ? {} : { gridColumn: "1 / -1" }}>
         <h3>Listado de asignaciones</h3>
-        <div className="form-grid filters-grid" style={{ marginBottom: "0.75rem" }}>
-          <select value={filterProject} onChange={(e) => setFilterProject(e.target.value)}>
-            <option value="">Todos los proyectos</option>
-            {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          <select value={filterConsultant} onChange={(e) => setFilterConsultant(e.target.value)}>
-            <option value="">Todos los consultores</option>
-            {consultants.map((c) => <option key={c.id} value={c.id}>{c.fullName}</option>)}
-          </select>
-          <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as AssignmentStatus | "")}>
-            <option value="">Todos los estados</option>
-            {(Object.keys(ASSIGNMENT_STATUS_LABELS) as AssignmentStatus[]).map((s) => (
-              <option key={s} value={s}>{ASSIGNMENT_STATUS_LABELS[s]}</option>
-            ))}
-          </select>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Proyecto</label>
+            <select value={filterProject} onChange={(e) => setFilterProject(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+              <option value="">Todos los proyectos</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Consultor</label>
+            <select value={filterConsultant} onChange={(e) => setFilterConsultant(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+              <option value="">Todos los consultores</option>
+              {consultants.map((c) => <option key={c.id} value={c.id}>{c.fullName}</option>)}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Estado de Asignación</label>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as AssignmentStatus | "")} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+              <option value="">Todos los estados</option>
+              {(Object.keys(ASSIGNMENT_STATUS_LABELS) as AssignmentStatus[]).map((s) => (
+                <option key={s} value={s}>{ASSIGNMENT_STATUS_LABELS[s]}</option>
+              ))}
+            </select>
+          </div>
         </div>
         {loading ? <p className="loading">Cargando...</p> : (
           <div className="table-wrap">

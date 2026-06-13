@@ -12,6 +12,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   emptyLabel?: string;
   disabled?: boolean;
+  allowFreeText?: boolean;
 }
 
 export function SearchableSelect({
@@ -21,15 +22,20 @@ export function SearchableSelect({
   placeholder = "Buscar...",
   emptyLabel = "-- Seleccionar --",
   disabled = false,
+  allowFreeText = false,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [search, setSearch] = useState("");
+  const selectedOption = options.find((opt) => opt.value === value);
+  const [search, setSearch] = useState(() => {
+    if (allowFreeText) {
+      return selectedOption ? selectedOption.label : value;
+    }
+    return "";
+  });
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const optionsListRef = useRef<HTMLDivElement>(null);
-
-  const selectedOption = options.find((opt) => opt.value === value);
 
   // Close when clicking outside
   useEffect(() => {
@@ -42,6 +48,13 @@ export function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Sync search state when external value changes in free text mode
+  useEffect(() => {
+    if (allowFreeText) {
+      setSearch(selectedOption ? selectedOption.label : value);
+    }
+  }, [value, selectedOption, allowFreeText]);
+
   // Filter options based on search query
   const filteredOptions = options.filter((opt) =>
     opt.label.toLowerCase().includes(search.toLowerCase())
@@ -52,14 +65,14 @@ export function SearchableSelect({
     setHighlightedIndex(-1);
   }, [search, isOpen]);
 
-  // Focus search input when dropdown opens
+  // Focus search input when dropdown opens (only in static select mode)
   useEffect(() => {
-    if (isOpen && searchInputRef.current) {
+    if (!allowFreeText && isOpen && searchInputRef.current) {
       setTimeout(() => {
         searchInputRef.current?.focus();
       }, 50);
     }
-  }, [isOpen]);
+  }, [isOpen, allowFreeText]);
 
   // Keyboard navigation
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -145,14 +158,45 @@ export function SearchableSelect({
           userSelect: "none"
         }}
       >
-        <span style={{
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          maxWidth: "calc(100% - 20px)"
-        }}>
-          {selectedOption ? selectedOption.label : (emptyLabel || placeholder)}
-        </span>
+        {allowFreeText ? (
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => {
+              const val = e.target.value;
+              setSearch(val);
+              onChange(val);
+              setIsOpen(true);
+            }}
+            placeholder={placeholder}
+            disabled={disabled}
+            style={{
+              width: "100%",
+              border: "none",
+              background: "transparent",
+              outline: "none",
+              padding: 0,
+              margin: 0,
+              fontSize: "inherit",
+              fontFamily: "inherit",
+              color: "inherit",
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsOpen(true);
+            }}
+            onFocus={() => setIsOpen(true)}
+          />
+        ) : (
+          <span style={{
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            maxWidth: "calc(100% - 20px)"
+          }}>
+            {selectedOption ? selectedOption.label : (emptyLabel || placeholder)}
+          </span>
+        )}
         <span style={{
           fontSize: "0.65rem",
           color: "#9a4f0f",
@@ -184,26 +228,28 @@ export function SearchableSelect({
             animation: "selectDropdownFade 0.18s cubic-bezier(0.16, 1, 0.3, 1)"
           }}
         >
-          <div style={{ padding: "0.5rem", borderBottom: "1px solid #fdecd8", background: "#fffbf7" }}>
-            <input
-              ref={searchInputRef}
-              type="text"
-              placeholder={placeholder}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                width: "100%",
-                padding: "0.4rem 0.6rem",
-                fontSize: "0.82rem",
-                borderRadius: "6px",
-                border: "1px solid #f1c79d",
-                background: "#ffffff",
-                outline: "none",
-                boxSizing: "border-box"
-              }}
-            />
-          </div>
+          {!allowFreeText && (
+            <div style={{ padding: "0.5rem", borderBottom: "1px solid #fdecd8", background: "#fffbf7" }}>
+              <input
+                ref={searchInputRef}
+                type="text"
+                placeholder={placeholder}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: "100%",
+                  padding: "0.4rem 0.6rem",
+                  fontSize: "0.82rem",
+                  borderRadius: "6px",
+                  border: "1px solid #f1c79d",
+                  background: "#ffffff",
+                  outline: "none",
+                  boxSizing: "border-box"
+                }}
+              />
+            </div>
+          )}
 
           <div
             ref={optionsListRef}
@@ -215,7 +261,7 @@ export function SearchableSelect({
               padding: "0.25rem 0"
             }}
           >
-            {emptyLabel && search === "" && (
+            {emptyLabel && (!allowFreeText ? search === "" : true) && (
               <div
                 className={`searchable-select-option ${value === "" ? "is-selected" : ""} ${highlightedIndex === -1 ? "is-highlighted" : ""}`}
                 onClick={(e) => {
@@ -266,7 +312,11 @@ export function SearchableSelect({
                       e.stopPropagation();
                       onChange(opt.value);
                       setIsOpen(false);
-                      setSearch("");
+                      if (allowFreeText) {
+                        setSearch(opt.label);
+                      } else {
+                        setSearch("");
+                      }
                     }}
                     onMouseEnter={() => setHighlightedIndex(idx)}
                     style={{

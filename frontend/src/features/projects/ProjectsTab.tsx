@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import type { FormEvent } from "react";
 import { PageHeader } from "../../components/PageHeader";
+import { SearchableSelect } from "../../components/SearchableSelect";
 import { PROJECT_STATUS_LABELS, label } from "../../utils/statusLabels";
 import {
   createProject,
@@ -118,7 +119,8 @@ export function ProjectsTab({
   statsProjects?: StatsProjectRowEnriched[];
   onOpenProject?: (id: string) => void;
 }) {
-  const [search, setSearch] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
+  const [projectFilter, setProjectFilter] = useState("");
   const [healthFilter, setHealthFilter] = useState<HealthStatus | "">("");
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
@@ -132,14 +134,24 @@ export function ProjectsTab({
     (statsProjects ?? []).map((s) => [s.projectId, s]),
   );
 
+  const companyOptions = useMemo(() => {
+    const unique = new Set(projects.map((p) => p.company).filter(Boolean));
+    return Array.from(unique).sort((a, b) => a.localeCompare(b)).map((c) => ({ value: c, label: c }));
+  }, [projects]);
+
+  const projectOptions = useMemo(() => {
+    return projects.map((p) => ({ value: p.id, label: p.name }));
+  }, [projects]);
+
   const filtered = projects.filter((p) => {
-    const matchesSearch =
-      !search.trim() ||
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.company.toLowerCase().includes(search.toLowerCase());
+    const matchesProject = !projectFilter ||
+      p.id === projectFilter ||
+      p.name.toLowerCase().includes(projectFilter.toLowerCase());
+    const matchesCompany = !companyFilter ||
+      p.company.toLowerCase().includes(companyFilter.toLowerCase());
     const matchesHealth =
       !healthFilter || statsMap.get(p.id)?.healthStatus === healthFilter;
-    return matchesSearch && matchesHealth;
+    return matchesProject && matchesCompany && matchesHealth;
   });
 
   async function handleCreate(e: FormEvent) {
@@ -312,23 +324,42 @@ export function ProjectsTab({
         table={
           <>
             {/* Filters */}
-            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.75rem", flexWrap: "wrap" }}>
-              <input
-                placeholder="Filtrar por proyecto o empresa"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                style={{ flex: "1 1 18rem", minWidth: "12rem" }}
-              />
-              <select
-                value={healthFilter}
-                onChange={(e) => setHealthFilter(e.target.value as HealthStatus | "")}
-                style={{ flex: "0 0 auto", minWidth: "9rem" }}
-              >
-                <option value="">Salud: Todos</option>
-                <option value="GREEN">Verde (OK)</option>
-                <option value="YELLOW">Amarillo (WARN)</option>
-                <option value="RED">Rojo (CRIT)</option>
-              </select>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Proyecto</label>
+                <SearchableSelect
+                  options={projectOptions}
+                  value={projectFilter}
+                  onChange={setProjectFilter}
+                  placeholder="Buscar o escribir proyecto..."
+                  emptyLabel="Todos los proyectos"
+                  allowFreeText={true}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Empresa</label>
+                <SearchableSelect
+                  options={companyOptions}
+                  value={companyFilter}
+                  onChange={setCompanyFilter}
+                  placeholder="Buscar o escribir empresa..."
+                  emptyLabel="Todas las empresas"
+                  allowFreeText={true}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Salud</label>
+                <select
+                  value={healthFilter}
+                  onChange={(e) => setHealthFilter(e.target.value as HealthStatus | "")}
+                  style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+                >
+                  <option value="">Todas</option>
+                  <option value="GREEN">Verde (OK)</option>
+                  <option value="YELLOW">Amarillo (WARN)</option>
+                  <option value="RED">Rojo (CRIT)</option>
+                </select>
+              </div>
             </div>
 
             {loading ? (

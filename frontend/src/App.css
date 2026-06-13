@@ -331,7 +331,7 @@
 /* ── Forms & Filters ────────────────────────────────────────────────────── */
 .form-grid {
   display: grid;
-  gap: 0.7rem;
+  gap: 1.1rem;
 }
 
 .filters-grid {
@@ -390,22 +390,45 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.45);
+  background: rgba(11, 17, 32, 0.65);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
   display: grid;
   place-items: center;
-  padding: 1rem;
-  z-index: 400;
+  padding: 2rem 1rem;
+  z-index: 9999;
+  animation: modalFadeIn 0.22s ease-out forwards;
 }
 
 .modal-card {
   width: min(640px, 100%);
-  max-height: 90vh;
-  overflow: auto;
+  max-height: 92vh;
+  overflow-y: auto;
   background: #fff;
-  border: 1px solid #f4d4b6;
-  border-radius: 16px;
-  padding: 1rem;
-  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.24);
+  border: 1px solid #f2c79d;
+  border-radius: 20px;
+  padding: 2.25rem 2rem;
+  box-shadow: 
+    0 15px 35px -5px rgba(15, 23, 42, 0.32),
+    0 5px 15px -3px rgba(15, 23, 42, 0.1),
+    0 0 0 1px rgba(242, 199, 157, 0.45);
+  animation: modalSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideUp {
+  from {
+    transform: translateY(24px) scale(0.96);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
 }
 
 .modal-header {
@@ -583,27 +606,7 @@
   visibility: visible;
 }
 
-/* ── Modals ─────────────────────────────────────────────────────────────── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.45);
-  display: grid;
-  place-items: center;
-  padding: 1rem;
-  z-index: 400;
-}
-
-.modal-card {
-  width: min(640px, 100%);
-  max-height: 90vh;
-  overflow: auto;
-  background: #fff;
-  border: 1px solid #f4d4b6;
-  border-radius: 16px;
-  padding: 1rem;
-  box-shadow: 0 18px 35px rgba(15, 23, 42, 0.24);
-}
+/* Duplicate modal styles removed in favor of single main definition */
 
 .modal-header {
   display: flex;
@@ -1001,6 +1004,40 @@ th.sortable:hover { background: #fff0e0; }
 .form-inline textarea  { grid-column: 1 / -1; min-height: 60px; }
 .form-inline .span-all { grid-column: 1 / -1; }
 
+/* ── Consultants Page Structured Grid Layout ── */
+.consultant-form-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.consultant-form-row {
+  display: grid;
+  gap: 12px;
+  align-items: end;
+}
+
+.consultant-form-row.row-1 {
+  grid-template-columns: 1.5fr 1fr 1fr;
+}
+
+.consultant-form-row.row-2 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.consultant-form-row.row-3 {
+  grid-template-columns: 0.8fr 1.2fr 1fr auto auto 1.5fr;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .consultant-form-row.row-1,
+  .consultant-form-row.row-2,
+  .consultant-form-row.row-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* ── Gastos detail row animation ── */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-4px); }
@@ -1300,7 +1337,7 @@ th.sortable:hover { background: #fff0e0; }
 @keyframes pageFadeIn {
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: none;
   }
 }
 

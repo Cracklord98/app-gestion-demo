@@ -65,12 +65,14 @@ export type Consultant = {
   fullName: string;
   email: string | null;
   role: string;
+  company?: string | null;
   hourlyRate: string | null;
   rateCurrency: string;
   country: string | null;
   costPerMonth: string | null;
   active: boolean;
   allowWeekendWork?: boolean;
+  isInternal?: boolean;
   createdAt: string;
   updatedAt: string;
   identification?: string | null;
@@ -449,12 +451,15 @@ export async function createConsultant(payload: {
   fullName: string;
   email?: string;
   role: string;
+  company?: string;
   hourlyRate?: number;
   rateCurrency?: string;
   country?: string;
+  seniority?: string;
   costPerMonth?: number;
   active: boolean;
   allowWeekendWork?: boolean;
+  isInternal?: boolean;
 }): Promise<Consultant> {
   const response = await request<ApiEnvelope<Consultant>>("/api/consultants", "POST", payload);
   return response.data;
@@ -466,12 +471,15 @@ export async function updateConsultant(
     fullName: string;
     email?: string;
     role: string;
+    company?: string;
     hourlyRate?: number;
     rateCurrency?: string;
     country?: string;
+    seniority?: string;
     costPerMonth?: number;
     active: boolean;
     allowWeekendWork?: boolean;
+    isInternal?: boolean;
   },
 ): Promise<Consultant> {
   const response = await request<ApiEnvelope<Consultant>>(`/api/consultants/${id}`, "PUT", payload);

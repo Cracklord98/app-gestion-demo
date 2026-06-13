@@ -8,12 +8,15 @@ const consultantPayloadSchema = z.object({
   fullName: z.string().trim().min(1),
   email: z.string().trim().email().optional().or(z.literal("")),
   role: z.string().trim().min(1),
+  company: z.string().trim().optional().nullable(),
   hourlyRate: z.coerce.number().nonnegative().optional(),
   rateCurrency: z.string().trim().toUpperCase().length(3).default("USD"),
   country: z.string().trim().optional(),
+  seniority: z.string().trim().optional(),
   costPerMonth: z.coerce.number().nonnegative().optional(),
   active: z.coerce.boolean().default(true),
   allowWeekendWork: z.coerce.boolean().default(false),
+  isInternal: z.coerce.boolean().default(true),
 });
 
 const consultantParamsSchema = z.object({ id: z.string().min(1) });
@@ -25,11 +28,49 @@ export async function consultantsRoutes(app: FastifyInstance) {
       preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.CONSULTANT, AppRole.FINANCE, AppRole.VIEWER])],
     },
     async () => {
-    const consultants = await prisma.consultant.findMany({
-      orderBy: { createdAt: "desc" },
-    });
+      try {
+        // JIT synchronization: Ensure all users with role AppRole.CONSULTANT have a Consultant record
+        const consultantUsers = await prisma.user.findMany({
+          where: {
+            roles: {
+              some: {
+                role: {
+                  name: AppRole.CONSULTANT,
+                },
+              },
+            },
+          },
+        });
 
-    return { data: consultants };
+        for (const u of consultantUsers) {
+          const existing = await prisma.consultant.findFirst({
+            where: { email: { equals: u.email, mode: "insensitive" } },
+          });
+
+          if (!existing) {
+            await prisma.consultant.create({
+              data: {
+                fullName: u.displayName,
+                email: u.email,
+                role: "Consultor",
+                hourlyRate: 0,
+                rateCurrency: "USD",
+                country: u.country || "Colombia",
+                active: u.active,
+                allowWeekendWork: false,
+              },
+            });
+          }
+        }
+      } catch (err) {
+        app.log.error(err, "Failed to run JIT consultant sync");
+      }
+
+      const consultants = await prisma.consultant.findMany({
+        orderBy: { createdAt: "desc" },
+      });
+
+      return { data: consultants };
     },
   );
 
@@ -46,12 +87,15 @@ export async function consultantsRoutes(app: FastifyInstance) {
         fullName: payload.fullName,
         email: payload.email || null,
         role: payload.role,
+        company: payload.company || null,
         hourlyRate: payload.hourlyRate,
         rateCurrency: payload.rateCurrency,
         country: payload.country,
+        seniority: payload.seniority,
         costPerMonth: payload.costPerMonth,
         active: payload.active,
         allowWeekendWork: payload.allowWeekendWork,
+        isInternal: payload.isInternal,
       },
     });
 
@@ -79,12 +123,15 @@ export async function consultantsRoutes(app: FastifyInstance) {
         fullName: payload.fullName,
         email: payload.email || null,
         role: payload.role,
+        company: payload.company || null,
         hourlyRate: payload.hourlyRate,
         rateCurrency: payload.rateCurrency,
         country: payload.country,
+        seniority: payload.seniority,
         costPerMonth: payload.costPerMonth,
         active: payload.active,
         allowWeekendWork: payload.allowWeekendWork,
+        isInternal: payload.isInternal,
       },
     });
 

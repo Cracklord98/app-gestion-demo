@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { type HealthStatus } from "../../services/api";
 import { usePortfolio } from "../../hooks/usePortfolio";
 import { backendHealthToResult, HEALTH_CRITERIA_TOOLTIP } from "../../utils/projectHealth";
 import { PROJECT_STATUS_LABELS, label } from "../../utils/statusLabels";
 import { PageHeader } from "../../components/PageHeader";
+import { SearchableSelect } from "../../components/SearchableSelect";
 
 function fmt(n: number, currency = "USD") {
   return new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 0 }).format(n);
@@ -110,24 +111,40 @@ export function PortfolioTab({
   const { portfolio, loading, error, reload } = usePortfolio(true);
   const [healthFilter, setHealthFilter] = useState<HealthStatus | "">("");
   const [statusFilter, setStatusFilter] = useState("");
-  const [search, setSearch] = useState("");
+  const [companyFilter, setCompanyFilter] = useState("");
+  const [projectFilter, setProjectFilter] = useState("");
   const [sortField, setSortField] = useState<SortField>("healthStatus");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const projects = portfolio?.projects ?? [];
+
+  const companies = useMemo(() => {
+    const unique = new Set(projects.map((p) => p.company).filter(Boolean));
+    return Array.from(unique).sort((a, b) => a.localeCompare(b));
+  }, [projects]);
+
+  const companyOptions = useMemo(() => companies.map((c) => ({ value: c, label: c })), [companies]);
+
+  const projectOptions = useMemo(() => {
+    return projects.map((p) => ({ value: p.projectId, label: p.projectName }));
+  }, [projects]);
 
   if (loading) return <div className="loading" style={{ padding: "2rem" }}>Cargando portafolio…</div>;
   if (error) return <div style={{ padding: "2rem", color: "#ef4444" }}>{error}</div>;
   if (!portfolio) return null;
 
-  const { summary, projects, baseCurrency } = portfolio;
+  const { summary, baseCurrency } = portfolio;
 
   // Filter & sort
   const filtered = projects.filter((p) => {
-    const matchSearch = !search.trim() ||
-      p.projectName.toLowerCase().includes(search.toLowerCase()) ||
-      p.company.toLowerCase().includes(search.toLowerCase());
+    const matchCompany = !companyFilter ||
+      p.company.toLowerCase().includes(companyFilter.toLowerCase());
+    const matchProject = !projectFilter ||
+      p.projectId === projectFilter ||
+      p.projectName.toLowerCase().includes(projectFilter.toLowerCase());
     const matchHealth = !healthFilter || p.healthStatus === healthFilter;
     const matchStatus = !statusFilter || p.status === statusFilter;
-    return matchSearch && matchHealth && matchStatus;
+    return matchCompany && matchProject && matchHealth && matchStatus;
   });
 
   const healthOrder: Record<HealthStatus, number> = { RED: 0, YELLOW: 1, GREEN: 2 };
@@ -206,7 +223,7 @@ export function PortfolioTab({
         <KpiCard label="Ejecutado total" value={fmt(summary.totalSpent, baseCurrency)} />
         <KpiCard label="Ingresos totales" value={fmt(summary.totalRevenue, baseCurrency)} />
         <KpiCard label="Margen bruto" value={fmt(summary.totalGrossMargin, baseCurrency)} accent={summary.totalGrossMargin < 0 ? "#ef4444" : "#16a34a"} />
-        <KpiCard label="Proyectos críticos" value={summary.criticalCount} accent={summary.criticalCount > 0 ? "#ef4444" : undefined} sub="RAG = Rojo" />
+        <KpiCard label="Proyectos críticos" value={summary.criticalCount} accent={summary.criticalCount > 0 ? "#ef4444" : undefined} sub="Salud = Crítico" />
         <KpiCard label="Alertas activas" value={summary.alertCount} accent={summary.alertCount > 0 ? "#f59e0b" : undefined} />
       </div>
 
@@ -225,7 +242,7 @@ export function PortfolioTab({
       {critical.length > 0 && (
         <div style={{ background: "#fef2f2", border: "1px solid #fca5a5", borderRadius: "0.5rem", padding: "0.75rem 1rem" }}>
           <div style={{ fontWeight: 700, color: "#dc2626", marginBottom: "0.4rem", fontSize: "0.85rem" }}>
-            Proyectos en estado crítico (RAG Rojo)
+            Proyectos en estado crítico (Salud Crítico)
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
             {critical.map((p) => (
@@ -243,25 +260,51 @@ export function PortfolioTab({
       )}
 
       {/* Filters */}
-      <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-        <input
-          placeholder="Buscar proyecto o empresa"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          style={{ flex: "2 1 16rem" }}
-        />
-        <select value={healthFilter} onChange={(e) => setHealthFilter(e.target.value as HealthStatus | "")} style={{ flex: "0 0 auto" }}>
-          <option value="">Salud: Todos</option>
-          <option value="GREEN">Verde</option>
-          <option value="YELLOW">Amarillo</option>
-          <option value="RED">Rojo</option>
-        </select>
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ flex: "0 0 auto" }}>
-          <option value="">Estado: Todos</option>
-          <option value="ACTIVE">Activo</option>
-          <option value="PAUSED">Pausado</option>
-          <option value="CLOSED">Cerrado</option>
-        </select>
+      <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", background: "var(--bg-card, #fff)", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "1rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Empresa</label>
+            <SearchableSelect
+              options={companyOptions}
+              value={companyFilter}
+              onChange={setCompanyFilter}
+              placeholder="Buscar o escribir empresa..."
+              emptyLabel="Todas las empresas"
+              allowFreeText={true}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Proyecto</label>
+            <SearchableSelect
+              options={projectOptions}
+              value={projectFilter}
+              onChange={setProjectFilter}
+              placeholder="Buscar o escribir proyecto..."
+              emptyLabel="Todos los proyectos"
+              allowFreeText={true}
+            />
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Salud</label>
+            <select value={healthFilter} onChange={(e) => setHealthFilter(e.target.value as HealthStatus | "")} style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+              <option value="">Todas</option>
+              <option value="GREEN">Saludable</option>
+              <option value="YELLOW">Advertencia</option>
+              <option value="RED">Crítico</option>
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Estado</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+              <option value="">Todos</option>
+              <option value="ACTIVE">Activo</option>
+              <option value="PAUSED">Pausado</option>
+              <option value="CLOSED">Cerrado</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       {/* Heatmap table */}

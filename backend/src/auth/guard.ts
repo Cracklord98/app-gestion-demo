@@ -119,34 +119,38 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     });
   }
 
-  // Sincronizar roles desde el token solo si:
-  // 1. Vienen definidos explícitamente en el token de Azure AD, Y
-  // 2. El usuario local NO tiene ningún rol asignado (ej. es un usuario nuevo).
-  // Si ya tiene algún rol en la base de datos, respetamos los roles locales y evitamos que se sobrescriban.
+  // Sincronizar roles desde el token:
+  // Si vienen definidos explícitamente en el token de Azure AD, sincronizamos siempre (Azure AD como origen de verdad).
   const hasTokenRoles = claims.roles && Array.isArray(claims.roles) && claims.roles.length > 0;
   const localRolesCount = await prisma.userRole.count({
     where: { userId: user.id },
   });
 
-  if (hasTokenRoles && localRolesCount === 0) {
+  if (hasTokenRoles) {
+    const tokenRoles: AppRole[] = [];
     for (const roleName of claims.roles as string[]) {
       const appRole = roleName.toUpperCase();
       if (appRole in AppRole) {
+        tokenRoles.push(appRole as AppRole);
+      }
+    }
+
+    if (tokenRoles.length > 0) {
+      // Limpiar roles actuales de la DB para este usuario
+      await prisma.userRole.deleteMany({
+        where: { userId: user.id },
+      });
+
+      // Insertar nuevos roles desde el token
+      for (const appRole of tokenRoles) {
         const roleObj = await prisma.role.upsert({
-          where: { name: appRole as AppRole },
+          where: { name: appRole },
           update: {},
-          create: { name: appRole as AppRole },
+          create: { name: appRole },
         });
 
-        await prisma.userRole.upsert({
-          where: {
-            userId_roleId: {
-              userId: user.id,
-              roleId: roleObj.id,
-            },
-          },
-          update: {},
-          create: {
+        await prisma.userRole.create({
+          data: {
             userId: user.id,
             roleId: roleObj.id,
           },
@@ -154,7 +158,7 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
       }
     }
   } else if (localRolesCount === 0) {
-    // Si no vienen roles en el token y el usuario local no tiene ningún rol, le damos CONSULTANT
+    // Si no vienen roles en el token y el usuario local no tiene ningún rol, le damos CONSULTANT por defecto
     const consultantRole = await prisma.role.upsert({
       where: { name: AppRole.CONSULTANT },
       update: {},
@@ -209,6 +213,31 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
     return reply.status(403).send({
       message: "Tu usuario no tiene roles asignados. Contacta a un administrador.",
     });
+  }
+
+  // JIT sincronización: Si el usuario tiene rol CONSULTANT, asegurar que exista su correspondiente consultor en la base de datos
+  if (roles.includes(AppRole.CONSULTANT)) {
+    try {
+      const existingConsultant = await prisma.consultant.findFirst({
+        where: { email: { equals: userWithRoles.email, mode: "insensitive" } },
+      });
+      if (!existingConsultant) {
+        await prisma.consultant.create({
+          data: {
+            fullName: userWithRoles.displayName,
+            email: userWithRoles.email,
+            role: "Consultor",
+            hourlyRate: 0,
+            rateCurrency: "USD",
+            country: userWithRoles.country || "Colombia",
+            active: userWithRoles.active,
+            allowWeekendWork: false,
+          },
+        });
+      }
+    } catch (err) {
+      console.error("Failed to run JIT consultant sync on login:", err);
+    }
   }
 
   request.authUser = {

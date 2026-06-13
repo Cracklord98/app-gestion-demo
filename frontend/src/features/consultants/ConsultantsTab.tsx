@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import type { FormEvent } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import {
@@ -16,6 +16,8 @@ import { CurrencyInput } from "../../components/CurrencyInput";
 
 const currencyOptions = ["COP", "USD", "EUR", "MXN", "PEN", "CLP"];
 const roleOptions = ["Analista", "Desarrollador", "QA", "Arquitecto", "PM", "Data Engineer"];
+const countryOptions = ["Colombia", "Peru", "Argentina", "Chile", "Mexico", "Ecuador", "España", "Estados Unidos"];
+const seniorityOptions = ["Junior", "Mid", "Senior", "Lead"];
 
 function money(value: number, currency = "USD") {
   return new Intl.NumberFormat("es-CO", { style: "currency", currency, maximumFractionDigits: 2 }).format(value);
@@ -32,20 +34,28 @@ type EditForm = {
   fullName: string;
   email: string;
   role: string;
+  company: string;
   hourlyRate: string;
   rateCurrency: string;
+  country: string;
+  seniority: string;
   active: boolean;
   allowWeekendWork: boolean;
+  isInternal: boolean;
 };
 
 const emptyForm = {
   fullName: "",
   email: "",
   role: "",
+  company: "",
   hourlyRate: "",
   rateCurrency: "USD",
+  country: "",
+  seniority: "",
   active: true,
   allowWeekendWork: false,
+  isInternal: true,
 };
 
 export function ConsultantsTab({
@@ -54,12 +64,14 @@ export function ConsultantsTab({
   canWrite,
   onReload,
   onError,
+  onAssignConsultant,
 }: {
   consultants: Consultant[];
   loading: boolean;
   canWrite: boolean;
   onReload: () => Promise<void>;
   onError: (msg: string) => void;
+  onAssignConsultant?: (id: string) => void;
 }) {
   const [form, setForm] = useState(emptyForm);
   const [submitting, setSubmitting] = useState(false);
@@ -70,6 +82,49 @@ export function ConsultantsTab({
   const [deleteTarget, setDeleteTarget] = useState<Consultant | null>(null);
   const [fxRates, setFxRates] = useState<Record<string, number>>({});
   const [fxLoading, setFxLoading] = useState(false);
+
+  const [filterActive, setFilterActive] = useState<string>("ALL");
+  const [filterCountry, setFilterCountry] = useState<string>("ALL");
+  const [filterType, setFilterType] = useState<string>("ALL");
+  const [filterCompany, setFilterCompany] = useState<string>("ALL");
+  const [filterRole, setFilterRole] = useState<string>("ALL");
+  const [filterSeniority, setFilterSeniority] = useState<string>("ALL");
+
+  const companies = useMemo(() => {
+    const list = new Set<string>();
+    consultants.forEach((c) => {
+      if (c.company) {
+        list.add(c.company.trim());
+      }
+    });
+    return Array.from(list).sort((a, b) => a.localeCompare(b));
+  }, [consultants]);
+
+  const filteredConsultants = useMemo(() => {
+    return consultants.filter((c) => {
+      if (filterActive !== "ALL") {
+        const isActive = filterActive === "ACTIVE";
+        if (c.active !== isActive) return false;
+      }
+      if (filterCountry !== "ALL") {
+        if (c.country !== filterCountry) return false;
+      }
+      if (filterType !== "ALL") {
+        const isInternal = filterType === "INTERNAL";
+        if ((c.isInternal ?? true) !== isInternal) return false;
+      }
+      if (filterCompany !== "ALL") {
+        if (c.company !== filterCompany) return false;
+      }
+      if (filterRole !== "ALL") {
+        if (c.role !== filterRole) return false;
+      }
+      if (filterSeniority !== "ALL") {
+        if (c.seniority !== filterSeniority) return false;
+      }
+      return true;
+    });
+  }, [consultants, filterActive, filterCountry, filterType, filterCompany, filterRole, filterSeniority]);
 
   useEffect(() => {
     setFxLoading(true);
@@ -91,10 +146,11 @@ export function ConsultantsTab({
 
   function handleExport() {
     downloadCsv(
-      consultants.map((c) => ({
+      filteredConsultants.map((c) => ({
         nombre: c.fullName,
         correo: c.email ?? "",
         rol: c.role,
+        empresa: c.company ?? "",
         tarifa: numberish(c.hourlyRate).toFixed(2),
         moneda: c.rateCurrency ?? "USD",
         pais: c.country ?? "",
@@ -104,6 +160,7 @@ export function ConsultantsTab({
         { key: "nombre", label: "Nombre" },
         { key: "correo", label: "Correo" },
         { key: "rol", label: "Rol" },
+        { key: "empresa", label: "Empresa" },
         { key: "tarifa", label: "Tarifa/h" },
         { key: "moneda", label: "Moneda" },
         { key: "pais", label: "País" },
@@ -122,10 +179,14 @@ export function ConsultantsTab({
         fullName: form.fullName,
         email: form.email || undefined,
         role: form.role,
+        company: form.company || undefined,
         hourlyRate: form.hourlyRate ? Number(form.hourlyRate) : undefined,
         rateCurrency: form.rateCurrency,
+        country: form.country || undefined,
+        seniority: form.seniority || undefined,
         active: form.active,
         allowWeekendWork: form.allowWeekendWork,
+        isInternal: form.isInternal,
       });
       setForm(emptyForm);
       await onReload();
@@ -151,10 +212,14 @@ export function ConsultantsTab({
         fullName: editForm.fullName,
         email: editForm.email || undefined,
         role: editForm.role,
+        company: editForm.company || undefined,
         hourlyRate: editForm.hourlyRate ? Number(editForm.hourlyRate) : undefined,
         rateCurrency: editForm.rateCurrency,
+        country: editForm.country || undefined,
+        seniority: editForm.seniority || undefined,
         active: editForm.active,
         allowWeekendWork: editForm.allowWeekendWork,
+        isInternal: editForm.isInternal,
       });
       setEditForm(null);
       await onReload();
@@ -176,10 +241,14 @@ export function ConsultantsTab({
         fullName: consultant.fullName,
         email: consultant.email || undefined,
         role: consultant.role,
+        company: consultant.company || undefined,
         hourlyRate: numberish(consultant.hourlyRate),
         rateCurrency: consultant.rateCurrency || "USD",
+        country: consultant.country || undefined,
+        seniority: consultant.seniority || undefined,
         active: !consultant.active,
         allowWeekendWork: consultant.allowWeekendWork || false,
+        isInternal: consultant.isInternal ?? true,
       });
       await onReload();
     } catch (err) {
@@ -211,102 +280,227 @@ export function ConsultantsTab({
         newLabel="+ Nuevo consultor"
         canWrite={canWrite}
         onExport={handleExport}
-        exportDisabled={consultants.length === 0}
+        exportDisabled={filteredConsultants.length === 0}
         form={
-          <form onSubmit={(e) => void handleCreate(e)} className="form-inline">
+          <form onSubmit={(e) => void handleCreate(e)} className="consultant-form-grid">
             <ValidationErrorBox message={formError} />
-            <input placeholder="Nombre completo" value={form.fullName} onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} required />
-            <input type="email" placeholder="Correo" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
-            <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} required>
-              <option value="" disabled hidden>Selecciona un rol...</option>
-              {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
-            </select>
-            <select value={form.rateCurrency} onChange={(e) => setForm((p) => ({ ...p, rateCurrency: e.target.value }))}>
-              {currencyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-            <CurrencyInput
-              currency={form.rateCurrency}
-              placeholder={`Tarifa/h (${form.rateCurrency})`}
-              value={form.hourlyRate}
-              onChange={(v) => setForm((p) => ({ ...p, hourlyRate: v }))}
-            />
-            <label className="check">
-              <input type="checkbox" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
-              Activo
-            </label>
-            <label className="check">
-              <input type="checkbox" checked={form.allowWeekendWork} onChange={(e) => setForm((p) => ({ ...p, allowWeekendWork: e.target.checked }))} />
-              Finde/Festivos
-            </label>
-            <button type="submit" disabled={submitting}>{submitting ? "Creando…" : "Crear consultor"}</button>
+            
+            <div className="consultant-form-row row-1">
+              <input placeholder="Nombre completo" value={form.fullName} onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} required />
+              <input type="email" placeholder="Correo" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+              <input placeholder="Empresa" value={form.company} onChange={(e) => setForm((p) => ({ ...p, company: e.target.value }))} />
+            </div>
+
+            <div className="consultant-form-row row-2">
+              <select value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} required>
+                <option value="" disabled hidden>Selecciona un rol...</option>
+                {roleOptions.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+              <select value={form.country} onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))} required>
+                <option value="" disabled hidden>País...</option>
+                {countryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <select value={form.seniority} onChange={(e) => setForm((p) => ({ ...p, seniority: e.target.value }))} required>
+                <option value="" disabled hidden>Seniority...</option>
+                {seniorityOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
+            <div className="consultant-form-row row-3">
+              <select value={form.rateCurrency} onChange={(e) => setForm((p) => ({ ...p, rateCurrency: e.target.value }))}>
+                {currencyOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <CurrencyInput
+                currency={form.rateCurrency}
+                placeholder={`Tarifa/h (${form.rateCurrency})`}
+                value={form.hourlyRate}
+                onChange={(v) => setForm((p) => ({ ...p, hourlyRate: v }))}
+              />
+              <select value={form.isInternal ? "true" : "false"} onChange={(e) => setForm((p) => ({ ...p, isInternal: e.target.value === "true" }))} style={{ height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", width: "100%" }}>
+                <option value="true">Interno</option>
+                <option value="false">Externo</option>
+              </select>
+              <label className="check" style={{ userSelect: "none" }}>
+                <input type="checkbox" checked={form.active} onChange={(e) => setForm((p) => ({ ...p, active: e.target.checked }))} />
+                Activo
+              </label>
+              <label className="check" style={{ userSelect: "none" }}>
+                <input type="checkbox" checked={form.allowWeekendWork} onChange={(e) => setForm((p) => ({ ...p, allowWeekendWork: e.target.checked }))} />
+                Finde/Festivos
+              </label>
+              <button type="submit" disabled={submitting} style={{ height: "42px" }}>{submitting ? "Creando…" : "Crear consultor"}</button>
+            </div>
           </form>
         }
         table={
           loading ? (
             <p className="loading">Cargando...</p>
           ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Rol</th>
-                    <th>Tarifa</th>
-                    <th>Tarifa en USD</th>
-                    <th>Estado</th>
-                    {canWrite && <th>Acciones</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {consultants.map((c) => (
-                    <tr key={c.id}>
-                      <td>{c.fullName}</td>
-                      <td>{c.role}</td>
-                      <td>{money(numberish(c.hourlyRate), c.rateCurrency || "USD")}</td>
-                      <td>{fxLoading ? "…" : toUSD(numberish(c.hourlyRate), c.rateCurrency || "USD")}</td>
-                      <td>
-                        <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
-                          <span className={`pill ${c.active ? "ok" : "neutral"}`}>{c.active ? "Activo" : "Inactivo"}</span>
-                          {c.allowWeekendWork && (
-                            <span className="pill warning" style={{ fontSize: "0.7rem", background: "#fef3c7", color: "#d97706", fontWeight: 700 }} title="Autorizado para registrar en fines de semana y festivos">
-                              📅 Finde
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      {canWrite && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+              {/* FILTERS CONTAINER */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                gap: "0.75rem",
+                padding: "1rem",
+                background: "#fffcf7",
+                border: "1px solid #f1c79d",
+                borderRadius: "12px",
+                marginBottom: "0.5rem"
+              }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Estado</label>
+                  <select value={filterActive} onChange={(e) => setFilterActive(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                    <option value="ALL">Todos los estados</option>
+                    <option value="ACTIVE">Activo</option>
+                    <option value="INACTIVE">Inactivo</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>País</label>
+                  <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                    <option value="ALL">Todos los países</option>
+                    {countryOptions.map((c) => <option key={`filter-country-${c}`} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Tipo</label>
+                  <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                    <option value="ALL">Todos los tipos</option>
+                    <option value="INTERNAL">Interno</option>
+                    <option value="EXTERNAL">Externo</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Empresa</label>
+                  <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                    <option value="ALL">Todas las empresas</option>
+                    {companies.map((c) => <option key={`filter-company-${c}`} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Rol</label>
+                  <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                    <option value="ALL">Todos los roles</option>
+                    {roleOptions.map((r) => <option key={`filter-role-${r}`} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Seniority</label>
+                  <select value={filterSeniority} onChange={(e) => setFilterSeniority(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                    <option value="ALL">Todos los seniority</option>
+                    {seniorityOptions.map((s) => <option key={`filter-seniority-${s}`} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nombre</th>
+                      <th>Rol</th>
+                      <th>Seniority</th>
+                      <th>País</th>
+                      <th>Empresa</th>
+                      <th>Tipo</th>
+                      <th>Tarifa</th>
+                      <th>Tarifa en USD</th>
+                      <th>Estado</th>
+                      {(canWrite || !!onAssignConsultant) && <th>Acciones</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredConsultants.map((c) => (
+                      <tr key={c.id}>
+                        <td>{c.fullName}</td>
+                        <td>{c.role}</td>
+                        <td><span className="pill neutral" style={{ fontSize: "0.75rem", fontWeight: 600 }}>{c.seniority || "—"}</span></td>
+                        <td>{c.country || "—"}</td>
+                        <td>{c.company || "—"}</td>
                         <td>
-                          <div className="inline-actions">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setEditForm({
-                                  id: c.id,
-                                  fullName: c.fullName,
-                                  email: c.email || "",
-                                  role: c.role,
-                                  hourlyRate: String(numberish(c.hourlyRate)),
-                                  rateCurrency: c.rateCurrency || "USD",
-                                  active: c.active,
-                                  allowWeekendWork: c.allowWeekendWork || false,
-                                })
-                              }
-                            >
-                              Editar
-                            </button>
-                            <button type="button" onClick={() => void handleToggleActive(c)}>
-                              {c.active ? "Desactivar" : "Activar"}
-                            </button>
-                            <button type="button" className="ghost" onClick={() => setDeleteTarget(c)}>
-                              Eliminar
-                            </button>
+                          <span className={`pill ${c.isInternal !== false ? "ok" : "warn"}`} style={{ fontSize: "0.7rem" }}>
+                            {c.isInternal !== false ? "Interno" : "Externo"}
+                          </span>
+                        </td>
+                        <td>{money(numberish(c.hourlyRate), c.rateCurrency || "USD")}</td>
+                        <td>{fxLoading ? "…" : toUSD(numberish(c.hourlyRate), c.rateCurrency || "USD")}</td>
+                        <td>
+                          <div style={{ display: "flex", gap: "0.4rem", alignItems: "center" }}>
+                            <span className={`pill ${c.active ? "ok" : "neutral"}`}>{c.active ? "Activo" : "Inactivo"}</span>
+                            {c.allowWeekendWork && (
+                              <span className="pill warning" style={{ fontSize: "0.7rem", background: "#fef3c7", color: "#d97706", fontWeight: 700 }} title="Autorizado para registrar en fines de semana y festivos">
+                                📅 Finde
+                              </span>
+                            )}
                           </div>
                         </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        {(canWrite || !!onAssignConsultant) && (
+                          <td>
+                            <div className="inline-actions">
+                              {onAssignConsultant && (
+                                <button
+                                  type="button"
+                                  className="ghost"
+                                  style={{
+                                    background: "#ecfdf5",
+                                    color: "#047857",
+                                    borderColor: "#a7f3d0",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: "0.25rem"
+                                  }}
+                                  onClick={() => onAssignConsultant(c.id)}
+                                >
+                                  ◉ Asignar
+                                </button>
+                              )}
+                              {canWrite && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditForm({
+                                        id: c.id,
+                                        fullName: c.fullName,
+                                        email: c.email || "",
+                                        role: c.role,
+                                        company: c.company || "",
+                                        hourlyRate: String(numberish(c.hourlyRate)),
+                                        rateCurrency: c.rateCurrency || "USD",
+                                        country: c.country || "",
+                                        seniority: c.seniority || "",
+                                        active: c.active,
+                                        allowWeekendWork: c.allowWeekendWork || false,
+                                        isInternal: c.isInternal !== false,
+                                      })
+                                    }
+                                  >
+                                    Editar
+                                  </button>
+                                  <button type="button" onClick={() => void handleToggleActive(c)}>
+                                    {c.active ? "Desactivar" : "Activar"}
+                                  </button>
+                                  <button type="button" className="ghost" onClick={() => setDeleteTarget(c)}>
+                                    Eliminar
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                    {filteredConsultants.length === 0 && (
+                      <tr>
+                        <td colSpan={(canWrite || !!onAssignConsultant) ? 10 : 9} style={{ textAlign: "center", color: "#9ca3af", padding: "2rem" }}>
+                          No se encontraron consultores con los filtros aplicados.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )
         }
@@ -319,32 +513,82 @@ export function ConsultantsTab({
               <h3>Editar consultor</h3>
               <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cerrar</button>
             </div>
-            <form className="form-grid" onSubmit={(e) => void handleUpdate(e)}>
+            <form className="consultant-form-grid" onSubmit={(e) => void handleUpdate(e)}>
               <ValidationErrorBox message={editError} />
-              <input value={editForm.fullName} onChange={(e) => setEditForm((p) => p && { ...p, fullName: e.target.value })} placeholder="Nombre completo" required />
-              <input type="email" value={editForm.email} onChange={(e) => setEditForm((p) => p && { ...p, email: e.target.value })} placeholder="Correo" />
-              <select value={editForm.role} onChange={(e) => setEditForm((p) => p && { ...p, role: e.target.value })} required>
-                <option value="" disabled hidden>Selecciona un rol...</option>
-                {roleOptions.map((r) => <option key={`edit-${r}`} value={r}>{r}</option>)}
-              </select>
-              <select value={editForm.rateCurrency} onChange={(e) => setEditForm((p) => p && { ...p, rateCurrency: e.target.value })}>
-                {currencyOptions.map((c) => <option key={`edit-cur-${c}`} value={c}>{`Moneda tarifa: ${c}`}</option>)}
-              </select>
-              <CurrencyInput
-                currency={editForm.rateCurrency}
-                value={editForm.hourlyRate}
-                onChange={(v) => setEditForm((p) => p && { ...p, hourlyRate: v })}
-                placeholder={`Tarifa/hora (${editForm.rateCurrency})`}
-              />
-              <label className="check">
-                <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm((p) => p && { ...p, active: e.target.checked })} />
-                Activo
-              </label>
-              <label className="check">
-                <input type="checkbox" checked={editForm.allowWeekendWork} onChange={(e) => setEditForm((p) => p && { ...p, allowWeekendWork: e.target.checked })} />
-                Permitir Fin de Semana/Festivos
-              </label>
-              <div className="modal-actions">
+
+              <div className="consultant-form-row row-1">
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Nombre completo *</label>
+                  <input value={editForm.fullName} onChange={(e) => setEditForm((p) => p && { ...p, fullName: e.target.value })} placeholder="Nombre completo" required />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Correo</label>
+                  <input type="email" value={editForm.email} onChange={(e) => setEditForm((p) => p && { ...p, email: e.target.value })} placeholder="Correo" />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Empresa</label>
+                  <input value={editForm.company} onChange={(e) => setEditForm((p) => p && { ...p, company: e.target.value })} placeholder="Empresa" />
+                </div>
+              </div>
+
+              <div className="consultant-form-row row-2">
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Rol *</label>
+                  <select value={editForm.role} onChange={(e) => setEditForm((p) => p && { ...p, role: e.target.value })} required>
+                    <option value="" disabled hidden>Selecciona un rol...</option>
+                    {roleOptions.map((r) => <option key={`edit-${r}`} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>País *</label>
+                  <select value={editForm.country} onChange={(e) => setEditForm((p) => p && { ...p, country: e.target.value })} required>
+                    <option value="" disabled hidden>Selecciona un país...</option>
+                    {countryOptions.map((c) => <option key={`edit-country-${c}`} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Seniority *</label>
+                  <select value={editForm.seniority} onChange={(e) => setEditForm((p) => p && { ...p, seniority: e.target.value })} required>
+                    <option value="" disabled hidden>Selecciona seniority...</option>
+                    {seniorityOptions.map((s) => <option key={`edit-seniority-${s}`} value={s}>{s}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="consultant-form-row row-3" style={{ gridTemplateColumns: "0.8fr 1.2fr 1fr auto auto" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Moneda</label>
+                  <select value={editForm.rateCurrency} onChange={(e) => setEditForm((p) => p && { ...p, rateCurrency: e.target.value })}>
+                    {currencyOptions.map((c) => <option key={`edit-cur-${c}`} value={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Tarifa/h</label>
+                  <CurrencyInput
+                    currency={editForm.rateCurrency}
+                    value={editForm.hourlyRate}
+                    onChange={(v) => setEditForm((p) => p && { ...p, hourlyRate: v })}
+                    placeholder={`Tarifa/hora (${editForm.rateCurrency})`}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Tipo</label>
+                  <select value={editForm.isInternal ? "true" : "false"} onChange={(e) => setEditForm((p) => p && { ...p, isInternal: e.target.value === "true" })} style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+                    <option value="true">Interno</option>
+                    <option value="false">Externo</option>
+                  </select>
+                </div>
+                <label className="check" style={{ userSelect: "none", marginTop: "1.25rem" }}>
+                  <input type="checkbox" checked={editForm.active} onChange={(e) => setEditForm((p) => p && { ...p, active: e.target.checked })} />
+                  Activo
+                </label>
+                <label className="check" style={{ userSelect: "none", marginTop: "1.25rem" }}>
+                  <input type="checkbox" checked={editForm.allowWeekendWork} onChange={(e) => setEditForm((p) => p && { ...p, allowWeekendWork: e.target.checked })} />
+                  Finde/Festivos
+                </label>
+              </div>
+
+              <div className="modal-actions" style={{ marginTop: "1.5rem" }}>
                 <button type="submit" disabled={editSubmitting}>{editSubmitting ? "Guardando…" : "Guardar cambios"}</button>
                 <button type="button" className="ghost" onClick={() => { setEditForm(null); setEditError(""); }}>Cancelar</button>
               </div>

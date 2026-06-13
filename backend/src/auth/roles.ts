@@ -29,7 +29,8 @@ export type Permission =
   | "extrahours:write"
   | "extrahours:review"
   | "extrahours:config"
-  | "estimations:write";
+  | "estimations:write"
+  | "estimations:read";
 
 const allPermissions: Permission[] = [
   "projects:read",
@@ -61,6 +62,7 @@ const allPermissions: Permission[] = [
   "extrahours:review",
   "extrahours:config",
   "estimations:write",
+  "estimations:read",
 ];
 
 export const rolePermissions: Record<AppRole, Permission[]> = {
@@ -90,6 +92,7 @@ export const rolePermissions: Record<AppRole, Permission[]> = {
     "extrahours:write",
     "extrahours:review",
     "estimations:write",
+    "estimations:read",
   ],
   CONSULTANT: [
     "time:read",
@@ -97,6 +100,7 @@ export const rolePermissions: Record<AppRole, Permission[]> = {
     "alerts:read",
     "extrahours:read",
     "extrahours:write",
+    "estimations:read",
   ],
   FINANCE: [
     "projects:read",

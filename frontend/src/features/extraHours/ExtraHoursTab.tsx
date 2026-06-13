@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { PageHeader } from "../../components/PageHeader";
+import { SearchableSelect } from "../../components/SearchableSelect";
 import {
   listExtraHours,
   createExtraHour,
@@ -382,6 +383,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
   const [reportStartTime, setReportStartTime] = useState("18:00");
   const [reportEndTime, setReportEndTime] = useState("20:00");
   const [reportObservations, setReportObservations] = useState("");
+  const [historyConsultantFilter, setHistoryConsultantFilter] = useState("");
   
   // Real-time calculation preview state
   const [previewResult, setPreviewResult] = useState<ExtraHoursCalculationResult | null>(null);
@@ -1139,9 +1141,21 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
 
           {/* List of my entries */}
           <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
-            <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.05rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
-              Historial de Solicitudes
-            </h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "1rem" }}>
+              <h3 style={{ margin: 0, fontSize: "1.05rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
+                Historial de Solicitudes
+              </h3>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", minWidth: "250px" }}>
+                <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-soft)", whiteSpace: "nowrap" }}>Filtrar Consultor:</label>
+                <SearchableSelect
+                  options={consultants.map((c) => ({ value: c.id, label: c.fullName }))}
+                  value={historyConsultantFilter}
+                  onChange={(val) => setHistoryConsultantFilter(val)}
+                  placeholder="Buscar consultor..."
+                  emptyLabel="-- Todos --"
+                />
+              </div>
+            </div>
 
             {loadingEntries ? (
               <p className="loading">Cargando...</p>
@@ -1163,54 +1177,71 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     </tr>
                   </thead>
                   <tbody>
-                    {entries.map((entry) => {
-                      const stat = getStatusLabel(entry.status);
-                      const isOwn = entry.consultantId === myConsultant?.id || authUser?.roles.includes("ADMIN");
-                      const canDelete = isOwn && entry.status !== "APPROVED";
+                    {(() => {
+                      const filtered = entries.filter((entry) => {
+                        if (historyConsultantFilter && entry.consultantId !== historyConsultantFilter) {
+                          return false;
+                        }
+                        return true;
+                      });
+                      if (filtered.length === 0) {
+                        return (
+                          <tr>
+                            <td colSpan={8} style={{ textAlign: "center", fontStyle: "italic", color: "var(--text-soft)", padding: "1.5rem" }}>
+                              No se encontraron solicitudes para el consultor seleccionado.
+                            </td>
+                          </tr>
+                        );
+                      }
+                      return filtered.map((entry) => {
+                        const stat = getStatusLabel(entry.status);
+                        const isOwn = entry.consultantId === myConsultant?.id || authUser?.roles.includes("ADMIN");
+                        const canDelete = isOwn && entry.status !== "APPROVED";
 
-                      return (
-                        <tr key={entry.id}>
-                          <td>{entry.date.slice(0, 10)}</td>
-                          <td><strong>{entry.project?.name || "Sin proyecto"}</strong></td>
-                          <td>{entry.consultant?.fullName}</td>
-                          <td style={{ fontSize: "0.75rem" }}>{entry.startTime.slice(0, 5)} - {entry.endTime.slice(0, 5)}</td>
-                          <td>
-                            <strong>{Number(entry.totalHours).toFixed(1)}</strong>
-                            <span style={{ fontSize: "0.7rem", color: "#888", display: "block" }}>
-                              D:{Number(entry.diurnal).toFixed(1)} N:{Number(entry.nocturnal).toFixed(1)} F:{Number(Number(entry.diurnalHoliday) + Number(entry.nocturnalHoliday)).toFixed(1)}
-                            </span>
-                          </td>
-                          <td>
-                            <strong>${Number(entry.totalAmount).toLocaleString("es-CO")}</strong>
-                            <span style={{ fontSize: "0.7rem", color: "#888", display: "block" }}>{entry.consultant?.rateCurrency || "COP"}</span>
-                          </td>
-                          <td>
-                            <span className="pill" style={{ background: stat.bg, color: stat.color, fontSize: "0.72rem", padding: "0.15rem 0.45rem", fontWeight: 700 }}>
-                              {stat.label}
-                            </span>
-                            {entry.rejectionNote && (
-                              <span style={{ display: "block", color: "#ef4444", fontSize: "0.7rem", marginTop: "0.2rem", maxWidth: "150px" }}>
-                                Motivo: {entry.rejectionNote}
+                        return (
+                          <tr key={entry.id}>
+                            <td>{entry.date.slice(0, 10)}</td>
+                            <td><strong>{entry.project?.name || "Sin proyecto"}</strong></td>
+                            <td>{entry.consultant?.fullName}</td>
+                            <td style={{ fontSize: "0.75rem" }}>{entry.startTime.slice(0, 5)} - {entry.endTime.slice(0, 5)}</td>
+                            <td>
+                              <strong>{Number(entry.totalHours).toFixed(1)}</strong>
+                              <span style={{ fontSize: "0.7rem", color: "#888", display: "block" }}>
+                                D:{Number(entry.diurnal).toFixed(1)} N:{Number(entry.nocturnal).toFixed(1)} F:{Number(Number(entry.diurnalHoliday) + Number(entry.nocturnalHoliday)).toFixed(1)}
                               </span>
-                            )}
-                          </td>
-                          <td>
-                            {canDelete ? (
-                              <button
-                                type="button"
-                                onClick={() => setDeleteTargetId(entry.id)}
-                                style={{ background: "none", color: "#ef4444", border: "none", cursor: "pointer", fontSize: "0.95rem" }}
-                                title="Eliminar solicitud"
-                              >
-                                🗑
-                              </button>
-                            ) : (
-                              <span style={{ color: "#aaa", fontSize: "0.8rem" }}>—</span>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })}
+                            </td>
+                            <td>
+                              <strong>${Number(entry.totalAmount).toLocaleString("es-CO")}</strong>
+                              <span style={{ fontSize: "0.7rem", color: "#888", display: "block" }}>{entry.consultant?.rateCurrency || "COP"}</span>
+                            </td>
+                            <td>
+                              <span className="pill" style={{ background: stat.bg, color: stat.color, fontSize: "0.72rem", padding: "0.15rem 0.45rem", fontWeight: 700 }}>
+                                {stat.label}
+                              </span>
+                              {entry.rejectionNote && (
+                                <span style={{ display: "block", color: "#ef4444", fontSize: "0.7rem", marginTop: "0.2rem", maxWidth: "150px" }}>
+                                  Motivo: {entry.rejectionNote}
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              {canDelete ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteTargetId(entry.id)}
+                                  style={{ background: "none", color: "#ef4444", border: "none", cursor: "pointer", fontSize: "0.95rem" }}
+                                  title="Eliminar solicitud"
+                                >
+                                  🗑
+                                </button>
+                              ) : (
+                                <span style={{ color: "#aaa", fontSize: "0.8rem" }}>—</span>
+                              )}
+                            </td>
+                          </tr>
+                        );
+                      });
+                    })()}
                   </tbody>
                 </table>
               </div>

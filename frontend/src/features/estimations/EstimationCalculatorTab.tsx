@@ -63,6 +63,14 @@ interface EstimationWeights {
   scopePending: number;
   scopeDiffuse: number;
   scopeNoTechnicalClosure: number;
+
+  // Toggles for enabling/disabling factors
+  useComplexityFactor?: boolean;
+  useExperienceFactor?: boolean;
+  useTechDebtFactor?: boolean;
+  useDependencyFactor?: boolean;
+  useBrooksFactor?: boolean;
+  useScopeFactor?: boolean;
 }
 
 const DEFAULT_WEIGHTS: EstimationWeights = {
@@ -103,7 +111,15 @@ const DEFAULT_WEIGHTS: EstimationWeights = {
   scopeClosed: 1.0,
   scopePending: 1.15,            // was 1.25
   scopeDiffuse: 1.4,             // was 1.6
-  scopeNoTechnicalClosure: 1.8   // was 2.0
+  scopeNoTechnicalClosure: 1.8,  // was 2.0
+
+  // Toggle defaults
+  useComplexityFactor: true,
+  useExperienceFactor: true,
+  useTechDebtFactor: true,
+  useDependencyFactor: true,
+  useBrooksFactor: true,
+  useScopeFactor: true
 };
 
 
@@ -578,25 +594,28 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
     const scope = scopeDefinitionLevels.find((s) => s.key === scopeDefinition) || scopeDefinitionLevels[0];
 
     // ── 1. Base effort: idealHours × complexity multiplier ──────────────────
-    const baseEffort = task.idealHours * comp.uFactor;
+    const compFactor = (weights.useComplexityFactor !== false) ? comp.uFactor : 1.0;
+    const baseEffort = task.idealHours * compFactor;
     const uncertaintyOverhead = baseEffort - task.idealHours;
 
     // ── 2. Team experience overhead (weighted average of team composition) ──
     const calculatedTeamSize = Math.max(1, teamJuniorCount + teamMidCount + teamSeniorCount);
-    const averageExpFactor = (
-      teamSeniorCount * weights.expSenior +
-      teamMidCount    * weights.expMid    +
-      teamJuniorCount * weights.expJunior
-    ) / calculatedTeamSize;
+    const averageExpFactor = (weights.useExperienceFactor !== false)
+      ? (
+          teamSeniorCount * weights.expSenior +
+          teamMidCount    * weights.expMid    +
+          teamJuniorCount * weights.expJunior
+        ) / calculatedTeamSize
+      : 1.0;
     // overhead = how much slower than a pure-senior team
     const expOverhead = baseEffort * (averageExpFactor - 1);
 
     // ── 3. Tech debt overhead ───────────────────────────────────────────────
-    const debtFactor = debt.factor !== null ? debt.factor : 1.0;
+    const debtFactor = (weights.useTechDebtFactor !== false) ? (debt.factor !== null ? debt.factor : 1.0) : 1.0;
     const debtOverhead = baseEffort * (debtFactor - 1);
 
     // ── 4. Dependency overhead ──────────────────────────────────────────────
-    const depFactor = dep.factor !== null ? dep.factor : 1.0;
+    const depFactor = (weights.useDependencyFactor !== false) ? (dep.factor !== null ? dep.factor : 1.0) : 1.0;
     const depOverhead = baseEffort * (depFactor - 1);
 
     // ── 5. Context switching overhead (optional toggle) ─────────────────────
@@ -607,7 +626,9 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
     // ── 6. Brooks' Law team communication overhead ──────────────────────────
     // L = n(n-1)/2 communication channels; each adds brooksFactor% overhead
     const L = (calculatedTeamSize * (calculatedTeamSize - 1)) / 2;
-    const brooksOverhead = baseEffort * L * weights.brooksFactor;
+    const brooksOverhead = (weights.useBrooksFactor !== false)
+      ? baseEffort * L * weights.brooksFactor
+      : 0;
 
     // ── 7. Ceremonies: fixed % of idealHours (not compounded) ───────────────
     const codeReviewHours    = task.hasCodeReview    ? task.idealHours * weights.ceremonyCodeReview    : 0;
@@ -616,7 +637,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
     const ceremoniesTotal    = codeReviewHours + testingHours + documentationHours;
 
     // ── 8. Scope risk applied to the subtotal of overheads (not ceremonies) ─
-    const scopeFactor = scope.factor !== null ? scope.factor : 1.0;
+    const scopeFactor = (weights.useScopeFactor !== false) ? (scope.factor !== null ? scope.factor : 1.0) : 1.0;
     const preScope = baseEffort + expOverhead + debtOverhead + depOverhead + switchingOverhead + brooksOverhead;
     const scopeOverhead = preScope * (scopeFactor - 1);
 
@@ -2004,14 +2025,26 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
             
             {/* 1. Complejidad (U-Factor) */}
             <div>
-              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
-                1. Complejidad del Trabajo (U-Factor base)
-              </h4>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+                  1. Complejidad del Trabajo (U-Factor base)
+                </h4>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={weights.useComplexityFactor !== false}
+                    onChange={(e) => setWeights({ ...weights, useComplexityFactor: e.target.checked })}
+                    style={{ cursor: "pointer" }}
+                  />
+                  <span>Activo</span>
+                </label>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", opacity: weights.useComplexityFactor !== false ? 1 : 0.5 }}>
                 <div>
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Rutinaria (Routine)</label>
                   <input
                     type="number" step="0.05" min="1.0" max="5.0"
+                    disabled={weights.useComplexityFactor === false}
                     value={weights.compRoutine}
                     onChange={(e) => setWeights({ ...weights, compRoutine: Number(e.target.value) || 1.3 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2021,6 +2054,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Incógnitas Conocidas (Known Unknowns)</label>
                   <input
                     type="number" step="0.05" min="1.0" max="5.0"
+                    disabled={weights.useComplexityFactor === false}
                     value={weights.compKnownUnknowns}
                     onChange={(e) => setWeights({ ...weights, compKnownUnknowns: Number(e.target.value) || 2.0 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2030,6 +2064,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Territorio Inexplorado (Unknown Unknowns)</label>
                   <input
                     type="number" step="0.05" min="1.0" max="10.0"
+                    disabled={weights.useComplexityFactor === false}
                     value={weights.compUnknownUnknowns}
                     onChange={(e) => setWeights({ ...weights, compUnknownUnknowns: Number(e.target.value) || 3.5 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2040,14 +2075,26 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
             {/* 2. Experiencia (Seniority) */}
             <div>
-              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
-                2. Coeficientes de Seniority / Experiencia
-              </h4>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+                  2. Coeficientes de Seniority / Experiencia
+                </h4>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={weights.useExperienceFactor !== false}
+                    onChange={(e) => setWeights({ ...weights, useExperienceFactor: e.target.checked })}
+                    style={{ cursor: "pointer" }}
+                  />
+                  <span>Activo</span>
+                </label>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", opacity: weights.useExperienceFactor !== false ? 1 : 0.5 }}>
                 <div>
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Senior (5+ años)</label>
                   <input
                     type="number" step="0.05" min="0.5" max="3.0"
+                    disabled={weights.useExperienceFactor === false}
                     value={weights.expSenior}
                     onChange={(e) => setWeights({ ...weights, expSenior: Number(e.target.value) || 1.0 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2057,6 +2104,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Mid-Level (2-5 años)</label>
                   <input
                     type="number" step="0.05" min="0.5" max="3.0"
+                    disabled={weights.useExperienceFactor === false}
                     value={weights.expMid}
                     onChange={(e) => setWeights({ ...weights, expMid: Number(e.target.value) || 1.25 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2066,6 +2114,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Junior (&lt;2 años)</label>
                   <input
                     type="number" step="0.05" min="0.5" max="3.0"
+                    disabled={weights.useExperienceFactor === false}
                     value={weights.expJunior}
                     onChange={(e) => setWeights({ ...weights, expJunior: Number(e.target.value) || 1.6 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2076,14 +2125,26 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
             {/* 3. Deuda Técnica */}
             <div>
-              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
-                3. Fricción por Deuda Técnica
-              </h4>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+                  3. Fricción por Deuda Técnica
+                </h4>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={weights.useTechDebtFactor !== false}
+                    onChange={(e) => setWeights({ ...weights, useTechDebtFactor: e.target.checked })}
+                    style={{ cursor: "pointer" }}
+                  />
+                  <span>Activo</span>
+                </label>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", opacity: weights.useTechDebtFactor !== false ? 1 : 0.5 }}>
                 <div>
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Código Limpio</label>
                   <input
                     type="number" step="0.05" min="1.0" max="3.0"
+                    disabled={weights.useTechDebtFactor === false}
                     value={weights.debtClean}
                     onChange={(e) => setWeights({ ...weights, debtClean: Number(e.target.value) || 1.0 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2093,6 +2154,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Deuda Moderada</label>
                   <input
                     type="number" step="0.05" min="1.0" max="3.0"
+                    disabled={weights.useTechDebtFactor === false}
                     value={weights.debtModerate}
                     onChange={(e) => setWeights({ ...weights, debtModerate: Number(e.target.value) || 1.3 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2102,6 +2164,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Deuda Pesada</label>
                   <input
                     type="number" step="0.05" min="1.0" max="3.0"
+                    disabled={weights.useTechDebtFactor === false}
                     value={weights.debtHeavy}
                     onChange={(e) => setWeights({ ...weights, debtHeavy: Number(e.target.value) || 1.6 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2111,6 +2174,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Legacy Crítico</label>
                   <input
                     type="number" step="0.05" min="1.0" max="4.0"
+                    disabled={weights.useTechDebtFactor === false}
                     value={weights.debtLegacy}
                     onChange={(e) => setWeights({ ...weights, debtLegacy: Number(e.target.value) || 2.0 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2121,14 +2185,26 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
             {/* 4. Dependencias */}
             <div>
-              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
-                4. Bloqueos por Dependencias Externas
-              </h4>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+                  4. Bloqueos por Dependencias Externas
+                </h4>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={weights.useDependencyFactor !== false}
+                    onChange={(e) => setWeights({ ...weights, useDependencyFactor: e.target.checked })}
+                    style={{ cursor: "pointer" }}
+                  />
+                  <span>Activo</span>
+                </label>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem", opacity: weights.useDependencyFactor !== false ? 1 : 0.5 }}>
                 <div>
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Sin dependencias</label>
                   <input
                     type="number" step="0.05" min="1.0" max="3.0"
+                    disabled={weights.useDependencyFactor === false}
                     value={weights.depNone}
                     onChange={(e) => setWeights({ ...weights, depNone: Number(e.target.value) || 1.0 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2138,6 +2214,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Interna (Otro equipo)</label>
                   <input
                     type="number" step="0.05" min="1.0" max="3.0"
+                    disabled={weights.useDependencyFactor === false}
                     value={weights.depInternal}
                     onChange={(e) => setWeights({ ...weights, depInternal: Number(e.target.value) || 1.2 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2147,6 +2224,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Externa (Proveedor/API)</label>
                   <input
                     type="number" step="0.05" min="1.0" max="3.0"
+                    disabled={weights.useDependencyFactor === false}
                     value={weights.depExternal}
                     onChange={(e) => setWeights({ ...weights, depExternal: Number(e.target.value) || 1.4 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2156,6 +2234,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Múltiples bloqueantes</label>
                   <input
                     type="number" step="0.05" min="1.0" max="4.0"
+                    disabled={weights.useDependencyFactor === false}
                     value={weights.depMultiple}
                     onChange={(e) => setWeights({ ...weights, depMultiple: Number(e.target.value) || 1.6 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2166,9 +2245,20 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
             {/* 5. Ceremonias, Contexto & Brooks' Law */}
             <div>
-              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
-                5. Ceremonias, Contexto y Ley de Brooks
-              </h4>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+                  5. Ceremonias, Contexto y Ley de Brooks
+                </h4>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={weights.useBrooksFactor !== false}
+                    onChange={(e) => setWeights({ ...weights, useBrooksFactor: e.target.checked })}
+                    style={{ cursor: "pointer" }}
+                  />
+                  <span>Ley de Brooks Activa</span>
+                </label>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
                 <div>
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Code Review (Proporción, ej: 0.15 = 15%)</label>
@@ -2206,10 +2296,11 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
                   />
                 </div>
-                <div>
+                <div style={{ opacity: weights.useBrooksFactor !== false ? 1 : 0.5 }}>
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Recargo Canal Comunicación Brooks</label>
                   <input
                     type="number" step="0.01" min="0.0" max="0.5"
+                    disabled={weights.useBrooksFactor === false}
                     value={weights.brooksFactor}
                     onChange={(e) => setWeights({ ...weights, brooksFactor: Number(e.target.value) || 0.08 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2220,14 +2311,26 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
             {/* 6. Riesgo de Alcance */}
             <div>
-              <h4 style={{ margin: "0 0 0.75rem 0", fontSize: "0.9rem", color: "#9a4f0f", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem" }}>
-                6. Coeficientes por Claridad de Alcance
-              </h4>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+                  6. Coeficientes por Claridad de Alcance
+                </h4>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={weights.useScopeFactor !== false}
+                    onChange={(e) => setWeights({ ...weights, useScopeFactor: e.target.checked })}
+                    style={{ cursor: "pointer" }}
+                  />
+                  <span>Activo</span>
+                </label>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem", opacity: weights.useScopeFactor !== false ? 1 : 0.5 }}>
                 <div>
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Cerrado y Acotado</label>
                   <input
                     type="number" step="0.05" min="1.0" max="3.0"
+                    disabled={weights.useScopeFactor === false}
                     value={weights.scopeClosed}
                     onChange={(e) => setWeights({ ...weights, scopeClosed: Number(e.target.value) || 1.0 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2237,6 +2340,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Pendientes Menores</label>
                   <input
                     type="number" step="0.05" min="1.0" max="3.0"
+                    disabled={weights.useScopeFactor === false}
                     value={weights.scopePending}
                     onChange={(e) => setWeights({ ...weights, scopePending: Number(e.target.value) || 1.25 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2246,6 +2350,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Difuso / WIP</label>
                   <input
                     type="number" step="0.05" min="1.0" max="4.0"
+                    disabled={weights.useScopeFactor === false}
                     value={weights.scopeDiffuse}
                     onChange={(e) => setWeights({ ...weights, scopeDiffuse: Number(e.target.value) || 1.6 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
@@ -2255,6 +2360,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <label style={{ display: "block", fontSize: "0.78rem", fontWeight: 700, marginBottom: "0.25rem" }}>Sin Cierre Técnico</label>
                   <input
                     type="number" step="0.05" min="1.0" max="5.0"
+                    disabled={weights.useScopeFactor === false}
                     value={weights.scopeNoTechnicalClosure}
                     onChange={(e) => setWeights({ ...weights, scopeNoTechnicalClosure: Number(e.target.value) || 2.0 })}
                     style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}

@@ -78,12 +78,15 @@ describe("calculateExtraHours", () => {
       costPerMonth: null,
       rateCurrency: "USD",
       active: true,
+      allowWeekendWork: false,
       skills: [],
       seniority: "Senior",
       maxHoursPerDay: 8 as any,
       createdAt: new Date(),
       updatedAt: new Date(),
       identification: null,
+      isInternal: true,
+      company: null,
     });
 
     const result = await calculateExtraHours({
@@ -121,12 +124,15 @@ describe("calculateExtraHours", () => {
       costPerMonth: null,
       rateCurrency: "CLP",
       active: true,
+      allowWeekendWork: false,
       skills: [],
       seniority: "Senior",
       maxHoursPerDay: 8 as any,
       createdAt: new Date(),
       updatedAt: new Date(),
       identification: null,
+      isInternal: true,
+      company: null,
     });
 
     const result = await calculateExtraHours({
@@ -161,12 +167,15 @@ describe("calculateExtraHours", () => {
       costPerMonth: null,
       rateCurrency: "COP",
       active: true,
+      allowWeekendWork: false,
       skills: [],
       seniority: "Senior",
       maxHoursPerDay: 8 as any,
       createdAt: new Date(),
       updatedAt: new Date(),
       identification: null,
+      isInternal: true,
+      company: null,
     });
 
     // Reporta de 19:00 a 23:00 (2h diurnas de 19:00 a 21:00; y 2h nocturnas de 21:00 a 23:00)
@@ -203,12 +212,15 @@ describe("calculateExtraHours", () => {
       costPerMonth: 220000 as any,
       rateCurrency: "COP",
       active: true,
+      allowWeekendWork: false,
       skills: [],
       seniority: "Senior",
       maxHoursPerDay: 8 as any,
       createdAt: new Date(),
       updatedAt: new Date(),
       identification: null,
+      isInternal: true,
+      company: null,
     };
 
     vi.mocked(prisma.consultant.findUnique).mockResolvedValue(mockConsultant);
@@ -253,12 +265,15 @@ describe("calculateExtraHours", () => {
       costPerMonth: null,
       rateCurrency: "PEN",
       active: true,
+      allowWeekendWork: false,
       skills: [],
       seniority: "Senior",
       maxHoursPerDay: 8 as any,
       createdAt: new Date(),
       updatedAt: new Date(),
       identification: null,
+      isInternal: true,
+      company: null,
     });
 
     // Reporta 4 horas (e.g. 18:00 a 22:00)
@@ -290,12 +305,15 @@ describe("calculateExtraHours", () => {
       costPerMonth: null,
       rateCurrency: "MXN",
       active: true,
+      allowWeekendWork: false,
       skills: [],
       seniority: "Senior",
       maxHoursPerDay: 8 as any,
       createdAt: new Date(),
       updatedAt: new Date(),
       identification: null,
+      isInternal: true,
+      company: null,
     });
 
     // Mock findMany de extraHourEntry para simular que ya reportó 7 horas esta semana
@@ -381,12 +399,15 @@ describe("calculateExtraHours", () => {
       costPerMonth: null,
       rateCurrency: "USD",
       active: true,
+      allowWeekendWork: false,
       skills: [],
       seniority: "Senior",
       maxHoursPerDay: 8 as any,
       createdAt: new Date(),
       updatedAt: new Date(),
       identification: null,
+      isInternal: true,
+      company: null,
     });
 
     const ecuadorConfig = {
@@ -453,12 +474,15 @@ describe("calculateExtraHours", () => {
       costPerMonth: null,
       rateCurrency: "COP",
       active: true,
+      allowWeekendWork: false,
       skills: [],
       seniority: "Senior",
       maxHoursPerDay: 8 as any,
       createdAt: new Date(),
       updatedAt: new Date(),
       identification: null,
+      isInternal: true,
+      company: null,
     });
 
     // Mock findMany de customHoliday para devolver un feriado corporativo en esa fecha

@@ -83,7 +83,7 @@ const SIDEBAR_GROUPS: {
     tabs: [
       { id: "revenue",    label: "Ingresos",      icon: "⊕", permission: "revenue:read" },
       { id: "forecasts",  label: "Proyecciones",  icon: "◷", permission: "forecasts:read" },
-      { id: "estimations", label: "Estimaciones",  icon: "⚖", permission: "projects:read" },
+      { id: "estimations", label: "Estimaciones",  icon: "⚖", permission: "estimations:read" },
       { id: "fx",         label: "Tasas FX",      icon: "⊗", permission: "fx:read" },
     ],
   },
@@ -214,6 +214,7 @@ function App() {
   const isAuthenticated = useIsAuthenticated();
   const [currentPath, setCurrentPath] = useState(() => (window.location.pathname || "/").toLowerCase());
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
+  const [preselectedCapacityConsultantId, setPreselectedCapacityConsultantId] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [originalUser, setOriginalUser] = useState<AuthUser | null>(null);
 
@@ -227,7 +228,7 @@ function App() {
         "fx:read", "fx:write", "stats:read", "assignments:read", "assignments:write",
         "capacity:read", "snapshots:close", "alerts:read", "alerts:resolve",
         "audit:read", "users:manage", "extrahours:read", "extrahours:write",
-        "extrahours:review", "extrahours:config", "estimations:write"
+        "extrahours:review", "extrahours:config", "estimations:write", "estimations:read"
       ],
       PM: [
         "projects:read", "projects:write", "consultants:read", "consultants:write",
@@ -235,10 +236,10 @@ function App() {
         "forecasts:read", "forecasts:write", "revenue:read", "revenue:write",
         "fx:read", "stats:read", "assignments:read", "assignments:write",
         "capacity:read", "alerts:read", "alerts:resolve", "extrahours:read",
-        "extrahours:write", "extrahours:review", "estimations:write"
+        "extrahours:write", "extrahours:review", "estimations:write", "estimations:read"
       ],
       CONSULTANT: [
-        "time:read", "time:write", "alerts:read", "extrahours:read", "extrahours:write"
+        "time:read", "time:write", "alerts:read", "extrahours:read", "extrahours:write", "estimations:read"
       ]
     };
     setAuthUser({
@@ -347,7 +348,7 @@ function App() {
   const can = useCallback((p: string) => permissions.includes(p), [permissions]);
 
   // Domain hooks
-  const projectsHook    = useProjects(!!authUser && can("projects:read"));
+  const projectsHook    = useProjects(!!authUser && (can("projects:read") || can("estimations:read")));
   const consultantsHook = useConsultants(!!authUser && can("consultants:read"));
   const timeEntriesHook = useTimeEntries(!!authUser && can("time:read"));
   const expensesHook    = useExpenses(!!authUser && can("expenses:read"));
@@ -845,6 +846,10 @@ function App() {
                   canWrite={can("consultants:write")}
                   onReload={consultantsHook.reload}
                   onError={handleError}
+                  onAssignConsultant={(id) => {
+                    setPreselectedCapacityConsultantId(id);
+                    setActiveTab("capacity");
+                  }}
                 />
               )}
 
@@ -905,6 +910,8 @@ function App() {
                   consultants={consultantsHook.consultants}
                   canWrite={can("assignments:write")}
                   onError={handleError}
+                  preselectedConsultantId={preselectedCapacityConsultantId}
+                  onClearPreselectedConsultant={() => setPreselectedCapacityConsultantId(null)}
                 />
               )}
 
@@ -1050,7 +1057,7 @@ function App() {
       <button
         type="button"
         onClick={() => setChatOpen((o) => !o)}
-        className="rag-chat-fab"
+        className={`rag-chat-fab${chatOpen ? " is-open" : ""}`}
         title="Preguntar al Asistente IA (Ctrl+K)"
         aria-label="Preguntar al Asistente IA"
       >
