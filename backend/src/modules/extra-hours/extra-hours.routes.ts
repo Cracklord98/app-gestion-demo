@@ -434,7 +434,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
               diurnalStart: "06:00:00",
               diurnalEnd: "21:00:00",
               monthlyDivisor: 220,
-            },
+            } as any,
           });
         }
       }
