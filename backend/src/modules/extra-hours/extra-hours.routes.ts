@@ -29,6 +29,7 @@ const configPayloadSchema = z.object({
   nocturnalHolidayMultiplier: z.coerce.number().positive(),
   diurnalStart: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
   diurnalEnd: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
+  monthlyDivisor: z.coerce.number().positive().default(220),
 });
 
 const reviewPayloadSchema = z.object({
@@ -58,6 +59,7 @@ const defaultConfigs = [
     nocturnalHolidayMultiplier: 1.50,
     diurnalStart: "06:00:00",
     diurnalEnd: "21:00:00",
+    monthlyDivisor: 220,
   },
   {
     country: "Colombia",
@@ -68,6 +70,7 @@ const defaultConfigs = [
     nocturnalHolidayMultiplier: 2.50,
     diurnalStart: "06:00:00",
     diurnalEnd: "19:00:00",
+    monthlyDivisor: 220,
   },
   {
     country: "Peru",
@@ -78,6 +81,7 @@ const defaultConfigs = [
     nocturnalHolidayMultiplier: 2.00,
     diurnalStart: "06:00:00",
     diurnalEnd: "22:00:00",
+    monthlyDivisor: 240,
   },
   {
     country: "Chile",
@@ -88,6 +92,7 @@ const defaultConfigs = [
     nocturnalHolidayMultiplier: 1.50,
     diurnalStart: "06:00:00",
     diurnalEnd: "21:00:00",
+    monthlyDivisor: 180,
   },
   {
     country: "Mexico",
@@ -98,6 +103,7 @@ const defaultConfigs = [
     nocturnalHolidayMultiplier: 3.00,
     diurnalStart: "06:00:00",
     diurnalEnd: "20:00:00",
+    monthlyDivisor: 240,
   },
   {
     country: "Ecuador",
@@ -107,11 +113,18 @@ const defaultConfigs = [
     diurnalHolidayMultiplier: 2.00,
     nocturnalHolidayMultiplier: 2.00,
     diurnalStart: "06:00:00",
-    diurnalEnd: "24:00:00",
+    diurnalEnd: "23:59:00",
+    monthlyDivisor: 240,
   },
 ];
 
 async function ensureDefaultConfigs() {
+  // Fix any configurations with 24:00:00 diurnalEnd
+  await prisma.extraHoursConfig.updateMany({
+    where: { diurnalEnd: "24:00:00" },
+    data: { diurnalEnd: "23:59:00" }
+  });
+
   const configs = await prisma.extraHoursConfig.findMany();
   const requiredCountries = ["Default", "Colombia", "Peru", "Chile", "Mexico", "Ecuador"];
   const existingCountries = configs.map((c) => c.country);
@@ -124,6 +137,19 @@ async function ensureDefaultConfigs() {
           data: defaultC,
         });
       }
+    }
+  }
+
+  // If a country has default monthlyDivisor = 220 in DB but its actual default is not 220,
+  // we update it to correct the initial database migration setting.
+  const updatedConfigs = await prisma.extraHoursConfig.findMany();
+  for (const config of updatedConfigs) {
+    const defaultC = defaultConfigs.find(d => d.country === config.country);
+    if (defaultC && Number(config.monthlyDivisor) === 220 && defaultC.monthlyDivisor !== 220) {
+      await prisma.extraHoursConfig.update({
+        where: { id: config.id },
+        data: { monthlyDivisor: defaultC.monthlyDivisor }
+      });
     }
   }
 }
@@ -249,6 +275,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
         nocturnalHolidayMultiplier: 2.50,
         diurnalStart: "06:00:00",
         diurnalEnd: "21:00:00",
+        monthlyDivisor: 220,
       };
 
       // Formatear horas de inicio y fin para asegurar que tengan segundos
@@ -269,6 +296,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           nocturnalHolidayMultiplier: Number(activeConfig.nocturnalHolidayMultiplier),
           diurnalStart: activeConfig.diurnalStart,
           diurnalEnd: activeConfig.diurnalEnd,
+          monthlyDivisor: Number(activeConfig.monthlyDivisor || 220),
         },
       });
 
@@ -335,6 +363,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
         nocturnalHolidayMultiplier: 2.50,
         diurnalStart: "06:00:00",
         diurnalEnd: "21:00:00",
+        monthlyDivisor: 220,
       };
 
       const formattedStartTime = payload.startTime.split(":").length === 2 ? `${payload.startTime}:00` : payload.startTime;
@@ -353,6 +382,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           nocturnalHolidayMultiplier: Number(activeConfig.nocturnalHolidayMultiplier),
           diurnalStart: activeConfig.diurnalStart,
           diurnalEnd: activeConfig.diurnalEnd,
+          monthlyDivisor: Number(activeConfig.monthlyDivisor || 220),
         },
       });
 
@@ -403,6 +433,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
               nocturnalHolidayMultiplier: 2.50,
               diurnalStart: "06:00:00",
               diurnalEnd: "21:00:00",
+              monthlyDivisor: 220,
             },
           });
         }
@@ -436,6 +467,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           nocturnalHolidayMultiplier: payload.nocturnalHolidayMultiplier,
           diurnalStart: formattedStart,
           diurnalEnd: formattedEnd,
+          monthlyDivisor: payload.monthlyDivisor,
         },
         create: {
           country,
@@ -446,6 +478,47 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           nocturnalHolidayMultiplier: payload.nocturnalHolidayMultiplier,
           diurnalStart: formattedStart,
           diurnalEnd: formattedEnd,
+          monthlyDivisor: payload.monthlyDivisor,
+        },
+      });
+
+      return { data: updated };
+    },
+  );
+
+  // 5b. Restablecer configuración a predeterminados por país
+  app.post(
+    "/config/:country/reset",
+    {
+      preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.FINANCE])],
+    },
+    async (request) => {
+      const { country } = z.object({ country: z.string() }).parse(request.params);
+      
+      const defaultConfig = defaultConfigs.find(c => c.country.toLowerCase() === country.toLowerCase()) || defaultConfigs[0];
+      
+      const updated = await prisma.extraHoursConfig.upsert({
+        where: { country: defaultConfig.country },
+        update: {
+          weeklyExtraHoursLimit: defaultConfig.weeklyExtraHoursLimit,
+          diurnalMultiplier: defaultConfig.diurnalMultiplier,
+          nocturnalMultiplier: defaultConfig.nocturnalMultiplier,
+          diurnalHolidayMultiplier: defaultConfig.diurnalHolidayMultiplier,
+          nocturnalHolidayMultiplier: defaultConfig.nocturnalHolidayMultiplier,
+          diurnalStart: defaultConfig.diurnalStart,
+          diurnalEnd: defaultConfig.diurnalEnd,
+          monthlyDivisor: defaultConfig.monthlyDivisor,
+        },
+        create: {
+          country: defaultConfig.country,
+          weeklyExtraHoursLimit: defaultConfig.weeklyExtraHoursLimit,
+          diurnalMultiplier: defaultConfig.diurnalMultiplier,
+          nocturnalMultiplier: defaultConfig.nocturnalMultiplier,
+          diurnalHolidayMultiplier: defaultConfig.diurnalHolidayMultiplier,
+          nocturnalHolidayMultiplier: defaultConfig.nocturnalHolidayMultiplier,
+          diurnalStart: defaultConfig.diurnalStart,
+          diurnalEnd: defaultConfig.diurnalEnd,
+          monthlyDivisor: defaultConfig.monthlyDivisor,
         },
       });
 

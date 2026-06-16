@@ -1523,6 +1523,7 @@ export type ExtraHoursConfig = {
   nocturnalHolidayMultiplier: string;
   diurnalStart: string;
   diurnalEnd: string;
+  monthlyDivisor: string;
   createdAt: string;
   updatedAt: string;
 };
@@ -1538,6 +1539,7 @@ export type ExtraHoursCalculationResult = {
   diurnalHolidayAmount: number;
   nocturnalHolidayAmount: number;
   totalAmount: number;
+  hourlyRate: number;
   hourlyRateUsed: number;
   divisorUsed: number;
   isHoliday: boolean;
@@ -1609,9 +1611,15 @@ export async function updateCountryExtraHoursConfig(
     nocturnalHolidayMultiplier: number;
     diurnalStart: string;
     diurnalEnd: string;
+    monthlyDivisor: number;
   },
 ): Promise<ExtraHoursConfig> {
   const response = await request<ApiEnvelope<ExtraHoursConfig>>(`/api/extra-hours/config/${country}`, "PUT", payload);
+  return response.data;
+}
+
+export async function resetCountryExtraHoursConfig(country: string): Promise<ExtraHoursConfig> {
+  const response = await request<ApiEnvelope<ExtraHoursConfig>>(`/api/extra-hours/config/${country}/reset`, "POST");
   return response.data;
 }
 

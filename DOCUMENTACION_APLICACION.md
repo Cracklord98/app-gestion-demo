@@ -1,317 +1,253 @@
-# Documentacion Aplicacion - App Gestion Demo
+# Documentación Aplicación - App Gestión Demo
 
-## 1. Resumen general
-App Gestion Demo es una aplicacion web para control de proyectos, consultores, horas, gastos, proyecciones y metricas de seguimiento.
+## 1. Resumen General
+App Gestión es una aplicación web para el control de proyectos, consultores, horas, gastos, proyecciones, capacidad y métricas consolidadas de seguimiento (PMO).
 
-La solucion tiene:
-- Frontend: React + TypeScript + Vite
-- Backend: Fastify + Prisma + PostgreSQL
-- Deploy objetivo demo: Vercel (frontend) + Render (backend) + Supabase PostgreSQL
+La solución cuenta con:
+- **Frontend**: React 19 + TypeScript + Vite.
+- **Backend**: Fastify + Prisma ORM + PostgreSQL.
+- **Base de Datos**: Supabase PostgreSQL.
+- **Deploy objetivo**: Vercel (frontend) + Render (backend).
 
-Tambien incluye:
-- Modo autenticado con Microsoft (en proceso de estabilizacion)
-- Modo demo sin login para presentaciones
-- Conversion de moneda con TRM configurable y persistida
-
----
-
-## 2. Arquitectura actual
-
-### 2.1 Frontend
-- Framework: React 19
-- Bundler: Vite
-- Lenguaje: TypeScript
-- Auth UI: MSAL (Microsoft)
-- Server de archivos: `frontend/server.mjs`
-- Rutas principales de UX:
-  - `/login`: ingreso
-  - `/home`: aplicacion funcional
-
-### 2.2 Backend
-- Framework: Fastify
-- ORM: Prisma
-- DB: PostgreSQL
-- Seguridad:
-  - Autenticacion por token Microsoft (cuando esta activa)
-  - Autorizacion por roles (ADMIN, PM, CONSULTANT, FINANCE, VIEWER)
+La autenticación está diseñada para funcionar en dos modalidades seleccionables mediante variables de entorno:
+1. **Modo Autenticado con Microsoft (Entra ID / Azure AD)**: Flujo seguro end-to-end con inicio de sesión único y sincronización automática de roles.
+2. **Modo Demo (Bypass Auth)**: Permite ingresar automáticamente sin login para presentaciones de preventa y demostraciones rápidas.
 
 ---
 
-## 3. Documentacion Frontend
+## 2. Arquitectura de Ramas y Despliegue
 
-### 3.1 Modulos visibles
-La app tiene estas pestañas:
-- Dashboard
-- Proyectos
-- Consultores
-- Horas
-- Gastos
-- Proyecciones
-- Usuarios (admin)
+### 2.1 Flujo de Ramas
+- **`develop`**: Rama activa de desarrollo. Contiene las últimas características de la aplicación (Capacidad, Horas Extra, Auditoría, Estimaciones, Portafolio PMO, RAG Chat, accesos directos, etc.) y mejoras estéticas de UX.
+- **`main`** / **`deploy`**: Rama conectada a los servicios automáticos de Render y Vercel. 
 
-### 3.2 Funcionalidades implementadas en frontend
-
-#### Dashboard
-- KPIs: presupuesto total, gasto total, horas totales, horas aprobadas
-- Filtros:
-  - Empresa
-  - Proyecto
-  - Rango de fechas (desde/hasta)
-- Tabla de resumen por proyecto con estado de riesgo:
-  - OK
-  - Riesgo (>90%)
-  - Se pasa (>100%)
-- Tabla de horas aprobadas por consultor
-- Tabla de proyeccion por consultor
-
-#### Proyectos
-- Crear proyecto
-- Listar proyectos
-- Filtrar por nombre de proyecto o empresa
-- Editar proyecto
-- Eliminar proyecto
-- Moneda como desplegable
-
-#### Consultores
-- Crear consultor
-- Listar consultores
-- Editar consultor
-- Eliminar consultor
-- Activar / desactivar consultor
-- Catalogo de roles como desplegable
-- Campo de tarifa por hora
-
-#### Horas
-- Crear registro de horas
-- Flujo de aprobacion (aprobar / rechazar)
-- Visualizacion por estado
-
-#### Gastos
-- Crear gasto
-- Listar gastos
-- Editar gasto
-- Eliminar gasto
-- Categoria como desplegable
-- Moneda como desplegable
-
-#### Proyecciones
-- Crear proyecciones
-- Soporte de rango de periodo (anio + trimestre inicio y fin)
-- Creacion multiple por rango de trimestres
-- Listar proyecciones
-- Editar proyeccion
-- Eliminar proyeccion
-
-#### Usuarios (admin)
-- Crear usuario de aplicacion
-- Listar usuarios
-
-### 3.3 Conversion de monedas (TRM)
-- Configuracion en dashboard:
-  - Moneda A
-  - Moneda B
-  - TRM A -> B
-- Visualizacion dual en:
-  - Resumen por proyecto
-  - Gastos
-  - Proyecciones
-- Regla:
-  - Si el valor esta en Moneda A o Moneda B se convierte
-  - Si no coincide, se muestra como no convertible
-
-### 3.4 Persistencia de TRM
-- Ya no es solo estado local.
-- La configuracion se guarda en backend via API:
-  - `GET /api/fx-config`
-  - `PUT /api/fx-config`
-- Boton disponible en UI: `Guardar TRM`
-
-### 3.5 Modos de autenticacion en frontend
-
-#### Modo normal (Microsoft)
-- Requiere configuracion de variables Azure y flujo MSAL.
-
-#### Modo demo
-- Permite entrar sin login Microsoft para mostrar funcionalidades.
-- Variable:
-  - `VITE_FORCE_LOCAL_AUTH=true`
+> [!IMPORTANT]
+> Para liberar los últimos cambios de la demo a producción (Render y Vercel), se debe fusionar la rama `develop` en la rama activa de despliegue (`deploy` o `main`) mediante Git:
+> ```bash
+> git checkout deploy # o main, según corresponda
+> git merge develop
+> git push origin deploy
+> ```
 
 ---
 
-## 4. Documentacion Backend
+## 3. Módulos y Secciones del Proyecto (Rama `develop`)
+La aplicación cuenta con las siguientes secciones agrupadas en la barra de navegación lateral y accesibles según el rol del usuario:
 
-### 4.1 Modelos principales (Prisma)
-- Project
-- Consultant
-- TimeEntry
-- Expense
-- Forecast
-- FxConfig
-- User
-- Role
-- UserRole
+### 3.1 Gobierno
+- **Dashboard**: 
+  - Panel principal con indicadores clave (KPIs): presupuesto total, total ejecutado, horas totales y horas aprobadas.
+  - Filtros interactivos globales por Empresa, Proyecto y Rango de Fechas.
+  - Listado de proyectos clasificados por su estado de riesgo presupuestal.
+  - Visualización del consolidado de horas aprobadas y proyecciones por consultor.
+- **Portafolio (PMO)**:
+  - Panel corporativo para supervisar el rendimiento consolidado de múltiples proyectos.
+  - Semáforo de salud (RAG: Rojo, Amarillo, Verde) basado en desviaciones presupuestarias, riesgos e incidentes.
+  - Métricas de Valor Ganado (EVM):
+    - **CPI** (Índice de Rendimiento de Costos): Indica la eficiencia del costo del proyecto.
+    - **SPI** (Índice de Rendimiento del Cronograma): Muestra el avance del cronograma frente a lo planificado.
+  - Porcentaje de uso del presupuesto y porcentaje de avance físico.
+  - Listado de riesgos críticos e incidentes abiertos.
+  - Exportación de la matriz completa a formato CSV.
+- **Proyectos**:
+  - Gestión completa (CRUD) de proyectos.
+  - Configuración de fechas de inicio y fin, presupuesto total asignado, umbral de margen y porcentaje de alerta.
+  - Asignación de Project Manager (PM) y tipo de proyecto (Precio Fijo, Horas/T&M, Staffing).
+  - Selector de moneda base (COP, USD, EUR, etc.) y flag para habilitar/deshabilitar horas extra.
+- **Capacidad**:
+  - Matriz de planificación para ver el porcentaje de ocupación o asignación de cada consultor en los proyectos a lo largo del tiempo.
+  - Detección visual de sobrecargas de capacidad (>100% de la jornada laboral) para mitigar el agotamiento laboral.
+  - Panel para asignaciones masivas de recursos a proyectos por periodo.
 
-### 4.2 Endpoints principales
+### 3.2 Operación
+- **Consultores**:
+  - CRUD de consultores con tarifa por hora y moneda asociada (USD, COP, etc.).
+  - Configuración del país (indispensable para mapear feriados y leyes de horas extra), seniority, tags de habilidades (skills) y horas máximas permitidas por día.
+- **Horas**:
+  - Registro de horas de trabajo diario asociado a proyectos.
+  - Flujo de aprobación (Pendiente, Aprobado, Rechazado). Al rechazar, el aprobador (PM o Admin) debe ingresar una nota de rechazo obligatoria.
+- **Actividades**:
+  - Registro y seguimiento de tareas diarias vinculadas a proyectos.
+  - Clasificación por tipo de actividad, fecha programada, prioridad, horas estimadas y horas reales ejecutadas.
+- **Horas Extra**:
+  - Módulo que calcula de manera automática los recargos por horas extra (Diurna, Nocturna, Festiva Diurna, Festiva Nocturna) basándose en las leyes y horarios configurados para el país del consultor.
+  - Flujo de aprobación dual: requiere aprobación del Project Manager (PM) y posteriormente de Finanzas (FINANCE).
+- **Gastos**:
+  - CRUD de gastos asociados a proyectos con categorías configurables y visualización en moneda original y convertida mediante TRM.
 
-#### Salud
-- `GET /health`
+### 3.3 Financiero
+- **Ingresos**:
+  - Registro de facturación, hitos logrados e ingresos cobrados al cliente por proyecto.
+- **Proyecciones (Forecasts)**:
+  - Planificación a futuro de horas a trabajar, tarifa de costo y tarifa de venta de consultores.
+  - Generación masiva por rangos de trimestres y años fiscales.
+- **Estimaciones**:
+  - Calculadora avanzada para estructurar el presupuesto de nuevos proyectos a partir de requerimientos de horas, aplicando buffers de riesgo y niveles de confianza.
+- **Tasas FX (Divisas)**:
+  - Configuración persistida de tasas de cambio corporativas (TRM) entre múltiples divisas, habilitando la conversión en vivo de todos los reportes.
 
-#### Auth
-- `GET /api/auth/me`
+### 3.4 Administración
+- **Usuarios**:
+  - Panel para gestionar los usuarios locales de la aplicación y visualizar sus roles.
+- **Config. Horas Extra**:
+  - Ajuste de los recargos y límites semanales de horas extra por país (por ejemplo, definir las horas de inicio de jornada nocturna y multiplicadores en Colombia, Perú, etc.).
+- **Auditoría**:
+  - Bitácora detallada de auditoría para registrar cada cambio efectuado en la base de datos (acción realizada, entidad afectada, estado antes y después, IP del usuario y navegador).
 
-#### Proyectos
-- `GET /api/projects`
-- `GET /api/projects/:id`
-- `POST /api/projects`
-- `PUT /api/projects/:id`
-- `DELETE /api/projects/:id`
-
-#### Consultores
-- `GET /api/consultants`
-- `POST /api/consultants`
-- `PUT /api/consultants/:id`
-- `DELETE /api/consultants/:id`
-
-#### Horas
-- `GET /api/time-entries`
-- `POST /api/time-entries`
-- `PATCH /api/time-entries/:id/approve`
-- `PATCH /api/time-entries/:id/reject`
-- `DELETE /api/time-entries/:id`
-
-#### Gastos
-- `GET /api/expenses`
-- `POST /api/expenses`
-- `PUT /api/expenses/:id`
-- `DELETE /api/expenses/:id`
-
-#### Proyecciones
-- `GET /api/forecasts`
-- `POST /api/forecasts`
-- `PUT /api/forecasts/:id`
-- `DELETE /api/forecasts/:id`
-
-#### Estadisticas
-- `GET /api/stats/overview`
-
-#### FX Config (TRM persistida)
-- `GET /api/fx-config`
-- `PUT /api/fx-config`
-
-#### Admin usuarios
-- `GET /api/admin/users`
-- `POST /api/admin/users`
-- `PATCH /api/admin/users/:id`
-
-### 4.3 Auth y RBAC
-- Roles soportados:
-  - ADMIN
-  - PM
-  - CONSULTANT
-  - FINANCE
-  - VIEWER
-- Mensajes de autorizacion mejorados:
-  - Usuario no existe
-  - Usuario inactivo
-  - Usuario sin roles
-
-### 4.4 Modo demo en backend
-Para presentacion sin login:
-- `AUTH_DEMO_BYPASS=true`
-- El backend responde como usuario local admin (segun `ADMIN_EMAIL`).
+### 3.5 Características Adicionales de Usabilidad
+- **RAG Chatbot**: Asistente virtual inteligente contextualizado (se abre con `Ctrl + K` o mediante el icono flotante) que permite a los usuarios hacer preguntas en lenguaje natural sobre las métricas del proyecto o dudas operativas.
+- **Atajos de Teclado**:
+  - `Alt + N`: Ir a Dashboard.
+  - `Alt + H`: Ir a Horas.
+  - `Alt + F`: Ir a Proyecciones.
+  - `Alt + C`: Ir a Consultores.
+  - `Ctrl + K`: Abrir/Cerrar RAG Chatbot.
+  - `?`: Mostrar ayuda de atajos.
 
 ---
 
-## 5. Variables de entorno clave
+## 4. Integración con Microsoft Entra ID (Azure AD)
 
-### 5.1 Frontend
-- `VITE_API_URL`
-- `VITE_FORCE_LOCAL_AUTH`
-- `VITE_AZURE_TENANT_ID`
-- `VITE_AZURE_CLIENT_ID`
-- `VITE_AZURE_REDIRECT_URI`
-- `VITE_AZURE_API_SCOPE`
+### 4.1 Mapeo Crítico de Roles
+El backend procesa la claim `roles` enviada en el token de Azure AD durante el inicio de sesión. La lógica del archivo `backend/src/auth/guard.ts` realiza el siguiente procedimiento:
+1. Toma el arreglo de roles en `claims.roles`.
+2. Convierte cada valor a mayúsculas (`.toUpperCase()`).
+3. Valida si coincide exactamente con el enum de Prisma `AppRole` (`ADMIN`, `PM`, `CONSULTANT`, `FINANCE`, `VIEWER`).
 
-### 5.2 Backend
-- `DATABASE_URL`
-- `DIRECT_URL`
-- `CORS_ORIGIN`
-- `AUTH_ENABLED`
-- `AUTH_DEMO_BYPASS`
-- `ADMIN_EMAIL`
-- `AZURE_AD_TENANT_ID`
-- `AZURE_AD_AUDIENCE`
+> [!WARNING]
+> **Advertencia de Mapeo de Roles en Azure AD**:
+> Si en el Azure Portal los App Roles de la Enterprise Application fueron creados con el valor `"consultores"` (plural, en español), el backend no lo reconocerá directamente porque espera `"CONSULTANT"` en singular.
+> 
+> **Cómo solucionarlo**:
+> En el Azure Portal (App Registrations / Enterprise Application -> App Roles), asegúrese de que el **Valor (Value)** de cada rol coincida exactamente con las cadenas en inglés (la mayúscula no importa, el backend aplica `toUpperCase()`):
+> - Rol de Administrador: **Value** = `ADMIN` o `admin`
+> - Rol de PM (Director de Proyecto): **Value** = `PM` o `pm`
+> - Rol de Consultor: **Value** = `CONSULTANT` o `consultant`
+> - Rol Financiero: **Value** = `FINANCE` o `finance`
+> - Rol de Lector (Viewer): **Value** = `VIEWER` o `viewer`
 
----
+### 4.2 Aprovisionamiento JIT (Just-In-Time) de Usuarios y Consultores
+Para facilitar el ingreso de usuarios sin necesidad de crearlos manualmente uno por uno en la base de datos:
+1. Al iniciar sesión, si el email del token de Azure AD no existe en la base de datos, el backend crea un registro en la tabla `User` de manera automática.
+2. Si el token incluye roles válidos de Azure AD, estos se sincronizan reemplazando cualquier rol local previo.
+3. Si el token no tiene roles y el usuario no tiene roles en la DB local, se le asigna el rol `CONSULTANT` de forma predeterminada.
+4. **Regla Especial de Consultor**: Si el usuario tiene o adquiere el rol `CONSULTANT`, el sistema asegura automáticamente la creación de un registro en la tabla `Consultant` con el mismo correo y nombre.
+   
+> [!IMPORTANT]
+> Al crearse un consultor vía JIT por primera vez, su tarifa por hora (`hourlyRate`) se inicializa en `0` y la moneda en `USD`. 
+> 
+> **Acción necesaria**: Un administrador o PM debe entrar a la pestaña **Consultores** y editar el registro del nuevo consultor para configurar su tarifa real y país, permitiendo cálculos correctos de costos en horas registradas y proyecciones.
 
-## 6. Funcionalidades actuales (estado)
-
-### 6.1 Ya implementado
-- Estructura funcional completa frontend + backend
-- CRUD principal en proyectos, consultores, gastos y proyecciones
-- Flujo de aprobacion de horas
-- Panel de admin usuarios
-- Dashboard con filtros y tablas de seguimiento
-- TRM y conversion dual visible
-- Persistencia de TRM en base de datos
-- Modo demo para presentacion sin login
-
-### 6.2 En proceso / parcialmente implementado
-- Login Microsoft end-to-end estable en todos los escenarios de deploy
-- UX de edicion avanzada (todavia hay ediciones con prompts en algunos casos)
+5. **Regla Especial de Administrador Principal**: El correo configurado en la variable de entorno `ADMIN_EMAIL` del backend siempre recibirá automáticamente el rol `ADMIN` en la base de datos local al iniciar sesión, actuando como puerta de entrada segura.
 
 ---
 
-## 7. Pendientes
+## 5. Variables de Entorno para Modo Autenticado en Producción
 
-### 7.1 Pendientes funcionales prioritarios
-1. Graficas del dashboard
-- Barra: presupuesto vs gasto por proyecto
-- Linea: tendencia temporal
-- Pie/Donut: distribucion de gastos por categoria
-- Barra horizontal: horas por consultor
+Para que Render (Backend) y Vercel (Frontend) operen con inicio de sesión real de Microsoft Entra ID en lugar de la simulación de bypass, configure las siguientes variables en sus respectivos paneles de administración:
 
-2. CRUD completo de horas
-- Editar registro de hora (no solo aprobar/rechazar)
-- Filtros por estado/fecha/proyecto/consultor en modulo de horas
+### 5.1 En Render (Backend Web Service)
+- `AUTH_ENABLED` = `true` (Habilita la validación del token JWT de Microsoft).
+- `AUTH_DEMO_BYPASS` = `false` (Desactiva el inicio de sesión automático de administrador local).
+- `ADMIN_EMAIL` = `admin@tuempresa.com` (Correo corporativo que recibirá rol ADMIN automáticamente).
+- `AZURE_AD_TENANT_ID` = `[ID del Tenant de Azure AD / GUID o dominio corporativo]`
+- `AZURE_AD_AUDIENCE` = `[App ID URI del Backend, ej: api://<client-id-backend> o directamente el Client ID del backend]`
 
-3. Filtros avanzados por modulo
-- Gastos por categoria y rango
-- Proyecciones por consultor, periodo y proyecto
-
-4. Mejorar UX de edicion
-- Reemplazar `window.prompt` por modales/formularios consistentes
-
-### 7.2 Pendientes tecnicos
-1. Endurecer flujo productivo Microsoft
-- Redireccion, scopes y audience estables
-
-2. Pruebas
-- E2E de flujo principal
-- Pruebas de regresion para CRUD y dashboard
-
-3. Hardening final
-- Manejo de errores uniforme
-- Telemetria/logs funcionales para soporte de produccion
+### 5.2 En Vercel (Frontend SPA)
+- `VITE_FORCE_LOCAL_AUTH` = `false` (Indica al cliente usar MSAL.js para redireccionar al login de Microsoft).
+- `VITE_AZURE_TENANT_ID` = `[ID del Tenant de Azure AD]`
+- `VITE_AZURE_CLIENT_ID` = `[Client ID de la App Registration del Frontend]`
+- `VITE_AZURE_REDIRECT_URI` = `https://tu-aplicacion.vercel.app/home` (Debe estar registrada como URI tipo SPA en Azure Portal).
+- `VITE_AZURE_API_SCOPE` = `api://[Client ID del Backend]/access_as_user` (Scope expuesto por el backend para autorizar las peticiones).
 
 ---
 
-## 8. Flujo sugerido para demo
-1. Activar modo demo:
-- Frontend: `VITE_FORCE_LOCAL_AUTH=true`
-- Backend: `AUTH_DEMO_BYPASS=true`
+## 6. Lista de Verificación para la Salida a Producción (Checklist)
 
-2. Ingresar a:
-- `https://<frontend>/home`
-
-3. Mostrar:
-- Dashboard con filtros y conversion dual
-- CRUD de modulos principales
-- Panel de usuarios
+1. [ ] **Fusión de Código**: Integrar los últimos cambios estéticos y funcionales de la rama `develop` a la rama activa de despliegue (`deploy` o `main`).
+2. [ ] **Verificar Redireccionamientos en Azure AD**: En la App Registration del Frontend, agregar `https://[dominio-vercel].vercel.app/home` y asegurar que el tipo de redirección sea **SPA (Single Page Application)**.
+3. [ ] **Alinear Valores de Roles**: Comprobar que en Azure AD los App Roles asignados tengan como "Value" los términos en inglés (`ADMIN`, `PM`, `CONSULTANT`, `FINANCE`, `VIEWER`).
+4. [ ] **Cambio de Variables de Entorno**: Actualizar las variables especificadas en la sección 5 tanto en Render como en Vercel y forzar un redespliegue de los servicios.
+5. [ ] **Definir Tarifas JIT**: Alertar a los administradores que, a medida que los empleados ingresen por primera vez, deberán asignarles sus tarifas correspondientes desde el panel de **Consultores**.
+6. [ ] **Mitigación de Cold Starts (Render Free)**: Debido a que Render duerme las instancias gratis tras 15 minutos de inactividad, se aconseja contratar el plan Starter para el Backend o configurar un ping continuo (ej: con UptimeRobot) hacia `/health` para mantener el backend despierto antes de presentaciones clave.
 
 ---
 
-## 9. Referencias internas
-- Guia visual: `contexto/SY_6.html`
-- Frontend README: `frontend/README.md`
-- Backend README: `backend/README.md`
+## 7. Instrucciones para levantar la aplicación localmente (Desarrollo Local)
+
+Para ejecutar y probar la aplicación en tu máquina local, sigue estos pasos:
+
+### 7.1 Requisitos Previos
+- **Node.js**: Versión 18 o 20 instalada.
+- **Docker**: Para levantar la base de datos PostgreSQL local configurada en el puerto `5433`.
+
+### 7.2 Levantar la Base de Datos Local (Docker)
+En la raíz del proyecto, abre una terminal y ejecuta el comando para iniciar el contenedor de base de datos en segundo plano:
+```bash
+docker-compose up -d
+```
+*Nota: Esto iniciará una instancia de PostgreSQL que expone el puerto `5433` local para evitar conflictos con otras bases de datos en el puerto estándar 5432.*
+
+### 7.3 Configuración del Backend
+1. Navega al directorio del backend:
+   ```bash
+   cd backend
+   ```
+2. Instala las dependencias necesarias:
+   ```bash
+   npm ci
+   ```
+3. Crea tu archivo de configuración de entorno:
+   - En Windows, copia el archivo de ejemplo para el puerto 5433:
+     ```cmd
+     copy .env.local.5433.example .env
+     ```
+   - En Linux/macOS, usa `cp`:
+     ```bash
+     cp .env.local.5433.example .env
+     ```
+4. Genera el cliente de Prisma:
+   ```bash
+   npm run prisma:generate
+   ```
+5. Aplica el esquema y ejecuta las migraciones:
+   ```bash
+   npm run prisma:deploy
+   ```
+6. Carga la base de datos con los datos semilla y de prueba:
+   ```bash
+   npm run prisma:seed
+   ```
+7. Inicia el servidor de desarrollo del backend:
+   ```bash
+   npm run dev
+   ```
+   *El backend estará escuchando peticiones en http://localhost:4000.*
+
+### 7.4 Configuración del Frontend
+1. Abre una nueva terminal y navega al directorio del frontend:
+   ```bash
+   cd frontend
+   ```
+2. Instala las dependencias:
+   ```bash
+   npm ci
+   ```
+3. Crea tu archivo de configuración de entorno para local:
+   - En Windows:
+     ```cmd
+     copy .env.example .env
+     ```
+   - En Linux/macOS:
+     ```bash
+     cp .env.example .env
+     ```
+4. Inicia el servidor de desarrollo local de Vite:
+   ```bash
+   npm run dev
+   ```
+5. Abre la aplicación en tu navegador web en la dirección:
+   ```
+   http://localhost:5173/home
+   ```
+

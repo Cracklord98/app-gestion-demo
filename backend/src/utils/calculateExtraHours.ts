@@ -31,6 +31,7 @@ export interface ExtraHoursResult {
   totalAmount: number;
   hourlyRate: number;
   divisorUsed: number;
+  isHoliday: boolean;
   warnings: string[];
 }
 
@@ -50,6 +51,7 @@ interface ExtraHoursConfigData {
   nocturnalHolidayMultiplier: number;
   diurnalStart: string;
   diurnalEnd: string;
+  monthlyDivisor?: number;
 }
 
 export async function calculateExtraHours(params: {
@@ -108,15 +110,17 @@ export async function calculateExtraHours(params: {
   };
 
   // 2. Determinar divisor de horas mensuales del país
-  let divisorUsed = 220;
-  if (country === "Colombia") {
-    // Transición de jornada laboral Ley 2101 (220h a 210h el 15 de julio de 2026)
-    const transitionDate = new Date("2026-07-15");
-    divisorUsed = date >= transitionDate ? 210 : 220;
-  } else if (country === "Peru" || country === "Ecuador" || country === "Mexico") {
-    divisorUsed = 240;
-  } else if (country === "Chile") {
-    divisorUsed = 180;
+  let divisorUsed = config.monthlyDivisor ? Number(config.monthlyDivisor) : 220;
+  if (!config.monthlyDivisor) {
+    if (country === "Colombia") {
+      // Transición de jornada laboral Ley 2101 (220h a 210h el 15 de julio de 2026)
+      const transitionDate = new Date("2026-07-15");
+      divisorUsed = date >= transitionDate ? 210 : 220;
+    } else if (country === "Peru" || country === "Ecuador" || country === "Mexico") {
+      divisorUsed = 240;
+    } else if (country === "Chile") {
+      divisorUsed = 180;
+    }
   }
 
   // 3. Determinar tarifa por hora
@@ -493,6 +497,7 @@ export async function calculateExtraHours(params: {
     totalAmount,
     hourlyRate,
     divisorUsed,
+    isHoliday: isDayHoliday(date, country),
     warnings,
   };
 }

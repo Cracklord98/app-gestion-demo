@@ -594,6 +594,7 @@ model ExtraHoursConfig {
   nocturnalHolidayMultiplier Decimal  @default(2.50) @db.Decimal(4, 2)
   diurnalStart               String   @default("06:00:00")
   diurnalEnd                 String   @default("21:00:00")
+  monthlyDivisor             Decimal  @default(220) @db.Decimal(5, 2)
   createdAt                  DateTime @default(now())
   updatedAt                  DateTime @updatedAt
 }

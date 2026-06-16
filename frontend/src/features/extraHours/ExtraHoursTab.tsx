@@ -7,6 +7,7 @@ import {
   calculateExtraHoursApi,
   listExtraHoursConfigs,
   updateCountryExtraHoursConfig,
+  resetCountryExtraHoursConfig,
   approveExtraHour,
   rejectExtraHour,
   getPayrollSummary,
@@ -415,6 +416,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
   const [configHolidayNocturnalMult, setConfigHolidayNocturnalMult] = useState<number>(2.50);
   const [configDiurnalStart, setConfigDiurnalStart] = useState<string>("06:00");
   const [configDiurnalEnd, setConfigDiurnalEnd] = useState<string>("21:00");
+  const [configMonthlyDivisor, setConfigMonthlyDivisor] = useState<number>(220);
   const [savingConfig, setSavingConfig] = useState(false);
 
   // --- 6. Delegations state ---
@@ -517,6 +519,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
         setConfigHolidayNocturnalMult(Number(current.nocturnalHolidayMultiplier));
         setConfigDiurnalStart(current.diurnalStart.slice(0, 5));
         setConfigDiurnalEnd(current.diurnalEnd.slice(0, 5));
+        setConfigMonthlyDivisor(current.monthlyDivisor ? Number(current.monthlyDivisor) : 220);
       }
     } catch (err) {
       onError(err instanceof Error ? err.message : "Error al cargar configuraciones de horas extra");
@@ -561,6 +564,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
         setConfigHolidayNocturnalMult(Number(current.nocturnalHolidayMultiplier));
         setConfigDiurnalStart(current.diurnalStart.slice(0, 5));
         setConfigDiurnalEnd(current.diurnalEnd.slice(0, 5));
+        setConfigMonthlyDivisor(current.monthlyDivisor ? Number(current.monthlyDivisor) : 220);
       } else {
         // Default placeholders if not seeded yet
         const defaults = LEGISLATIONS[selectedCountryConfig] ? {
@@ -570,7 +574,8 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
           hdMult: 2.0,
           hnMult: 2.5,
           start: "06:00",
-          end: "21:00"
+          end: "21:00",
+          divisor: selectedCountryConfig === "Colombia" ? 220 : (["Peru", "Ecuador", "Mexico"].includes(selectedCountryConfig) ? 240 : (selectedCountryConfig === "Chile" ? 180 : 220))
         } : {
           limit: 12,
           dMult: 1.5,
@@ -578,7 +583,8 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
           hdMult: 1.5,
           hnMult: 1.5,
           start: "06:00",
-          end: "21:00"
+          end: "21:00",
+          divisor: 220
         };
         setConfigLimit(defaults.limit);
         setConfigDiurnalMult(defaults.dMult);
@@ -587,6 +593,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
         setConfigHolidayNocturnalMult(defaults.hnMult);
         setConfigDiurnalStart(defaults.start);
         setConfigDiurnalEnd(defaults.end);
+        setConfigMonthlyDivisor(defaults.divisor);
       }
     }
   }, [selectedCountryConfig, configsList]);
@@ -789,12 +796,43 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
         diurnalHolidayMultiplier: configHolidayDiurnalMult,
         nocturnalHolidayMultiplier: configHolidayNocturnalMult,
         diurnalStart: `${configDiurnalStart}:00`,
-        diurnalEnd: `${configDiurnalEnd}:00`
+        diurnalEnd: `${configDiurnalEnd}:00`,
+        monthlyDivisor: configMonthlyDivisor
       });
       triggerSuccess(`Configuración de ${selectedCountryConfig} actualizada con éxito.`);
       await loadConfigs();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Error al actualizar configuración");
+    } finally {
+      setSavingConfig(false);
+    }
+  };
+
+  const handleRestoreDefaults = async () => {
+    if (!window.confirm(`¿Estás seguro de que deseas restablecer los parámetros de ${selectedCountryConfig} a sus valores predeterminados de ley?`)) {
+      return;
+    }
+    setSavingConfig(true);
+    try {
+      const updated = await resetCountryExtraHoursConfig(selectedCountryConfig);
+      setConfigLimit(Number(updated.weeklyExtraHoursLimit));
+      setConfigDiurnalMult(Number(updated.diurnalMultiplier));
+      setConfigNocturnalMult(Number(updated.nocturnalMultiplier));
+      setConfigHolidayDiurnalMult(Number(updated.diurnalHolidayMultiplier));
+      setConfigHolidayNocturnalMult(Number(updated.nocturnalHolidayMultiplier));
+      
+      const formatTime = (t: string) => {
+        const parts = t.split(":");
+        return parts.length >= 2 ? `${parts[0]}:${parts[1]}` : t;
+      };
+      setConfigDiurnalStart(formatTime(updated.diurnalStart));
+      setConfigDiurnalEnd(formatTime(updated.diurnalEnd));
+      setConfigMonthlyDivisor(Number(updated.monthlyDivisor));
+
+      triggerSuccess(`Configuración de ${selectedCountryConfig} restablecida a los valores predeterminados con éxito.`);
+      await loadConfigs();
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Error al restablecer configuración");
     } finally {
       setSavingConfig(false);
     }
@@ -1130,7 +1168,34 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                   <div>¿Día Festivo?: <strong>{previewResult.isHoliday ? "Sí" : "No"}</strong></div>
                   <div>Diurnas / Nocturnas: <strong>{previewResult.diurnal} / {previewResult.nocturnal}</strong></div>
                   <div>Festivas (D / N): <strong>{previewResult.diurnalHoliday} / {previewResult.nocturnalHoliday}</strong></div>
-                  <div>Tarifa Aplicada: <strong>{previewResult.hourlyRateUsed > 0 ? `$${previewResult.hourlyRateUsed.toLocaleString("es-CO")}` : "Costo/Mes div."}</strong></div>
+                  
+                  {/* Tarifa y Divisor */}
+                  <div>Divisor Mensual: <strong>{previewResult.divisorUsed || "220"} hrs</strong></div>
+                  <div>Tarifa por Hora: <strong>{previewResult.hourlyRate > 0 ? `$${previewResult.hourlyRate.toLocaleString("es-CO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/hr` : "Costo/Mes div."}</strong></div>
+                  
+                  {/* Legislación aplicada */}
+                  {(() => {
+                    const selConsultant = authUser?.roles.includes("ADMIN")
+                      ? consultants.find(c => c.id === reportConsultantId)
+                      : myConsultant;
+                    const ctry = selConsultant?.country || "Default";
+                    if (ctry === "Colombia") {
+                      const isAfterLaw = previewResult.divisorUsed === 210;
+                      return (
+                        <div style={{ gridColumn: "span 2", padding: "0.3rem 0.5rem", background: isAfterLaw ? "#ecfdf5" : "#f0f9ff", border: `1px solid ${isAfterLaw ? "#a7f3d0" : "#bae6fd"}`, color: isAfterLaw ? "#065f46" : "#075985", borderRadius: "6px", fontSize: "0.72rem", marginTop: "0.2rem" }}>
+                          ℹ️ Colombia: Se aplica la jornada de <strong>{isAfterLaw ? "42 hs (Ley 2101 - Jul 2026)" : "44 hs (Reglamento Anterior)"}</strong>
+                        </div>
+                      );
+                    } else if (ctry === "Ecuador") {
+                      return (
+                        <div style={{ gridColumn: "span 2", padding: "0.3rem 0.5rem", background: "#f0f9ff", border: "1px solid #bae6fd", color: "#075985", borderRadius: "6px", fontSize: "0.72rem", marginTop: "0.2rem" }}>
+                          ℹ️ Ecuador: Código del Trabajo (Horas Suplementarias 50% / Extraordinarias 100% sobre divisor 240)
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
                   <div style={{ gridColumn: "span 2", borderTop: "1px dashed #f4d4b6", paddingTop: "0.4rem", marginTop: "0.2rem" }}>
                     Valor Estimado Pago: <strong style={{ color: "#9a4f0f", fontSize: "0.95rem" }}>${previewResult.totalAmount.toLocaleString("es-CO")}</strong>
                   </div>
@@ -1645,20 +1710,61 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                   />
                 </div>
 
+                <div>
+                  <label className="form-label">Divisor Mensual de Horas (ej. 220 o 210)</label>
+                  <input
+                    type="number"
+                    min={100}
+                    max={300}
+                    step={1}
+                    required
+                    value={configMonthlyDivisor}
+                    onChange={(e) => setConfigMonthlyDivisor(Number(e.target.value))}
+                  />
+                </div>
+
               </div>
 
-              <button
-                type="submit"
-                disabled={savingConfig}
-                style={{
-                  background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
-                  border: "none",
-                  marginTop: "0.5rem",
-                  alignSelf: "flex-end"
-                }}
-              >
-                {savingConfig ? "Guardando..." : "Guardar Configuración"}
-              </button>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "1rem", marginTop: "1rem", flexWrap: "wrap", width: "100%" }}>
+                <button
+                  type="button"
+                  onClick={handleRestoreDefaults}
+                  disabled={savingConfig}
+                  style={{
+                    background: "rgba(239, 68, 68, 0.08)",
+                    color: "#dc2626",
+                    border: "1px solid #fecaca",
+                    padding: "0.5rem 1.25rem",
+                    borderRadius: "8px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
+                    e.currentTarget.style.borderColor = "#f87171";
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
+                    e.currentTarget.style.borderColor = "#fecaca";
+                  }}
+                >
+                  Volver a predeterminados
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingConfig}
+                  style={{
+                    background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                    border: "none",
+                    fontWeight: 600,
+                    padding: "0.5rem 1.25rem",
+                    borderRadius: "8px",
+                  }}
+                >
+                  {savingConfig ? "Guardando..." : "Guardar Configuración"}
+                </button>
+              </div>
             </form>
 
           </div>
