@@ -134,7 +134,7 @@ async function ensureDefaultConfigs() {
     for (const defaultC of defaultConfigs) {
       if (missingCountries.includes(defaultC.country)) {
         await prisma.extraHoursConfig.create({
-          data: defaultC,
+          data: defaultC as any,
         });
       }
     }
@@ -145,10 +145,10 @@ async function ensureDefaultConfigs() {
   const updatedConfigs = await prisma.extraHoursConfig.findMany();
   for (const config of updatedConfigs) {
     const defaultC = defaultConfigs.find(d => d.country === config.country);
-    if (defaultC && Number(config.monthlyDivisor) === 220 && defaultC.monthlyDivisor !== 220) {
+    if (defaultC && Number((config as any).monthlyDivisor) === 220 && defaultC.monthlyDivisor !== 220) {
       await prisma.extraHoursConfig.update({
         where: { id: config.id },
-        data: { monthlyDivisor: defaultC.monthlyDivisor }
+        data: { monthlyDivisor: defaultC.monthlyDivisor } as any
       });
     }
   }
@@ -296,7 +296,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           nocturnalHolidayMultiplier: Number(activeConfig.nocturnalHolidayMultiplier),
           diurnalStart: activeConfig.diurnalStart,
           diurnalEnd: activeConfig.diurnalEnd,
-          monthlyDivisor: Number(activeConfig.monthlyDivisor || 220),
+          monthlyDivisor: Number((activeConfig as any).monthlyDivisor || 220),
         },
       });
 
@@ -382,7 +382,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           nocturnalHolidayMultiplier: Number(activeConfig.nocturnalHolidayMultiplier),
           diurnalStart: activeConfig.diurnalStart,
           diurnalEnd: activeConfig.diurnalEnd,
-          monthlyDivisor: Number(activeConfig.monthlyDivisor || 220),
+          monthlyDivisor: Number((activeConfig as any).monthlyDivisor || 220),
         },
       });
 
@@ -468,7 +468,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           diurnalStart: formattedStart,
           diurnalEnd: formattedEnd,
           monthlyDivisor: payload.monthlyDivisor,
-        },
+        } as any,
         create: {
           country,
           weeklyExtraHoursLimit: payload.weeklyExtraHoursLimit,
@@ -479,7 +479,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           diurnalStart: formattedStart,
           diurnalEnd: formattedEnd,
           monthlyDivisor: payload.monthlyDivisor,
-        },
+        } as any,
       });
 
       return { data: updated };
@@ -508,7 +508,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           diurnalStart: defaultConfig.diurnalStart,
           diurnalEnd: defaultConfig.diurnalEnd,
           monthlyDivisor: defaultConfig.monthlyDivisor,
-        },
+        } as any,
         create: {
           country: defaultConfig.country,
           weeklyExtraHoursLimit: defaultConfig.weeklyExtraHoursLimit,
@@ -519,7 +519,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           diurnalStart: defaultConfig.diurnalStart,
           diurnalEnd: defaultConfig.diurnalEnd,
           monthlyDivisor: defaultConfig.monthlyDivisor,
-        },
+        } as any,
       });
 
       return { data: updated };
