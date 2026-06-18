@@ -4,6 +4,7 @@ import { z } from "zod";
 import { authenticate, authorize } from "../../auth/guard.js";
 import { prisma } from "../../infra/prisma.js";
 import { calculateExtraHours } from "../../utils/calculateExtraHours.js";
+import { notifyNewExtraHourRequest, notifyExtraHourApprovedByPM } from "../../utils/notifications.js";
 
 const extraHourPayloadSchema = z.object({
   projectId: z.string().min(1),
@@ -326,6 +327,17 @@ export async function extraHoursRoutes(app: FastifyInstance) {
         },
       });
 
+      // Notificar al PM de la nueva solicitud de horas extras
+      notifyNewExtraHourRequest({
+        consultantName: entry.consultant.fullName,
+        date: entry.date.toISOString().split("T")[0],
+        hours: Number(entry.totalHours),
+        pmEmail: entry.project?.projectManagerEmail || "",
+        projectName: entry.project?.name || "Proyecto",
+      }).catch((err) => {
+        console.error("Error al enviar notificación de nueva hora extra:", err);
+      });
+
       return reply.status(201).send({ data: entry, warnings: calcResult.warnings });
     },
   );
@@ -606,6 +618,21 @@ export async function extraHoursRoutes(app: FastifyInstance) {
             rejectionNote: null,
           },
           include: { project: true, consultant: true },
+        });
+
+        // Notificar a Nómina/Finanzas que el PM ha aprobado las horas extras
+        notifyExtraHourApprovedByPM({
+          consultantName: entry.consultant.fullName,
+          identification: entry.consultant.identification || "N/A",
+          date: entry.date.toISOString().split("T")[0],
+          hours: Number(entry.totalHours),
+          totalAmount: Number(entry.totalAmount),
+          currency: entry.consultant.rateCurrency || "USD",
+          projectName: entry.project?.name || "Proyecto",
+          approvedByPM: payload.approvedBy || user.email,
+          observations: entry.observations || undefined,
+        }).catch((err) => {
+          console.error("Error al enviar notificación de aprobación del PM a nómina:", err);
         });
 
         return { data: entry };

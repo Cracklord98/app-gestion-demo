@@ -129,7 +129,10 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   if (hasTokenRoles) {
     const tokenRoles: AppRole[] = [];
     for (const roleName of claims.roles as string[]) {
-      const appRole = roleName.toUpperCase();
+      let appRole = roleName.toUpperCase();
+      if (appRole === "NOMINA") {
+        appRole = "FINANCE";
+      }
       if (appRole in AppRole) {
         tokenRoles.push(appRole as AppRole);
       }

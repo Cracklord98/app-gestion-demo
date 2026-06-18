@@ -3,7 +3,7 @@ import { useIsAuthenticated, useMsal } from "@azure/msal-react";
 import { env } from "./config/env";
 import { apiTokenRequest, loginRequest } from "./auth/msal";
 import {
-  getHealth, getMe, setApiAccessToken,
+  getHealth, getMe, setApiAccessToken, sendFeedback,
   type AuthUser, type HealthResponse, type FxConfig,
 } from "./services/api";
 import { useProjects } from "./hooks/useProjects";
@@ -110,7 +110,7 @@ async function getAccessToken(
   } catch {
     await instance.acquireTokenRedirect({
       ...apiTokenRequest, account,
-      redirectStartPage: `${window.location.origin}/home`,
+      redirectStartPage: `${window.location.origin}/dashboard`,
     });
     return null;
   }
@@ -205,6 +205,187 @@ function FxDrawer({ open, onClose, fxConfigs }: { open: boolean; onClose: () => 
 // Special tabs accessible outside the sidebar (e.g., from dropdown)
 const NON_SIDEBAR_TABS: TabId[] = ["profile"];
 
+// ── Tab Path Mapping ────────────────────────────────────────────────────────
+
+const TAB_PATH_MAP: Record<TabId, string> = {
+  dashboard: "/dashboard",
+  portfolio: "/portfolio",
+  projects: "/projects",
+  capacity: "/capacity",
+  consultants: "/consultants",
+  timeEntries: "/time-entries",
+  activities: "/activities",
+  extraHours: "/extra-hours",
+  expenses: "/expenses",
+  revenue: "/revenue",
+  forecasts: "/forecasts",
+  estimations: "/estimations",
+  fx: "/fx",
+  admin: "/admin",
+  extraHoursConfig: "/extra-hours-config",
+  audit: "/audit",
+  profile: "/profile",
+  alerts: "/alerts",
+};
+
+const PATH_TAB_MAP: Record<string, TabId> = Object.fromEntries(
+  Object.entries(TAB_PATH_MAP).map(([tab, path]) => [path, tab as TabId])
+);
+
+// ── Landing Page ────────────────────────────────────────────────────────────
+
+function LandingPage({ onLoginClick }: { onLoginClick: () => void }) {
+  return (
+    <>
+      <style>{`
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
+      <div className="landing-container" style={{
+        minHeight: "100vh",
+        background: "radial-gradient(circle at 10% 20%, rgb(255, 252, 243) 0%, rgb(255, 240, 220) 90%)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "2rem",
+        color: "#2a1e12",
+        fontFamily: "'Outfit', 'Inter', sans-serif",
+      }}>
+        <div className="landing-card" style={{
+          maxWidth: "900px",
+          background: "rgba(255, 255, 255, 0.75)",
+          backdropFilter: "blur(20px)",
+          borderRadius: "30px",
+          padding: "3.5rem 2.5rem",
+          boxShadow: "0 20px 50px rgba(122, 60, 16, 0.08)",
+          border: "1px solid rgba(244, 212, 182, 0.6)",
+          textAlign: "center",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          animation: "slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both"
+        }}>
+          <div style={{
+            background: "linear-gradient(135deg, #fff3e3, #ffdcb5)",
+            borderRadius: "50%",
+            padding: "1.5rem",
+            display: "inline-block",
+            marginBottom: "1.5rem",
+            boxShadow: "inset 0 2px 5px rgba(255,255,255,0.8), 0 10px 20px rgba(154, 79, 15, 0.05)"
+          }}>
+            <PyramidLogo size={72} />
+          </div>
+          
+          <h1 style={{
+            fontSize: "3rem",
+            fontWeight: 800,
+            background: "linear-gradient(135deg, #7a3c10 0%, #d97706 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            margin: "0 0 1rem 0",
+            letterSpacing: "-0.03em"
+          }}>
+            Plataforma de Gestión Demo
+          </h1>
+          
+          <p style={{
+            fontSize: "1.2rem",
+            color: "#5f4530",
+            maxWidth: "600px",
+            lineHeight: "1.6",
+            margin: "0 0 2.5rem 0",
+          }}>
+            La consola ejecutiva para el control financiero, aprobaciones inteligentes y proyección de recursos de Synaptica.
+          </p>
+
+          <button 
+            onClick={onLoginClick}
+            style={{
+              background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+              color: "#fff",
+              border: "none",
+              borderRadius: "50px",
+              padding: "1.2rem 3rem",
+              fontSize: "1.1rem",
+              fontWeight: 700,
+              cursor: "pointer",
+              boxShadow: "0 10px 25px rgba(154, 79, 15, 0.25)",
+              transition: "transform 0.2s ease, box-shadow 0.2s ease",
+              marginBottom: "3.5rem"
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = "translateY(-2px)";
+              e.currentTarget.style.boxShadow = "0 15px 30px rgba(154, 79, 15, 0.35)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "none";
+              e.currentTarget.style.boxShadow = "0 10px 25px rgba(154, 79, 15, 0.25)";
+            }}
+          >
+            Ingresar a la Plataforma
+          </button>
+
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "1.5rem",
+            width: "100%",
+            textAlign: "left"
+          }}>
+            <div style={{
+              background: "rgba(255, 255, 255, 0.5)",
+              padding: "1.5rem",
+              borderRadius: "20px",
+              border: "1px solid rgba(244, 212, 182, 0.4)"
+            }}>
+              <span style={{ fontSize: "1.5rem", display: "block", marginBottom: "0.5rem" }}>📊</span>
+              <h3 style={{ margin: "0 0 0.5rem 0", color: "#7a3c10", fontSize: "1.05rem" }}>Control Financiero</h3>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#6b5440", lineHeight: "1.5" }}>
+                Monitoreo en tiempo real de presupuestos, márgenes brutos y rentabilidad del portafolio.
+              </p>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.5)",
+              padding: "1.5rem",
+              borderRadius: "20px",
+              border: "1px solid rgba(244, 212, 182, 0.4)"
+            }}>
+              <span style={{ fontSize: "1.5rem", display: "block", marginBottom: "0.5rem" }}>⚡</span>
+              <h3 style={{ margin: "0 0 0.5rem 0", color: "#7a3c10", fontSize: "1.05rem" }}>Flujo de Aprobaciones</h3>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#6b5440", lineHeight: "1.5" }}>
+                Validación secuencial de horas extra (Nivel 1: PM, Nivel 2: Nómina/Financiero) y notificaciones automáticas.
+              </p>
+            </div>
+
+            <div style={{
+              background: "rgba(255, 255, 255, 0.5)",
+              padding: "1.5rem",
+              borderRadius: "20px",
+              border: "1px solid rgba(244, 212, 182, 0.4)"
+            }}>
+              <span style={{ fontSize: "1.5rem", display: "block", marginBottom: "0.5rem" }}>🔮</span>
+              <h3 style={{ margin: "0 0 0.5rem 0", color: "#7a3c10", fontSize: "1.05rem" }}>Planificación de Recursos</h3>
+              <p style={{ margin: 0, fontSize: "0.85rem", color: "#6b5440", lineHeight: "1.5" }}>
+                Cálculo inteligente de capacidad, proyecciones mensuales y tasas FX bimoneda integradas.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
 // ── App ─────────────────────────────────────────────────────────────────────
 
 function App() {
@@ -213,12 +394,15 @@ function App() {
   const { instance, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
   const [currentPath, setCurrentPath] = useState(() => (window.location.pathname || "/").toLowerCase());
-  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
+  const [activeTab, setActiveTab] = useState<TabId>(() => {
+    const path = (window.location.pathname || "/").toLowerCase();
+    return PATH_TAB_MAP[path] || "dashboard";
+  });
   const [preselectedCapacityConsultantId, setPreselectedCapacityConsultantId] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [originalUser, setOriginalUser] = useState<AuthUser | null>(null);
 
-  const handleSwitchRole = useCallback((role: "ADMIN" | "PM" | "CONSULTANT") => {
+  const handleSwitchRole = useCallback((role: "ADMIN" | "PM" | "CONSULTANT" | "FINANCE") => {
     if (!originalUser) return;
     const rolePermissionsMap: Record<string, string[]> = {
       ADMIN: [
@@ -240,6 +424,9 @@ function App() {
       ],
       CONSULTANT: [
         "time:read", "time:write", "alerts:read", "extrahours:read", "extrahours:write", "estimations:read"
+      ],
+      FINANCE: [
+        "extrahours:read", "extrahours:review"
       ]
     };
     setAuthUser({
@@ -282,17 +469,23 @@ function App() {
   const { toasts, show: showToast, dismiss } = useToastController();
 
   // --- Feedback Submit Handler ---
-  const handleFeedbackSubmit = (e: React.FormEvent) => {
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!feedbackNotes.trim()) return;
     setSendingFeedback(true);
-    setTimeout(() => {
-      console.log("Feedback submitted:", { category: feedbackCategory, notes: feedbackNotes });
+    try {
+      await sendFeedback({
+        category: feedbackCategory as "BUG" | "SUGGESTION" | "AESTHETIC" | "OTHER",
+        notes: feedbackNotes,
+      });
       showToast("¡Gracias por tus comentarios! Feedback registrado.", "success");
       setFeedbackNotes("");
       setFeedbackOpen(false);
+    } catch (err) {
+      handleError(err instanceof Error ? err.message : "Error al enviar el feedback");
+    } finally {
       setSendingFeedback(false);
-    }, 800);
+    }
   };
 
   // --- Global Keyboard Shortcuts Hook ---
@@ -369,23 +562,55 @@ function App() {
 
   const allVisibleTabs = useMemo(() => visibleGroups.flatMap((g) => g.tabs), [visibleGroups]);
 
-  const goTo = useCallback((path: "/login" | "/home", replace = false) => {
+  const goTo = useCallback((path: string, replace = false) => {
     if (replace) window.history.replaceState({}, "", path);
     else window.history.pushState({}, "", path);
-    setCurrentPath(path);
+    setCurrentPath(path.toLowerCase());
   }, []);
 
+  // Synchronize path and active tab when back/forward button is clicked (popstate)
   useEffect(() => {
-    const onPopState = () => setCurrentPath((window.location.pathname || "/").toLowerCase());
+    const onPopState = () => {
+      const path = (window.location.pathname || "/").toLowerCase();
+      setCurrentPath(path);
+      const tab = PATH_TAB_MAP[path];
+      if (tab) {
+        setActiveTab(tab);
+      }
+    };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  // Sync browser URL when active tab changes
   useEffect(() => {
-    if (currentPath !== "/login" && currentPath !== "/home") {
-      goTo(authUser ? "/home" : "/login", true);
+    if (authUser) {
+      const path = TAB_PATH_MAP[activeTab];
+      if (path && window.location.pathname !== path) {
+        window.history.pushState({}, "", path);
+        setCurrentPath(path);
+      }
     }
-  }, [currentPath, authUser, goTo]);
+  }, [activeTab, authUser]);
+
+  // Handle URL routing redirections based on authentication state
+  useEffect(() => {
+    const isTabPath = currentPath in PATH_TAB_MAP;
+    const isPublicPath = ["/", "/landing", "/login"].includes(currentPath);
+
+    if (authUser) {
+      if (isPublicPath) {
+        const path = TAB_PATH_MAP[activeTab] || "/dashboard";
+        goTo(path, true);
+      } else if (!isTabPath) {
+        goTo("/dashboard", true);
+      }
+    } else {
+      if (isTabPath) {
+        goTo("/", true);
+      }
+    }
+  }, [currentPath, authUser, goTo, activeTab]);
 
   useEffect(() => {
     if (!NON_SIDEBAR_TABS.includes(activeTab) && !allVisibleTabs.some((t) => t.id === activeTab)) {
@@ -406,7 +631,10 @@ function App() {
       if (authWithMicrosoftEnabled) {
         if (!isAuthenticated || !accounts[0]) {
           setAuthUser(null);
-          if (currentPath !== "/login") goTo("/login", true);
+          const isPublic = ["/", "/landing", "/login"].includes(currentPath);
+          if (!isPublic) {
+            goTo("/", true);
+          }
           setLoading(false);
           return;
         }
@@ -419,7 +647,10 @@ function App() {
       const me = await getMe();
       setOriginalUser(me);
       setAuthUser(me);
-      if (currentPath !== "/home") goTo("/home", true);
+      const isPublic = ["/", "/landing", "/login"].includes(currentPath);
+      if (isPublic) {
+        goTo("/dashboard", true);
+      }
     } catch (err) {
       setAuthUser(null);
       setError(err instanceof Error ? err.message : "Error inicializando la aplicación");
@@ -434,9 +665,9 @@ function App() {
     setApiAccessToken(null);
     setOriginalUser(null);
     setAuthUser(null);
-    goTo("/login", true);
+    goTo("/", true);
     if (authWithMicrosoftEnabled) {
-      await instance.logoutRedirect({ postLogoutRedirectUri: `${window.location.origin}/login` });
+      await instance.logoutRedirect({ postLogoutRedirectUri: `${window.location.origin}/` });
     }
   }
 
@@ -468,6 +699,11 @@ function App() {
         </main>
       );
     }
+
+    if (currentPath === "/" || currentPath === "/landing") {
+      return <LandingPage onLoginClick={() => goTo("/login")} />;
+    }
+
     return (
       <main className="auth-shell">
         <section className="auth-card">
@@ -486,14 +722,20 @@ function App() {
             ) : (
               <>
                 <p>Ingresa con Microsoft para continuar.</p>
-                <button type="button"
-                  onClick={() => void instance.loginRedirect({ ...loginRequest, redirectStartPage: `${window.location.origin}/home` })}>
-                  Iniciar sesión con Microsoft
-                </button>
+                <div className="inline-actions" style={{ flexDirection: "column", gap: "0.5rem" }}>
+                  <button type="button"
+                    onClick={() => void instance.loginRedirect({ ...loginRequest, redirectStartPage: `${window.location.origin}/home` })}>
+                    Iniciar sesión con Microsoft
+                  </button>
+                  <button type="button" className="ghost" onClick={() => goTo("/")}>Volver al Inicio</button>
+                </div>
               </>
             )
           ) : (
-            <p>Modo demo activo sin login Microsoft.</p>
+            <>
+              <p>Modo demo activo sin login Microsoft.</p>
+              <button type="button" className="ghost" onClick={() => goTo("/")}>Volver al Inicio</button>
+            </>
           )}
         </section>
       </main>
@@ -543,7 +785,7 @@ function App() {
         </div>
 
         <div className="badges">
-          {authUser && (
+          {authUser && originalUser?.roles.includes("ADMIN") && (
             <div className="role-switcher" style={{
               display: "flex",
               alignItems: "center",
@@ -554,7 +796,7 @@ function App() {
               marginRight: "0.5rem"
             }}>
               <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#9a4f0f", padding: "0 6px 0 10px" }}>VISTA:</span>
-              {(["ADMIN", "PM", "CONSULTANT"] as const).map((r) => {
+              {(["ADMIN", "PM", "CONSULTANT", "FINANCE"] as const).map((r) => {
                 const isActive = authUser.roles.includes(r) && authUser.roles.length === 1;
                 return (
                   <button
@@ -573,7 +815,7 @@ function App() {
                       transition: "all 0.2s ease"
                     }}
                   >
-                    {r === "ADMIN" ? "Admin" : r === "PM" ? "PM" : "Consultor"}
+                    {r === "ADMIN" ? "Admin" : r === "PM" ? "PM" : r === "CONSULTANT" ? "Consultor" : "Financiero"}
                   </button>
                 );
               })}

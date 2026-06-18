@@ -1852,3 +1852,9 @@ export async function getAuditLogs(params?: { entityId?: string; entity?: string
   return response.data;
 }
 
+// ─── Feedback ─────────────────────────────────────────────────────────────────
+
+export async function sendFeedback(payload: { category: "BUG" | "SUGGESTION" | "AESTHETIC" | "OTHER"; notes: string }): Promise<{ message: string }> {
+  return request<{ message: string }>("/api/feedback", "POST", payload);
+}
+
