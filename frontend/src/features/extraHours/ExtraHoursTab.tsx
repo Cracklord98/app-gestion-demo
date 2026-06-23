@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { PageHeader } from "../../components/PageHeader";
 import { SearchableSelect } from "../../components/SearchableSelect";
 import {
@@ -16,6 +17,8 @@ import {
   createCustomHoliday,
   deleteCustomHoliday,
   type CustomHoliday,
+  getOfficialHolidays,
+  type OfficialHoliday,
   type Project,
   type Consultant,
   type AuthUser,
@@ -27,245 +30,7 @@ import {
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 
-// ─── HELPER FUNCTIONS FOR OFFICIAL HOLIDAYS ───────────────────────────────────
 
-function calculateEasterSunday(year: number): Date {
-  const a = year % 19;
-  const b = Math.floor(year / 100);
-  const c = year % 100;
-  const d = Math.floor(b / 4);
-  const e = b % 4;
-  const f = Math.floor((b + 8) / 25);
-  const g = Math.floor((b - f + 1) / 3);
-  const h = (19 * a + b - d - g + 15) % 30;
-  const i = Math.floor(c / 4);
-  const k = c % 4;
-  const l = (32 + 2 * e + 2 * i - h - k) % 7;
-  const m = Math.floor((a + 11 * h + 22 * l) / 451);
-  const month = Math.floor((h + l - 7 * m + 114) / 31);
-  const day = ((h + l - 7 * m + 114) % 31) + 1;
-
-  return new Date(Date.UTC(year, month - 1, day));
-}
-
-function getNthMonday(year: number, month: number, n: number): Date {
-  const firstDay = new Date(Date.UTC(year, month - 1, 1));
-  const dayOfWeek = firstDay.getUTCDay();
-  const daysUntilMonday = (1 - dayOfWeek + 7) % 7;
-  const firstMondayDay = 1 + daysUntilMonday;
-  const targetDay = firstMondayDay + (n - 1) * 7;
-  return new Date(Date.UTC(year, month - 1, targetDay));
-}
-
-function getNthThursday(year: number, month: number, n: number): Date {
-  const firstDay = new Date(Date.UTC(year, month - 1, 1));
-  const dayOfWeek = firstDay.getUTCDay();
-  const daysUntilThursday = (4 - dayOfWeek + 7) % 7;
-  const firstThursdayDay = 1 + daysUntilThursday;
-  const targetDay = firstThursdayDay + (n - 1) * 7;
-  return new Date(Date.UTC(year, month - 1, targetDay));
-}
-
-function moveChileanHoliday(year: number, month: number, day: number): Date {
-  const date = new Date(Date.UTC(year, month - 1, day));
-  const dayOfWeek = date.getUTCDay();
-  if (dayOfWeek === 2 || dayOfWeek === 3 || dayOfWeek === 4) {
-    const offset = dayOfWeek === 2 ? -1 : dayOfWeek === 3 ? -2 : -3;
-    return new Date(date.getTime() + offset * 24 * 60 * 60 * 1000);
-  } else if (dayOfWeek === 5) {
-    return new Date(date.getTime() + 3 * 24 * 60 * 60 * 1000);
-  }
-  return date;
-}
-
-function moveEcuadorHoliday(year: number, month: number, day: number): Date {
-  const date = new Date(Date.UTC(year, month - 1, day));
-  const dayOfWeek = date.getUTCDay();
-  if (dayOfWeek === 6) {
-    return new Date(date.getTime() - 1 * 24 * 60 * 60 * 1000);
-  } else if (dayOfWeek === 0) {
-    return new Date(date.getTime() + 1 * 24 * 60 * 60 * 1000);
-  } else if (dayOfWeek === 2) {
-    return new Date(date.getTime() - 1 * 24 * 60 * 60 * 1000);
-  } else if (dayOfWeek === 3) {
-    return new Date(date.getTime() + 2 * 24 * 60 * 60 * 1000);
-  } else if (dayOfWeek === 4) {
-    return new Date(date.getTime() + 1 * 24 * 60 * 60 * 1000);
-  }
-  return date;
-}
-
-function getOfficialHolidaysForYear(year: number, country: string): { date: string; name: string }[] {
-  const holidays: { date: Date; name: string }[] = [];
-  const normalizedCountry = country.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-
-  if (normalizedCountry === "colombia") {
-    const fixed = {
-      "01-01": "Año Nuevo",
-      "05-01": "Día del Trabajo",
-      "07-20": "Día de la Independencia",
-      "08-07": "Batalla de Boyacá",
-      "12-08": "Día de la Inmaculada Concepción",
-      "12-25": "Navidad",
-    };
-    for (const [key, name] of Object.entries(fixed)) {
-      const [m, d] = key.split("-").map(Number);
-      holidays.push({ date: new Date(Date.UTC(year, m - 1, d)), name });
-    }
-
-    const movable = {
-      "01-06": "Día de los Reyes Magos",
-      "03-19": "Día de San José",
-      "06-29": "San Pedro y San Pablo",
-      "08-15": "La Asunción",
-      "10-12": "Día de la Raza",
-      "11-01": "Día de Todos los Santos",
-      "11-11": "Independencia de Cartagena",
-    };
-    for (const [key, name] of Object.entries(movable)) {
-      const [m, d] = key.split("-").map(Number);
-      const originalDate = new Date(Date.UTC(year, m - 1, d));
-      if (originalDate.getUTCDay() === 1) {
-        holidays.push({ date: originalDate, name });
-      } else {
-        const daysUntilMonday = (1 - originalDate.getUTCDay() + 7) % 7;
-        const offset = daysUntilMonday === 0 ? 7 : daysUntilMonday;
-        holidays.push({ date: new Date(originalDate.getTime() + offset * 24 * 60 * 60 * 1000), name: `${name} (trasladado)` });
-      }
-    }
-
-    const easter = calculateEasterSunday(year);
-    const easterDependent: Record<number, string> = {
-      [-3]: "Jueves Santo",
-      [-2]: "Viernes Santo",
-      [43]: "Ascensión del Señor",
-      [64]: "Corpus Christi",
-      [71]: "Sagrado Corazón",
-    };
-    for (const [offsetStr, name] of Object.entries(easterDependent)) {
-      const offset = Number(offsetStr);
-      const holidayDate = new Date(easter.getTime() + offset * 24 * 60 * 60 * 1000);
-      if (offset === -3 || offset === -2) {
-        holidays.push({ date: holidayDate, name });
-      } else {
-        if (holidayDate.getUTCDay() === 1) {
-          holidays.push({ date: holidayDate, name });
-        } else {
-          const daysUntilMonday = (1 - holidayDate.getUTCDay() + 7) % 7;
-          const offsetMonday = daysUntilMonday === 0 ? 7 : daysUntilMonday;
-          holidays.push({ date: new Date(holidayDate.getTime() + offsetMonday * 24 * 60 * 60 * 1000), name: `${name} (trasladado)` });
-        }
-      }
-    }
-  } else if (normalizedCountry === "peru") {
-    const fixed = {
-      "01-01": "Año Nuevo",
-      "05-01": "Día del Trabajo",
-      "06-07": "Día de la Bandera",
-      "06-29": "San Pedro y San Pablo",
-      "07-23": "Día de la Fuerza Aérea",
-      "07-28": "Fiestas Patrias (Independencia)",
-      "07-29": "Fiestas Patrias (Fuerzas Armadas)",
-      "08-06": "Batalla de Junín",
-      "08-30": "Santa Rosa de Lima",
-      "10-08": "Combate de Angamos",
-      "11-01": "Día de Todos los Santos",
-      "12-08": "Día de la Inmaculada Concepción",
-      "12-09": "Batalla de Ayacucho",
-      "12-25": "Navidad",
-    };
-    for (const [key, name] of Object.entries(fixed)) {
-      const [m, d] = key.split("-").map(Number);
-      holidays.push({ date: new Date(Date.UTC(year, m - 1, d)), name });
-    }
-    const easter = calculateEasterSunday(year);
-    holidays.push({ date: new Date(easter.getTime() - 3 * 24 * 60 * 60 * 1000), name: "Jueves Santo" });
-    holidays.push({ date: new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000), name: "Viernes Santo" });
-  } else if (normalizedCountry === "chile") {
-    const fixed = {
-      "01-01": "Año Nuevo",
-      "05-01": "Día del Trabajo",
-      "05-21": "Día de las Glorias Navales",
-      "07-16": "Día de la Virgen del Carmen",
-      "08-15": "Asunción de la Virgen",
-      "09-18": "Fiestas Patrias (Independencia)",
-      "09-19": "Glorias del Ejército",
-      "11-01": "Día de Todos los Santos",
-      "12-08": "Inmaculada Concepción",
-      "12-25": "Navidad",
-    };
-    for (const [key, name] of Object.entries(fixed)) {
-      const [m, d] = key.split("-").map(Number);
-      holidays.push({ date: new Date(Date.UTC(year, m - 1, d)), name });
-    }
-    holidays.push({ date: moveChileanHoliday(year, 6, 29), name: "San Pedro y San Pablo" });
-    holidays.push({ date: moveChileanHoliday(year, 10, 12), name: "Encuentro de Dos Mundos" });
-
-    const evangBase = new Date(Date.UTC(year, 9, 31));
-    const evangDay = evangBase.getUTCDay();
-    let evangDate = evangBase;
-    if (evangDay === 3) {
-      evangDate = new Date(Date.UTC(year, 10, 2));
-    } else if (evangDay === 2) {
-      evangDate = new Date(Date.UTC(year, 9, 27));
-    }
-    holidays.push({ date: evangDate, name: "Día de las Iglesias Evangélicas y Protestantes" });
-
-    const easter = calculateEasterSunday(year);
-    holidays.push({ date: new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000), name: "Viernes Santo" });
-    holidays.push({ date: new Date(easter.getTime() - 1 * 24 * 60 * 60 * 1000), name: "Sábado Santo" });
-  } else if (normalizedCountry === "mexico") {
-    const fixed = {
-      "01-01": "Año Nuevo",
-      "05-01": "Día del Trabajo",
-      "09-16": "Día de la Independencia",
-      "12-25": "Navidad",
-    };
-    for (const [key, name] of Object.entries(fixed)) {
-      const [m, d] = key.split("-").map(Number);
-      holidays.push({ date: new Date(Date.UTC(year, m - 1, d)), name });
-    }
-    holidays.push({ date: getNthMonday(year, 2, 1), name: "Día de la Constitución Mexicana" });
-    holidays.push({ date: getNthMonday(year, 3, 3), name: "Natalicio de Benito Juárez" });
-    holidays.push({ date: getNthMonday(year, 11, 3), name: "Día de la Revolución Mexicana" });
-    if ((year - 2024) % 6 === 0) {
-      holidays.push({ date: new Date(Date.UTC(year, 11, 1)), name: "Transmisión del Poder Ejecutivo Federal" });
-    }
-  } else if (normalizedCountry === "ecuador") {
-    holidays.push({ date: new Date(Date.UTC(year, 0, 1)), name: "Año Nuevo" });
-    holidays.push({ date: new Date(Date.UTC(year, 4, 1)), name: "Día del Trabajo" });
-    holidays.push({ date: new Date(Date.UTC(year, 11, 25)), name: "Navidad" });
-
-    holidays.push({ date: moveEcuadorHoliday(year, 5, 24), name: "Batalla de Pichincha" });
-    holidays.push({ date: moveEcuadorHoliday(year, 8, 10), name: "Primer Grito de Independencia" });
-    holidays.push({ date: moveEcuadorHoliday(year, 10, 9), name: "Independencia de Guayaquil" });
-    holidays.push({ date: moveEcuadorHoliday(year, 11, 2), name: "Día de los Difuntos" });
-    holidays.push({ date: moveEcuadorHoliday(year, 11, 3), name: "Independencia de Cuenca" });
-
-    const easter = calculateEasterSunday(year);
-    holidays.push({ date: new Date(easter.getTime() - 48 * 24 * 60 * 60 * 1000), name: "Lunes de Carnaval" });
-    holidays.push({ date: new Date(easter.getTime() - 47 * 24 * 60 * 60 * 1000), name: "Martes de Carnaval" });
-    holidays.push({ date: new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000), name: "Viernes Santo" });
-  } else {
-    holidays.push({ date: new Date(Date.UTC(year, 0, 1)), name: "New Year's Day" });
-    holidays.push({ date: new Date(Date.UTC(year, 6, 4)), name: "Independence Day" });
-    holidays.push({ date: new Date(Date.UTC(year, 11, 25)), name: "Christmas Day" });
-    holidays.push({ date: getNthMonday(year, 9, 1), name: "Labor Day" });
-    holidays.push({ date: getNthThursday(year, 11, 4), name: "Thanksgiving" });
-
-    const firstMondayJune = getNthMonday(year, 6, 1);
-    holidays.push({ date: new Date(firstMondayJune.getTime() - 7 * 24 * 60 * 60 * 1000), name: "Memorial Day" });
-  }
-
-  return holidays
-    .sort((a, b) => a.date.getTime() - b.date.getTime())
-    .map((h) => {
-      const y = h.date.getUTCFullYear();
-      const m = String(h.date.getUTCMonth() + 1).padStart(2, "0");
-      const d = String(h.date.getUTCDate()).padStart(2, "0");
-      return { date: `${y}-${m}-${d}`, name: h.name };
-    });
-}
 
 
 type ExtraHoursTabProps = {
@@ -374,6 +139,31 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
   const [calendarYear, setCalendarYear] = useState(() => new Date().getFullYear());
   const [calendarCountry, setCalendarCountry] = useState("Colombia");
   const [savingHoliday, setSavingHoliday] = useState(false);
+
+  // Consolidated holidays state from API
+  const [holidaysList, setHolidaysList] = useState<OfficialHoliday[]>([]);
+  const [loadingHolidaysList, setLoadingHolidaysList] = useState(false);
+
+  const fetchHolidays = useCallback(async () => {
+    setLoadingHolidaysList(true);
+    try {
+      const data = await getOfficialHolidays(calendarCountry, calendarYear);
+      const mapped = data.map((h) => ({
+        date: h.date.includes("T") ? h.date.split("T")[0] : h.date,
+        name: h.name,
+        isCustom: h.isCustom,
+      }));
+      setHolidaysList(mapped);
+    } catch (err) {
+      onError(err instanceof Error ? err.message : "Error al cargar feriados");
+    } finally {
+      setLoadingHolidaysList(false);
+    }
+  }, [calendarCountry, calendarYear, onError]);
+
+  useEffect(() => {
+    void fetchHolidays();
+  }, [fetchHolidays]);
 
 
   // --- 1. Report Form state ---
@@ -856,6 +646,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
       setHolidayDate("");
       setHolidayCountry("All");
       await loadCustomHolidaysList();
+      void fetchHolidays();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Error al agregar feriado especial");
     } finally {
@@ -871,6 +662,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
       await deleteCustomHoliday(id);
       triggerSuccess("Feriado corporativo eliminado con éxito.");
       await loadCustomHolidaysList();
+      void fetchHolidays();
     } catch (err) {
       onError(err instanceof Error ? err.message : "Error al eliminar feriado especial");
     }
@@ -1007,7 +799,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
       />
 
       {/* Rejection Modal overlay */}
-      {rejectionTargetId && (
+      {rejectionTargetId && createPortal(
         <div className="modal-overlay">
           <form onSubmit={handleRejectSubmit} className="modal-card" style={{ maxWidth: "450px" }}>
             <div className="modal-header">
@@ -1031,7 +823,8 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
               <button type="submit" style={{ background: "#ef4444", borderColor: "#ef4444" }}>Rechazar Solicitud</button>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Confirmation Dialog */}
@@ -1627,7 +1420,16 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
               <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
                 
                 <div>
-                  <label className="form-label">Límite Semanal (Horas)</label>
+                  <label className="form-label">
+                    Límite Semanal (Horas)
+                    <span className="info-tooltip-wrapper">
+                      <span className="info-tooltip-icon">i</span>
+                      <span className="info-tooltip-bubble">
+                        Máximo de horas extras sugeridas o permitidas a la semana.
+                        <span className="info-tooltip-arrow"></span>
+                      </span>
+                    </span>
+                  </label>
                   <input
                     type="number"
                     min={1}
@@ -1639,7 +1441,16 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 </div>
 
                 <div>
-                  <label className="form-label">Inicio Jornada Diurna (HH:mm)</label>
+                  <label className="form-label">
+                    Inicio Jornada Diurna (HH:mm)
+                    <span className="info-tooltip-wrapper">
+                      <span className="info-tooltip-icon">i</span>
+                      <span className="info-tooltip-bubble">
+                        Hora de inicio para el cálculo de la jornada diurna regular (ej: 06:00).
+                        <span className="info-tooltip-arrow"></span>
+                      </span>
+                    </span>
+                  </label>
                   <input
                     type="time"
                     required
@@ -1649,7 +1460,16 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 </div>
 
                 <div>
-                  <label className="form-label">Fin Jornada Diurna (HH:mm)</label>
+                  <label className="form-label">
+                    Fin Jornada Diurna (HH:mm)
+                    <span className="info-tooltip-wrapper">
+                      <span className="info-tooltip-icon">i</span>
+                      <span className="info-tooltip-bubble">
+                        Hora en la que termina el horario diurno e inicia el recargo nocturno.
+                        <span className="info-tooltip-arrow"></span>
+                      </span>
+                    </span>
+                  </label>
                   <input
                     type="time"
                     required
@@ -1659,7 +1479,16 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 </div>
 
                 <div>
-                  <label className="form-label">Multiplicador Diurno Regular</label>
+                  <label className="form-label">
+                    Multiplicador Diurno Regular
+                    <span className="info-tooltip-wrapper">
+                      <span className="info-tooltip-icon">i</span>
+                      <span className="info-tooltip-bubble">
+                        Factor de recargo aplicado sobre la hora base durante el día (ej: 1.25 representa +25%).
+                        <span className="info-tooltip-arrow"></span>
+                      </span>
+                    </span>
+                  </label>
                   <input
                     type="number"
                     min={1}
@@ -1672,7 +1501,16 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 </div>
 
                 <div>
-                  <label className="form-label">Multiplicador Nocturno Regular</label>
+                  <label className="form-label">
+                    Multiplicador Nocturno Regular
+                    <span className="info-tooltip-wrapper">
+                      <span className="info-tooltip-icon">i</span>
+                      <span className="info-tooltip-bubble">
+                        Factor de recargo aplicado sobre la hora base en jornada nocturna (ej: 1.75 representa +75%).
+                        <span className="info-tooltip-arrow"></span>
+                      </span>
+                    </span>
+                  </label>
                   <input
                     type="number"
                     min={1}
@@ -1685,7 +1523,16 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 </div>
 
                 <div>
-                  <label className="form-label">Multiplicador Festivo Diurno</label>
+                  <label className="form-label">
+                    Multiplicador Festivo Diurno
+                    <span className="info-tooltip-wrapper">
+                      <span className="info-tooltip-icon">i</span>
+                      <span className="info-tooltip-bubble">
+                        Factor de recargo para domingos o festivos en horario diurno (ej: 2.0 representa +100%).
+                        <span className="info-tooltip-arrow"></span>
+                      </span>
+                    </span>
+                  </label>
                   <input
                     type="number"
                     min={1}
@@ -1698,7 +1545,16 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 </div>
 
                 <div>
-                  <label className="form-label">Multiplicador Festivo Nocturno</label>
+                  <label className="form-label">
+                    Multiplicador Festivo Nocturno
+                    <span className="info-tooltip-wrapper">
+                      <span className="info-tooltip-icon">i</span>
+                      <span className="info-tooltip-bubble">
+                        Factor de recargo para domingos o festivos en horario nocturno (ej: 2.5 representa +150%).
+                        <span className="info-tooltip-arrow"></span>
+                      </span>
+                    </span>
+                  </label>
                   <input
                     type="number"
                     min={1}
@@ -1711,7 +1567,16 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 </div>
 
                 <div>
-                  <label className="form-label">Divisor Mensual de Horas (ej. 220 o 210)</label>
+                  <label className="form-label">
+                    Divisor Mensual de Horas
+                    <span className="info-tooltip-wrapper">
+                      <span className="info-tooltip-icon">i</span>
+                      <span className="info-tooltip-bubble">
+                        Cantidad de horas laborables al mes utilizadas para calcular la tarifa por hora de consultores con costo fijo mensual.
+                        <span className="info-tooltip-arrow"></span>
+                      </span>
+                    </span>
+                  </label>
                   <input
                     type="number"
                     min={100}
@@ -1824,36 +1689,49 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
               </div>
 
               <div style={{ maxHeight: "350px", overflowY: "auto", border: "1px solid #f3f4f6", borderRadius: "8px", padding: "0.5rem" }}>
-                {getOfficialHolidaysForYear(calendarYear, calendarCountry).map((h, index) => {
-                  const [y, m, d] = h.date.split("-");
-                  const dateObj = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
-                  const formattedDate = dateObj.toLocaleDateString("es-ES", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                    timeZone: "UTC"
-                  });
-                  return (
-                    <div
-                      key={index}
-                      style={{
-                        padding: "0.5rem 0.75rem",
-                        borderBottom: "1px solid #f3f4f6",
-                        display: "flex",
-                        justifyContent: "space-between",
-                        alignItems: "center",
-                        fontSize: "0.78rem"
-                      }}
-                    >
-                      <span style={{ fontWeight: 600, color: "var(--text-strong)", textTransform: "capitalize" }}>
-                        {formattedDate}
-                      </span>
-                      <span style={{ color: "#9a4f0f", background: "#fffbeb", padding: "0.15rem 0.4rem", borderRadius: "12px", fontSize: "0.72rem", border: "1px solid #fde68a" }}>
-                        {h.name}
-                      </span>
-                    </div>
-                  );
-                })}
+                {loadingHolidaysList ? (
+                  <div style={{ padding: "1rem", textAlign: "center", color: "#6b7280", fontSize: "0.85rem" }}>Cargando feriados...</div>
+                ) : holidaysList.length === 0 ? (
+                  <div style={{ padding: "1rem", textAlign: "center", color: "#6b7280", fontSize: "0.85rem" }}>No hay feriados para este año y país.</div>
+                ) : (
+                  holidaysList.map((h, index) => {
+                    const [y, m, d] = h.date.split("-");
+                    const dateObj = new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
+                    const formattedDate = dateObj.toLocaleDateString("es-ES", {
+                      weekday: "long",
+                      day: "numeric",
+                      month: "long",
+                      timeZone: "UTC"
+                    });
+                    return (
+                      <div
+                        key={index}
+                        style={{
+                          padding: "0.5rem 0.75rem",
+                          borderBottom: "1px solid #f3f4f6",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          fontSize: "0.78rem"
+                        }}
+                      >
+                        <span style={{ fontWeight: 600, color: "var(--text-strong)", textTransform: "capitalize" }}>
+                          {formattedDate}
+                        </span>
+                        <span style={{ 
+                          color: h.isCustom ? "#047857" : "#9a4f0f", 
+                          background: h.isCustom ? "#ecfdf5" : "#fffbeb", 
+                          padding: "0.15rem 0.4rem", 
+                          borderRadius: "12px", 
+                          fontSize: "0.72rem", 
+                          border: h.isCustom ? "1px solid #a7f3d0" : "1px solid #fde68a" 
+                        }}>
+                          {h.name} {h.isCustom ? "🌐" : "🏛️"}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
 

@@ -183,7 +183,7 @@ export function AlertsTab({
       {/* Alerts Board */}
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {groups.length === 0 ? (
-          <div style={{
+          <div className="alert-empty-state" style={{
             background: "#fff", border: "1px solid #f4d4b6", borderRadius: "14px",
             padding: "3rem 1rem", textAlign: "center", color: "#5f2f00"
           }}>
@@ -221,6 +221,7 @@ export function AlertsTab({
                   return (
                     <div
                       key={alert.id}
+                      className={`alert-card sev-${alert.severity.toLowerCase()}`}
                       style={{
                         padding: "0.75rem 1rem", borderRadius: "10px",
                         background: sev.bg, border: `1px solid ${sev.color}25`,
@@ -238,7 +239,7 @@ export function AlertsTab({
                             {sev.label}
                           </span>
                           {alert.project && (
-                            <span style={{ fontSize: "0.8rem", color: "#5f2f00", fontWeight: 700 }}>
+                            <span className="alert-project-name" style={{ fontSize: "0.8rem", color: "#5f2f00", fontWeight: 700 }}>
                               {alert.project.name}
                             </span>
                           )}
@@ -246,7 +247,7 @@ export function AlertsTab({
                             {new Date(alert.createdAt).toLocaleString("es-CO", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                           </span>
                         </div>
-                        <p style={{ margin: 0, fontSize: "0.85rem", color: "#374151", lineHeight: 1.4, fontWeight: 500 }}>
+                        <p className="alert-message-text" style={{ margin: 0, fontSize: "0.85rem", color: "#374151", lineHeight: 1.4, fontWeight: 500 }}>
                           {alert.message}
                         </p>
                       </div>

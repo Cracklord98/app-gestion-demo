@@ -179,7 +179,7 @@ export function AlertsPanel({
         {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem" }}>
           {groups.length === 0 ? (
-            <div style={{ padding: "2rem 1rem", textAlign: "center", color: "#9a4f0f" }}>
+            <div className="alert-empty-state" style={{ padding: "2rem 1rem", textAlign: "center", color: "#9a4f0f" }}>
               <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>✅</div>
               <p style={{ fontWeight: 700 }}>Sin alertas activas</p>
             </div>
@@ -189,6 +189,7 @@ export function AlertsPanel({
                 {/* Group header */}
                 <button
                   type="button"
+                  className="alert-group-header"
                   onClick={() => toggleGroup(group.key)}
                   style={{
                     width: "100%", display: "flex", alignItems: "center",
@@ -211,6 +212,7 @@ export function AlertsPanel({
                       return (
                         <div
                           key={alert.id}
+                          className={`alert-card sev-${alert.severity.toLowerCase()}`}
                           style={{
                             padding: "0.6rem 0.75rem", borderRadius: "8px",
                             background: sev.bg, border: `1px solid ${sev.color}30`,
@@ -227,12 +229,12 @@ export function AlertsPanel({
                                 {sev.label}
                               </span>
                               {alert.project && (
-                                <span style={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: 600 }}>
+                                <span className="alert-project-name" style={{ fontSize: "0.72rem", color: "#6b7280", fontWeight: 600 }}>
                                   {alert.project.name}
                                 </span>
                               )}
                             </div>
-                            <p style={{ margin: 0, fontSize: "0.8rem", color: "#374151", lineHeight: 1.4 }}>
+                            <p className="alert-message-text" style={{ margin: 0, fontSize: "0.8rem", color: "#374151", lineHeight: 1.4 }}>
                               {alert.message}
                             </p>
                           </div>

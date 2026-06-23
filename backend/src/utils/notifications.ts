@@ -7,7 +7,8 @@ const SMTP_PORT = Number(process.env.SMTP_PORT) || 587;
 const SMTP_USER = process.env.SMTP_USER || "";
 const SMTP_PASS = process.env.SMTP_PASS || "";
 const SMTP_FROM = process.env.SMTP_FROM || "App Gestión <noreply@synaptica.cc>";
-const PAYROLL_EMAIL = process.env.PAYROLL_EMAIL || env.ADMIN_EMAIL;
+const PAYROLL_EMAIL = env.PAYROLL_EMAIL || process.env.PAYROLL_EMAIL || env.ADMIN_EMAIL;
+const SUPPORT_EMAIL = env.SUPPORT_EMAIL || process.env.SUPPORT_EMAIL || env.ADMIN_EMAIL;
 const TEAMS_PAYROLL_WEBHOOK_URL = process.env.TEAMS_PAYROLL_WEBHOOK_URL || "";
 const TEAMS_FEEDBACK_WEBHOOK_URL = process.env.TEAMS_FEEDBACK_WEBHOOK_URL || "";
 
@@ -17,10 +18,15 @@ if (SMTP_HOST && SMTP_USER && SMTP_PASS) {
   transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port: SMTP_PORT,
-    secure: SMTP_PORT === 465, // true para 465, false para otros
+    secure: SMTP_PORT === 465, // true para 465, false para 587/TLS
+    requireTLS: SMTP_PORT === 587, // Forzar STARTTLS en Microsoft 365
     auth: {
       user: SMTP_USER,
       pass: SMTP_PASS,
+    },
+    tls: {
+      ciphers: "SSLv3",          // Compatibilidad con Office 365
+      rejectUnauthorized: false, // Previene errores de cert en dev
     },
   });
 }
@@ -263,7 +269,7 @@ export async function notifyFeedbackReceived(params: {
     </div>
   `;
 
-  await sendEmail({ to: env.ADMIN_EMAIL, subject, text, html });
+  await sendEmail({ to: SUPPORT_EMAIL, subject, text, html });
 
   // 2. Notificación a Teams si el webhook está configurado
   if (TEAMS_FEEDBACK_WEBHOOK_URL) {
@@ -284,4 +290,92 @@ export async function notifyFeedbackReceived(params: {
     };
     await sendTeamsMessage(TEAMS_FEEDBACK_WEBHOOK_URL, teamsPayload);
   }
+}
+
+/**
+ * Notifica al consultor que su solicitud de horas extras ha sido aprobada de forma definitiva (Nivel 2).
+ */
+export async function notifyExtraHourFullyApproved(params: {
+  consultantName: string;
+  consultantEmail: string;
+  date: string;
+  hours: number;
+  projectName: string;
+  approvedBy: string;
+}) {
+  const { consultantName, consultantEmail, date, hours, projectName, approvedBy } = params;
+  if (!consultantEmail) return;
+
+  const subject = `[Horas Extra] Solicitud aprobada - ${projectName}`;
+  const text = `Hola ${consultantName},\n\nTu solicitud de horas extra para el proyecto "${projectName}" ha sido aprobada de forma definitiva por ${approvedBy}.\n\nDetalles:\n- Fecha: ${date}\n- Horas aprobadas: ${hours} horas\n\nAtentamente,\nApp Gestión Synaptica`;
+
+  const html = `
+    <div style="font-family: sans-serif; padding: 20px; color: #2a1e12;">
+      <h2 style="color: #16a34a;">✅ Solicitud de Horas Extra Aprobada</h2>
+      <p>Hola <strong>${consultantName}</strong>,</p>
+      <p>Tu solicitud de horas extra para el proyecto <strong>"${projectName}"</strong> ha recibido la aprobación final por parte de <strong>${approvedBy}</strong> y se ha registrado para el pago de nómina.</p>
+      <table style="border-collapse: collapse; width: 100%; max-width: 400px; margin: 15px 0;">
+        <tr>
+          <td style="padding: 8px; border: 1px solid #f4d4b6; font-weight: bold; background: #fff8f0; width: 150px;">Fecha</td>
+          <td style="padding: 8px; border: 1px solid #f4d4b6;">${date}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border: 1px solid #f4d4b6; font-weight: bold; background: #fff8f0;">Horas Aprobadas</td>
+          <td style="padding: 8px; border: 1px solid #f4d4b6;">${hours} horas</td>
+        </tr>
+      </table>
+      <br/>
+      <hr style="border: none; border-top: 1px solid #f4d4b6;" />
+      <p style="font-size: 0.8rem; color: #888;">Mensaje automático de la Plataforma de Gestión de Proyectos Synaptica.</p>
+    </div>
+  `;
+
+  await sendEmail({ to: consultantEmail, subject, text, html });
+}
+
+/**
+ * Notifica al consultor que su solicitud de horas extras ha sido rechazada por el PM o por Nómina.
+ */
+export async function notifyExtraHourRejected(params: {
+  consultantName: string;
+  consultantEmail: string;
+  date: string;
+  hours: number;
+  projectName: string;
+  rejectedBy: string;
+  rejectionNote: string;
+}) {
+  const { consultantName, consultantEmail, date, hours, projectName, rejectedBy, rejectionNote } = params;
+  if (!consultantEmail) return;
+
+  const subject = `[Horas Extra] Solicitud rechazada - ${projectName}`;
+  const text = `Hola ${consultantName},\n\nTu solicitud de horas extra para el proyecto "${projectName}" ha sido rechazada por ${rejectedBy}.\n\nDetalles:\n- Fecha: ${date}\n- Horas solicitadas: ${hours} horas\n- Motivo de rechazo: ${rejectionNote}\n\nAtentamente,\nApp Gestión Synaptica`;
+
+  const html = `
+    <div style="font-family: sans-serif; padding: 20px; color: #2a1e12;">
+      <h2 style="color: #dc2626;">❌ Solicitud de Horas Extra Rechazada</h2>
+      <p>Hola <strong>${consultantName}</strong>,</p>
+      <p>Tu solicitud de horas extra para el proyecto <strong>"${projectName}"</strong> ha sido rechazada por <strong>${rejectedBy}</strong>.</p>
+      <table style="border-collapse: collapse; width: 100%; max-width: 500px; margin: 15px 0;">
+        <tr>
+          <td style="padding: 8px; border: 1px solid #f4d4b6; font-weight: bold; background: #fff8f0; width: 150px;">Fecha</td>
+          <td style="padding: 8px; border: 1px solid #f4d4b6;">${date}</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border: 1px solid #f4d4b6; font-weight: bold; background: #fff8f0;">Horas Solicitadas</td>
+          <td style="padding: 8px; border: 1px solid #f4d4b6;">${hours} horas</td>
+        </tr>
+        <tr>
+          <td style="padding: 8px; border: 1px solid #f4d4b6; font-weight: bold; background: #fee2e2; color: #dc2626;">Motivo de Rechazo</td>
+          <td style="padding: 8px; border: 1px solid #f4d4b6; color: #dc2626;">${rejectionNote}</td>
+        </tr>
+      </table>
+      <p>Por favor revisa la información o ponte en contacto con tu supervisor de ser necesario.</p>
+      <br/>
+      <hr style="border: none; border-top: 1px solid #f4d4b6;" />
+      <p style="font-size: 0.8rem; color: #888;">Mensaje automático de la Plataforma de Gestión de Proyectos Synaptica.</p>
+    </div>
+  `;
+
+  await sendEmail({ to: consultantEmail, subject, text, html });
 }

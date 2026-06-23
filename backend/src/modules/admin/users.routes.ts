@@ -4,13 +4,15 @@ import { z } from "zod";
 import { authenticate, authorize } from "../../auth/guard.js";
 import { prisma } from "../../infra/prisma.js";
 
+import { normalizeCountry } from "../../utils/country.js";
+
 const userPayloadSchema = z.object({
   email: z.string().trim().email().transform((value) => value.toLowerCase()),
   displayName: z.string().trim().min(1),
   microsoftOid: z.string().trim().min(1).optional(),
   active: z.coerce.boolean().default(true),
   roles: z.array(z.nativeEnum(AppRole)).min(1),
-  country: z.string().trim().nullish(),
+  country: z.string().trim().nullish().transform(val => val ? normalizeCountry(val) : "Default"),
 });
 
 const userUpdateSchema = z.object({
@@ -18,7 +20,7 @@ const userUpdateSchema = z.object({
   microsoftOid: z.string().trim().min(1).optional(),
   active: z.coerce.boolean().optional(),
   roles: z.array(z.nativeEnum(AppRole)).min(1).optional(),
-  country: z.string().trim().nullish(),
+  country: z.string().trim().nullish().transform(val => val ? normalizeCountry(val) : "Default"),
 });
 
 const paramsSchema = z.object({ id: z.string().min(1) });

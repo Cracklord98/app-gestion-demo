@@ -4,10 +4,15 @@ import { z } from "zod";
 import { authenticate, authorize } from "../../auth/guard.js";
 import { prisma } from "../../infra/prisma.js";
 
+import { normalizeCountry } from "../../utils/country.js";
+
 const customHolidayPayloadSchema = z.object({
   name: z.string().trim().min(1),
   date: z.coerce.date(),
-  country: z.string().trim().default("All"),
+  country: z.string().trim().default("All").transform((val) => {
+    if (val.toLowerCase() === "all") return "All";
+    return normalizeCountry(val);
+  }),
 });
 
 const paramsSchema = z.object({ id: z.string().min(1) });

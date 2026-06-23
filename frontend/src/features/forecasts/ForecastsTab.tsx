@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { FormEvent } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import {
@@ -563,7 +564,7 @@ export function ForecastsTab({
       />
 
       {/* Edit modal */}
-      {editForm && (
+      {editForm && createPortal(
         <div className="modal-overlay" onClick={() => { setEditForm(null); setEditError(""); }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -671,7 +672,8 @@ export function ForecastsTab({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <ConfirmDialog

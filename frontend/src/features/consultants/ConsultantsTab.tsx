@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import type { FormEvent } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import {
@@ -62,6 +63,7 @@ export function ConsultantsTab({
   consultants,
   loading,
   canWrite,
+  canDelete = false,
   onReload,
   onError,
   onAssignConsultant,
@@ -69,6 +71,7 @@ export function ConsultantsTab({
   consultants: Consultant[];
   loading: boolean;
   canWrite: boolean;
+  canDelete?: boolean;
   onReload: () => Promise<void>;
   onError: (msg: string) => void;
   onAssignConsultant?: (id: string) => void;
@@ -481,9 +484,11 @@ export function ConsultantsTab({
                                   <button type="button" onClick={() => void handleToggleActive(c)}>
                                     {c.active ? "Desactivar" : "Activar"}
                                   </button>
-                                  <button type="button" className="ghost" onClick={() => setDeleteTarget(c)}>
-                                    Eliminar
-                                  </button>
+                                  {canDelete && (
+                                    <button type="button" className="ghost" onClick={() => setDeleteTarget(c)}>
+                                      Eliminar
+                                    </button>
+                                  )}
                                 </>
                               )}
                             </div>
@@ -506,7 +511,7 @@ export function ConsultantsTab({
         }
       />
 
-      {editForm && (
+      {editForm && createPortal(
         <div className="modal-overlay" onClick={() => { setEditForm(null); setEditError(""); }}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -594,7 +599,8 @@ export function ConsultantsTab({
               </div>
             </form>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       <ConfirmDialog

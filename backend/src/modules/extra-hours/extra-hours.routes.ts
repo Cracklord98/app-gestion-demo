@@ -3,8 +3,10 @@ import { AppRole, ExtraHourStatus } from "@prisma/client";
 import { z } from "zod";
 import { authenticate, authorize } from "../../auth/guard.js";
 import { prisma } from "../../infra/prisma.js";
+import { normalizeCountry } from "../../utils/country.js";
+import { getHolidaysForYear } from "../../utils/holidays.js";
 import { calculateExtraHours } from "../../utils/calculateExtraHours.js";
-import { notifyNewExtraHourRequest, notifyExtraHourApprovedByPM } from "../../utils/notifications.js";
+import { notifyNewExtraHourRequest, notifyExtraHourApprovedByPM, notifyExtraHourFullyApproved, notifyExtraHourRejected } from "../../utils/notifications.js";
 
 const extraHourPayloadSchema = z.object({
   projectId: z.string().min(1),
@@ -120,6 +122,29 @@ const defaultConfigs = [
 ];
 
 async function ensureDefaultConfigs() {
+  // Migrate legacy USA country values to Default for users and consultants
+  await prisma.user.updateMany({
+    where: {
+      country: {
+        in: ["USA", "usa", "Estados Unidos", "United States", "US", "us", "Estados Unidos de América"]
+      }
+    },
+    data: {
+      country: "Default"
+    }
+  });
+
+  await prisma.consultant.updateMany({
+    where: {
+      country: {
+        in: ["USA", "usa", "Estados Unidos", "United States", "US", "us", "Estados Unidos de América"]
+      }
+    },
+    data: {
+      country: "Default"
+    }
+  });
+
   // Fix any configurations with 24:00:00 diurnalEnd
   await prisma.extraHoursConfig.updateMany({
     where: { diurnalEnd: "24:00:00" },
@@ -220,6 +245,19 @@ export async function extraHoursRoutes(app: FastifyInstance) {
     async (request, reply) => {
       await ensureDefaultConfigs();
       const payload = extraHourPayloadSchema.parse(request.body);
+
+      // 24-hour limit check for standard consultants (non-Admin/non-PM)
+      const roles = request.authUser!.roles;
+      const isManager = roles.includes(AppRole.ADMIN) || roles.includes(AppRole.PM);
+      if (!isManager) {
+        const limitTime = Date.now() - 24 * 60 * 60 * 1000;
+        const entryTime = new Date(payload.date).getTime();
+        if (entryTime < limitTime) {
+          return reply.status(400).send({
+            message: "Las solicitudes de horas extra solo se pueden registrar con hasta 24 horas de antigüedad en el pasado, a menos que sea un caso autorizado por el Administrador o PM."
+          });
+        }
+      }
 
       const entryYear = payload.date.getUTCFullYear();
       const entryMonth = payload.date.getUTCMonth() + 1;
@@ -423,7 +461,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
     },
     async (request) => {
       await ensureDefaultConfigs();
-      const { country } = z.object({ country: z.string() }).parse(request.params);
+      const { country } = z.object({ country: z.string().trim().transform(normalizeCountry) }).parse(request.params);
       let config = await prisma.extraHoursConfig.findUnique({
         where: { country },
       });
@@ -462,7 +500,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.FINANCE])],
     },
     async (request) => {
-      const { country } = z.object({ country: z.string() }).parse(request.params);
+      const { country } = z.object({ country: z.string().trim().transform(normalizeCountry) }).parse(request.params);
       const payload = configPayloadSchema.parse(request.body);
 
       // Formatear horas
@@ -505,7 +543,7 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.FINANCE])],
     },
     async (request) => {
-      const { country } = z.object({ country: z.string() }).parse(request.params);
+      const { country } = z.object({ country: z.string().trim().transform(normalizeCountry) }).parse(request.params);
       
       const defaultConfig = defaultConfigs.find(c => c.country.toLowerCase() === country.toLowerCase()) || defaultConfigs[0];
       
@@ -653,6 +691,18 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           include: { project: true, consultant: true },
         });
 
+        // Notify the consultant of the final approval (Level 2)
+        notifyExtraHourFullyApproved({
+          consultantName: entry.consultant.fullName,
+          consultantEmail: entry.consultant.email || "",
+          date: entry.date.toISOString().split("T")[0],
+          hours: Number(entry.totalHours),
+          projectName: entry.project?.name || "Proyecto",
+          approvedBy: payload.approvedBy,
+        }).catch((err) => {
+          console.error("Error al enviar notificación de aprobación final al consultor:", err);
+        });
+
         return { data: entry };
       }
     },
@@ -739,6 +789,19 @@ export async function extraHoursRoutes(app: FastifyInstance) {
           rejectionNote: payload.rejectionNote,
         },
         include: { project: true, consultant: true },
+      });
+
+      // Notify the consultant of the rejection
+      notifyExtraHourRejected({
+        consultantName: entry.consultant.fullName,
+        consultantEmail: entry.consultant.email || "",
+        date: entry.date.toISOString().split("T")[0],
+        hours: Number(entry.totalHours),
+        projectName: entry.project?.name || "Proyecto",
+        rejectedBy: payload.approvedBy,
+        rejectionNote: payload.rejectionNote || "No especificado",
+      }).catch((err) => {
+        console.error("Error al enviar notificación de rechazo al consultor:", err);
       });
 
       return { data: entry };
@@ -893,5 +956,52 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       await prisma.extraHourEntry.delete({ where: { id } });
       return reply.status(204).send();
     },
+  );
+
+  // 10. Obtener listado consolidado de feriados (oficiales + personalizados) por país y año
+  app.get(
+    "/holidays",
+    {
+      preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.CONSULTANT, AppRole.FINANCE, AppRole.VIEWER])],
+    },
+    async (request) => {
+      const { country, year } = z.object({
+        country: z.string().trim().transform(normalizeCountry),
+        year: z.coerce.number().min(1900).max(3000),
+      }).parse(request.query);
+
+      const official = getHolidaysForYear(year, country);
+
+      const customHolidays = await prisma.customHoliday.findMany({
+        where: {
+          OR: [
+            { country: "All" },
+            { country: country },
+          ],
+        },
+      });
+
+      const customInYear = customHolidays
+        .filter((h) => h.date.getUTCFullYear() === year)
+        .map((h) => ({
+          date: h.date,
+          name: h.name,
+          isCustom: true,
+        }));
+
+      const combined = [...official.map(h => ({ ...h, isCustom: false })), ...customInYear];
+      
+      const uniqueHolidays = [];
+      const seenDates = new Set();
+      for (const h of combined) {
+        const dateStr = h.date instanceof Date ? h.date.toISOString().split("T")[0] : new Date(h.date).toISOString().split("T")[0];
+        if (!seenDates.has(dateStr)) {
+          seenDates.add(dateStr);
+          uniqueHolidays.push(h);
+        }
+      }
+
+      return { data: uniqueHolidays };
+    }
   );
 }

@@ -241,9 +241,10 @@ export function getHolidaysForYear(year: number, country: string): { date: Date;
     holidays.push({ date: getNthMonday(year, 3, 3), name: "Natalicio de Benito Juárez" });
     holidays.push({ date: getNthMonday(year, 11, 3), name: "Día de la Revolución Mexicana" });
 
-    // Transmisión del Poder Ejecutivo (Dec 1 every 6 years: 2024, 2030...)
+    // Transmisión del Poder Ejecutivo (Dec 1 every 6 years before 2024; Oct 1 starting in 2024)
     if ((year - 2024) % 6 === 0) {
-      holidays.push({ date: new Date(Date.UTC(year, 11, 1)), name: "Transmisión del Poder Ejecutivo Federal" });
+      const month = year >= 2024 ? 9 : 11;
+      holidays.push({ date: new Date(Date.UTC(year, month, 1)), name: "Transmisión del Poder Ejecutivo Federal" });
     }
   }
 
@@ -295,12 +296,6 @@ export function getHolidaysForYear(year: number, country: string): { date: Date;
 
 export function isPublicHoliday(date: Date, country: string): boolean {
   const year = date.getUTCFullYear();
-  const dayOfWeek = date.getUTCDay(); // 0=Sun, 6=Sat
-
-  // Sundays are always considered non-working / holiday-equivalent in LATAM/Default for overtime purposes
-  if (dayOfWeek === 0) {
-    return true;
-  }
 
   try {
     const holidays = getHolidaysForYear(year, country);

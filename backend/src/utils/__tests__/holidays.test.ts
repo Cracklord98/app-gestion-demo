@@ -12,8 +12,10 @@ describe("Ecuador holidays calculation", () => {
     const originalDate = new Date(Date.UTC(2026, 4, 24)); // Domingo
     const shiftedDate = new Date(Date.UTC(2026, 4, 25)); // Lunes
 
-    // Domingo es siempre festivo/no laborable
-    expect(isPublicHoliday(originalDate, "Ecuador")).toBe(true);
+    // El domingo original no es festivo público en sí mismo porque se traslada al lunes
+    expect(isPublicHoliday(originalDate, "Ecuador")).toBe(false);
+    // El domingo ya no es devuelto por isPublicHoliday directamente, sino manejado en la lógica de horas extra o es día ordinario de asueto.
+    expect(isPublicHoliday(originalDate, "Ecuador")).toBe(false);
     // El lunes 25 debe ser festivo por traslado
     expect(isPublicHoliday(shiftedDate, "Ecuador")).toBe(true);
 

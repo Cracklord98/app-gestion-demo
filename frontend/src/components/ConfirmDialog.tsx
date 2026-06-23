@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 export function ConfirmDialog({
   open,
@@ -21,7 +22,7 @@ export function ConfirmDialog({
 }) {
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="modal-overlay" onClick={onCancel}>
       <div
         className="modal-card"
@@ -31,7 +32,7 @@ export function ConfirmDialog({
         <div className="modal-header">
           <h3 style={{ color: danger ? "#dc2626" : undefined }}>{title}</h3>
         </div>
-        <div style={{ padding: "1rem 0", color: "#374151", lineHeight: 1.5 }}>
+        <div style={{ padding: "1rem 0", color: "var(--text-soft, #374151)", lineHeight: 1.5 }}>
           {message}
         </div>
         <div className="modal-actions">
@@ -47,6 +48,7 @@ export function ConfirmDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

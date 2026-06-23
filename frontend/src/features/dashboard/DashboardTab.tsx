@@ -200,7 +200,9 @@ function ExpensesDonutChart({ data }: { data: { category: string; amount: number
     return [x, y];
   };
 
-  const slices = data.map((d, i) => {
+  const slices = [];
+  for (let i = 0; i < data.length; i++) {
+    const d = data[i];
     const startPercent = cumulativePercent;
     cumulativePercent += d.pct / 100;
     const endPercent = cumulativePercent;
@@ -222,14 +224,14 @@ function ExpensesDonutChart({ data }: { data: { category: string; amount: number
       ? `M ${cx} ${cy - R} A ${R} ${R} 0 1 1 ${cx - 0.01} ${cy - R}`
       : `M ${cx} ${cy} L ${x1} ${y1} A ${R} ${R} 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
 
-    return {
+    slices.push({
       pathData,
       color: colors[i % colors.length],
       category: d.category,
       pct: d.pct,
       amount: d.amount
-    };
-  });
+    });
+  }
 
   return (
     <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>

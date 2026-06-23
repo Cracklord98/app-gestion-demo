@@ -116,7 +116,7 @@ export function PortfolioTab({
   const [sortField, setSortField] = useState<SortField>("healthStatus");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
-  const projects = portfolio?.projects ?? [];
+  const projects = useMemo(() => portfolio?.projects ?? [], [portfolio]);
 
   const companies = useMemo(() => {
     const unique = new Set(projects.map((p) => p.company).filter(Boolean));

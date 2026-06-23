@@ -41,6 +41,7 @@ import { ActivitiesTab } from "./features/activities/ActivitiesTab";
 import type { TabId } from "./types";
 import { RagChat } from "./components/RagChat";
 import "./App.css";
+import "./responsive.css";
 
 // ── Logo ─────────────────────────────────────────────────────────────────────
 
@@ -90,7 +91,7 @@ const SIDEBAR_GROUPS: {
   {
     label: "Administración",
     tabs: [
-      { id: "admin", label: "Usuarios",  icon: "◐", permission: "users:manage" },
+      { id: "admin", label: "Usuarios",  icon: "⧉", permission: "users:manage" },
       { id: "extraHoursConfig", label: "Config. Horas Extra", icon: "⚙", permission: "extrahours:config" },
       { id: "audit", label: "Auditoría", icon: "⊛", permission: "users:manage" },
     ],
@@ -439,6 +440,26 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [openProjectId, setOpenProjectId] = useState<string | null>(null);
+
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem("theme") === "dark";
+  });
+
+  const toggleDarkMode = () => {
+    setDarkMode((prev) => {
+      const next = !prev;
+      localStorage.setItem("theme", next ? "dark" : "light");
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    if (darkMode) {
+      document.body.classList.add("dark");
+    } else {
+      document.body.classList.remove("dark");
+    }
+  }, [darkMode]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(() => typeof window !== "undefined" && window.innerWidth <= 860);
   const [fxDrawerOpen, setFxDrawerOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
@@ -631,9 +652,11 @@ function App() {
       if (authWithMicrosoftEnabled) {
         if (!isAuthenticated || !accounts[0]) {
           setAuthUser(null);
-          const isPublic = ["/", "/landing", "/login"].includes(currentPath);
+          const path = window.location.pathname.toLowerCase();
+          const isPublic = ["/", "/landing", "/login"].includes(path);
           if (!isPublic) {
-            goTo("/", true);
+            window.history.replaceState({}, "", "/");
+            setCurrentPath("/");
           }
           setLoading(false);
           return;
@@ -647,9 +670,11 @@ function App() {
       const me = await getMe();
       setOriginalUser(me);
       setAuthUser(me);
-      const isPublic = ["/", "/landing", "/login"].includes(currentPath);
+      const path = window.location.pathname.toLowerCase();
+      const isPublic = ["/", "/landing", "/login"].includes(path);
       if (isPublic) {
-        goTo("/dashboard", true);
+        window.history.replaceState({}, "", "/dashboard");
+        setCurrentPath("/dashboard");
       }
     } catch (err) {
       setAuthUser(null);
@@ -657,7 +682,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [accounts, authWithMicrosoftEnabled, currentPath, goTo, instance, isAuthenticated]);
+  }, [accounts, authWithMicrosoftEnabled, instance, isAuthenticated]);
 
   useEffect(() => { void bootstrap(); }, [bootstrap, microsoftConfigured]);
 
@@ -821,6 +846,15 @@ function App() {
               })}
             </div>
           )}
+          <button
+            type="button"
+            className="ghost theme-toggle-btn"
+            onClick={toggleDarkMode}
+            title="Cambiar tema claro/oscuro"
+            style={{ fontSize: "0.82rem" }}
+          >
+            {darkMode ? "☀️ Claro" : "🌙 Oscuro"}
+          </button>
           <button type="button" className="ghost fx-toggle-btn" onClick={() => setFxDrawerOpen(true)}
             title="Conversor de divisas" style={{ fontSize: "0.82rem" }}>
             ⊗ FX
@@ -1086,6 +1120,7 @@ function App() {
                   consultants={consultantsHook.consultants}
                   loading={consultantsHook.loading}
                   canWrite={can("consultants:write")}
+                  canDelete={authUser?.roles.includes("ADMIN")}
                   onReload={consultantsHook.reload}
                   onError={handleError}
                   onAssignConsultant={(id) => {

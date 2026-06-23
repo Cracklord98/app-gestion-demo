@@ -4,6 +4,8 @@ import { z } from "zod";
 import { authenticate, authorize } from "../../auth/guard.js";
 import { prisma } from "../../infra/prisma.js";
 
+import { normalizeCountry } from "../../utils/country.js";
+
 const consultantPayloadSchema = z.object({
   fullName: z.string().trim().min(1),
   email: z.string().trim().email().optional().or(z.literal("")),
@@ -11,7 +13,7 @@ const consultantPayloadSchema = z.object({
   company: z.string().trim().optional().nullable(),
   hourlyRate: z.coerce.number().nonnegative().optional(),
   rateCurrency: z.string().trim().toUpperCase().length(3).default("USD"),
-  country: z.string().trim().optional(),
+  country: z.string().trim().optional().transform(val => val ? normalizeCountry(val) : "Default"),
   seniority: z.string().trim().optional(),
   costPerMonth: z.coerce.number().nonnegative().optional(),
   active: z.coerce.boolean().default(true),
@@ -55,7 +57,7 @@ export async function consultantsRoutes(app: FastifyInstance) {
                 role: "Consultor",
                 hourlyRate: 0,
                 rateCurrency: "USD",
-                country: u.country || "Colombia",
+                country: u.country ? normalizeCountry(u.country) : "Colombia",
                 active: u.active,
                 allowWeekendWork: false,
               },
@@ -142,7 +144,7 @@ export async function consultantsRoutes(app: FastifyInstance) {
   app.delete(
     "/:id",
     {
-      preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM])],
+      preHandler: [authenticate, authorize([AppRole.ADMIN])],
     },
     async (request, reply) => {
       const { id } = consultantParamsSchema.parse(request.params);
@@ -195,7 +197,7 @@ export async function consultantsRoutes(app: FastifyInstance) {
   app.delete(
     "/by-name",
     {
-      preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM])],
+      preHandler: [authenticate, authorize([AppRole.ADMIN])],
     },
     async (request, reply) => {
       const { name } = z.object({ name: z.string().trim().min(1) }).parse(request.query);

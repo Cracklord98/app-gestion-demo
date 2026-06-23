@@ -970,9 +970,9 @@ export type AuditLog = {
   entityId: string;
   action: string;
   changedBy: string;
-  before: any;
-  after: any;
-  diff?: any;
+  before: unknown;
+  after: unknown;
+  diff?: unknown;
   createdAt: string;
 };
 
@@ -1646,6 +1646,17 @@ export async function getPayrollSummary(year: number, month: number): Promise<Pa
 
 export async function deleteExtraHour(id: string): Promise<void> {
   await request<void>(`/api/extra-hours/${id}`, "DELETE");
+}
+
+export type OfficialHoliday = {
+  date: string;
+  name: string;
+  isCustom: boolean;
+};
+
+export async function getOfficialHolidays(country: string, year: number): Promise<OfficialHoliday[]> {
+  const response = await request<ApiEnvelope<OfficialHoliday[]>>(`/api/extra-hours/holidays?country=${country}&year=${year}`);
+  return response.data;
 }
 
 // ─── Estimations ───────────────────────────────────────────────────────────────

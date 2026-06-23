@@ -119,11 +119,13 @@ export function CapacityTab({
 }) {
   const [subTab, setSubTab] = useState<SubTab>("overview");
 
-  useEffect(() => {
+  const [prevPreselected, setPrevPreselected] = useState(preselectedConsultantId);
+  if (preselectedConsultantId !== prevPreselected) {
+    setPrevPreselected(preselectedConsultantId);
     if (preselectedConsultantId) {
       setSubTab("assignments");
     }
-  }, [preselectedConsultantId]);
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>

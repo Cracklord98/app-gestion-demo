@@ -1,0 +1,262 @@
+/* ══════════════════════════════════════════════════════════════════════════
+   RESPONSIVE DESIGN SYSTEM — responsive.css
+   Imported from App.tsx alongside App.css
+   ══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Tablet breakpoint (≤ 1024px) ──────────────────────────────────────── */
+@media (max-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .dashboard-grid-wide {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .three-col {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ── Mobile breakpoint (≤ 768px) ───────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* --- Shell & Main Content --- */
+  .main-content {
+    padding: 1rem 0.75rem 2rem !important;
+  }
+
+  /* --- Header --- */
+  .hero {
+    padding: 0.75rem 1rem !important;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .hero h1 {
+    font-size: 1.1rem !important;
+  }
+  .hero > div > p {
+    display: none;
+  }
+  .hero-meta {
+    font-size: 0.62rem;
+  }
+  .badges {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 0.35rem;
+    overflow-x: auto;
+  }
+  .role-switcher {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    padding: 2px !important;
+    max-width: 100%;
+  }
+  .role-switcher > span:first-child {
+    display: none;
+  }
+
+  /* --- Sidebar → mobile drawer overlay --- */
+  .mobile-menu-toggle {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    font-size: 1.2rem;
+    background: none;
+    border: 1px solid #f4d4b6;
+    border-radius: 8px;
+    cursor: pointer;
+    color: #9a3412;
+    flex-shrink: 0;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 260px !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    z-index: 500 !important;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: none;
+  }
+  .sidebar:not(.collapsed) {
+    transform: translateX(0);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18);
+  }
+  .sidebar.collapsed {
+    width: 260px !important;
+    transform: translateX(-100%);
+  }
+  .sidebar.collapsed .sidebar-label {
+    opacity: 1 !important;
+    width: auto !important;
+  }
+  .sidebar.collapsed .sidebar-group-label {
+    opacity: 1 !important;
+    max-height: 2rem !important;
+    padding: 0.25rem 0.75rem 0.2rem !important;
+  }
+  .sidebar-toggle {
+    display: none !important;
+  }
+  .sidebar-close-mobile {
+    display: flex !important;
+    all: unset;
+    cursor: pointer;
+    padding: 0.75rem;
+    font-size: 1.2rem;
+    color: #9a3412;
+    text-align: right;
+    width: 100%;
+    box-sizing: border-box;
+    border-bottom: 1px solid #f4d4b6;
+  }
+
+  /* Backdrop for sidebar */
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 499;
+  }
+
+  /* --- Grids → single column on mobile --- */
+  .dashboard-grid,
+  .dashboard-grid-wide,
+  .two-col,
+  .three-col,
+  .form-grid.two-col {
+    grid-template-columns: 1fr !important;
+  }
+
+  .form-grid > .full-width,
+  .form-grid > div[style*="span 2"] {
+    grid-column: span 1 !important;
+  }
+
+  /* --- Modals --- */
+  .modal-overlay {
+    padding: 1rem 0.5rem !important;
+    align-items: flex-start !important;
+  }
+  .modal-card {
+    width: calc(100% - 1rem) !important;
+    max-width: 100% !important;
+    padding: 1.25rem 1rem !important;
+    border-radius: 14px !important;
+    margin: 0 auto !important;
+  }
+
+  /* --- Tables → horizontal scroll container --- */
+  .table-scroll-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {
+    min-width: 600px;
+  }
+
+  /* --- Week Calendar (Activities) → vertical card stack --- */
+  .week-grid {
+    grid-template-columns: 1fr !important;
+    min-width: 0 !important;
+  }
+
+  /* --- Month Calendar → compact cells --- */
+  .month-day-cell {
+    min-height: 60px !important;
+  }
+
+  /* --- Week/Month navigation bar → stack on mobile --- */
+  .nav-bar-week {
+    flex-direction: column !important;
+    gap: 0.5rem !important;
+    text-align: center;
+  }
+  .nav-bar-week > div {
+    justify-content: center;
+  }
+
+  /* --- Filter panels → stack vertically --- */
+  .filters-panel {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .filters-panel > div {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  /* --- Action buttons → full width on mobile --- */
+  .flex-right-mobile-full {
+    margin-left: 0 !important;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .flex-right-mobile-full button {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: center;
+    font-size: 0.78rem !important;
+    padding: 0.45rem 0.75rem !important;
+  }
+
+  /* --- KPI cards font size --- */
+  .kpi p {
+    font-size: 1.1rem !important;
+  }
+
+  /* --- Responsive helpers --- */
+  .hide-mobile {
+    display: none !important;
+  }
+  .show-mobile-only {
+    display: inline-block !important;
+  }
+}
+
+/* ── Small mobile breakpoint (≤ 480px) ─────────────────────────────────── */
+@media (max-width: 480px) {
+  .hero {
+    padding: 0.6rem 0.75rem !important;
+  }
+  .hero-left {
+    gap: 0.5rem;
+  }
+  .logo-slot {
+    width: 40px !important;
+    min-width: 40px !important;
+    height: 40px !important;
+  }
+  .hero h1 {
+    font-size: 0.95rem !important;
+  }
+  .main-content {
+    padding: 0.75rem 0.5rem 2rem !important;
+  }
+
+  /* Card padding reduce */
+  .card {
+    padding: 0.75rem !important;
+    border-radius: 10px !important;
+  }
+}
+
+/* ── Desktop: hide mobile-only elements ────────────────────────────────── */
+@media (min-width: 769px) {
+  .mobile-menu-toggle {
+    display: none !important;
+  }
+  .sidebar-close-mobile {
+    display: none !important;
+  }
+  .sidebar-backdrop {
+    display: none !important;
+  }
+}

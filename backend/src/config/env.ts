@@ -11,6 +11,8 @@ const envSchema = z.object({
   AZURE_AD_TENANT_ID: z.string().min(1).default("common"),
   AZURE_AD_AUDIENCE: z.string().min(1).default("api://app-gestion-backend"),
   ADMIN_EMAIL: z.string().email().default("admin@synaptica.local"),
+  SUPPORT_EMAIL: z.string().email().optional(),
+  PAYROLL_EMAIL: z.string().email().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

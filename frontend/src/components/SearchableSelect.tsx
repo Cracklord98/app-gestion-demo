@@ -37,6 +37,24 @@ export function SearchableSelect({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const optionsListRef = useRef<HTMLDivElement>(null);
 
+  // Derived state adjustments during render
+  const [prevValue, setPrevValue] = useState(value);
+  const [prevSearch, setPrevSearch] = useState(search);
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+
+  if (value !== prevValue) {
+    setPrevValue(value);
+    if (allowFreeText) {
+      setSearch(selectedOption ? selectedOption.label : value);
+    }
+  }
+
+  if (search !== prevSearch || isOpen !== prevIsOpen) {
+    setPrevSearch(search);
+    setPrevIsOpen(isOpen);
+    setHighlightedIndex(-1);
+  }
+
   // Close when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -48,22 +66,10 @@ export function SearchableSelect({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Sync search state when external value changes in free text mode
-  useEffect(() => {
-    if (allowFreeText) {
-      setSearch(selectedOption ? selectedOption.label : value);
-    }
-  }, [value, selectedOption, allowFreeText]);
-
   // Filter options based on search query
   const filteredOptions = options.filter((opt) =>
     opt.label.toLowerCase().includes(search.toLowerCase())
   );
-
-  // Reset highlighted index when options change or dropdown opens
-  useEffect(() => {
-    setHighlightedIndex(-1);
-  }, [search, isOpen]);
 
   // Focus search input when dropdown opens (only in static select mode)
   useEffect(() => {
@@ -300,8 +306,11 @@ export function SearchableSelect({
                 
                 // Highlight search matches (escape regex chars to prevent runtime errors)
                 const hasSearch = search.trim() !== "";
+                const escapedSearch = search
+                  .replace(/[-\\^$*+?.()|[\]{}]/g, "\\$&")
+                  .replace(/\//g, "\\$&");
                 const parts = hasSearch 
-                  ? opt.label.split(new RegExp(`(${search.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, "gi")) 
+                  ? opt.label.split(new RegExp(`(${escapedSearch})`, "gi")) 
                   : [opt.label];
                 
                 return (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useMsal } from "@azure/msal-react";
 import {
   listActivities,
@@ -172,8 +173,18 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
   const [extraHoursEndTime, setExtraHoursEndTime] = useState("20:00");
   const [extraHoursNote, setExtraHoursNote] = useState("");
 
+  interface TeamsEvent {
+    id: string;
+    subject: string;
+    start: string;
+    end: string;
+    bodyPreview: string;
+    duration: number;
+    isImported?: boolean;
+  }
+
   // Teams synchronization states
-  const [syncEvents, setSyncEvents] = useState<any[]>([]);
+  const [syncEvents, setSyncEvents] = useState<TeamsEvent[]>([]);
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncSelectedIds, setSyncSelectedIds] = useState<string[]>([]);
   const [syncProjectId, setSyncProjectId] = useState("");
@@ -190,7 +201,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
       const startISO = weekDays[0].toISOString();
       const endISO = weekDays[6].toISOString();
 
-      let fetchedEvents: any[] = [];
+      let fetchedEvents: TeamsEvent[] = [];
       let isRealMsal = false;
 
       // Try calling MS Graph if authenticated and scopes available
@@ -210,7 +221,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
           );
           if (response.ok) {
             const data = await response.json();
-            fetchedEvents = (data.value || []).map((ev: any) => {
+            fetchedEvents = (data.value || []).map((ev: { id: string; subject: string; start: { dateTime: string }; end: { dateTime: string }; bodyPreview?: string }) => {
               const start = new Date(ev.start.dateTime);
               const end = new Date(ev.end.dateTime);
               const duration = Math.max(0.5, Math.round(((end.getTime() - start.getTime()) / (1000 * 60 * 60)) * 2) / 2);
@@ -383,7 +394,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
       try {
         const data = await listCustomHolidays();
         setHolidays(data);
-      } catch (err) {
+      } catch {
         // fail silently
       }
     };
@@ -873,7 +884,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
       />
 
       {/* Global Filters Panel */}
-      <div className="card glass-card" style={{ position: "relative", zIndex: 20, padding: "1rem", borderRadius: "12px", border: "1px solid #f4d4b6", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+      <div className="card glass-card filters-panel" style={{ position: "relative", zIndex: 20, padding: "1rem", borderRadius: "12px", border: "1px solid #f4d4b6", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
         {(authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM") || authUser?.roles.includes("FINANCE")) ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "220px" }}>
             <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)" }}>Filtrar por Consultor</label>
@@ -1028,7 +1039,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           
           {/* Week Selector Controls */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6" }}>
+          <div className="nav-bar-week" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6" }}>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button type="button" className="ghost" onClick={() => navigateWeek(-1)} style={{ padding: "0.3rem 0.6rem" }}>◀ Semana anterior</button>
               <button type="button" className="ghost" onClick={() => setSelectedDate(new Date())} style={{ padding: "0.3rem 0.6rem", fontWeight: 700 }}>📅 Hoy</button>
@@ -1042,7 +1053,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
           {loading ? (
             <p className="loading">Cargando actividades...</p>
           ) : (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "1rem", overflowX: "auto", minWidth: "900px", alignItems: "start" }}>
+            <div className="week-grid">
               {weekDays.map((day) => {
                 const dateKey = day.toISOString().slice(0, 10);
                 const dayCheck = checkIsWeekendOrHoliday(dateKey);
@@ -1059,21 +1070,10 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                 return (
                   <div
                     key={dateKey}
-                    style={{
-                      background: isDayBlocked ? "#f9fafb" : "#fff",
-                      border: isDayBlocked ? "1px dashed #d1d5db" : "1px solid #e5e7eb",
-                      borderRadius: "12px",
-                      boxShadow: "0 2px 10px rgba(0,0,0,0.03)",
-                      display: "flex",
-                      flexDirection: "column",
-                      minHeight: "350px",
-                      padding: "0.75rem",
-                      opacity: isDayBlocked ? 0.75 : 1,
-                      position: "relative"
-                    }}
+                    className={`week-column-card${isDayBlocked ? " is-blocked" : ""}`}
                   >
                     {/* Day Header */}
-                    <div style={{ borderBottom: "1px solid #f3f4f6", paddingBottom: "0.5rem", marginBottom: "0.75rem", textAlign: "center" }}>
+                    <div className="week-column-header">
                       <span style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, textTransform: "uppercase", color: "var(--text-soft)" }}>
                         {day.toLocaleString("es-CO", { weekday: "short" })}
                       </span>
@@ -1083,13 +1083,14 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                       
                       {/* Day Stats */}
                       <div style={{ marginTop: "0.3rem", display: "flex", justifyContent: "center", gap: "0.4rem", alignItems: "center", flexWrap: "wrap" }}>
-                        <span style={{ fontSize: "0.7rem", padding: "0.1rem 0.3rem", borderRadius: "4px", background: "#f3f4f6" }}>
+                        <span className="week-column-stat-pill">
                           ⏱️ {totalActualHours}h
                         </span>
                         {isOvertime && totalActualHours > 0 && (
                           <span
                             title={dayCheck.isHoliday ? `Festivo: ${dayCheck.label}` : "Supera las 8h o es fin de semana. Aplica a horas extra."}
-                            style={{ cursor: "help", fontSize: "0.7rem", padding: "0.1rem 0.3rem", borderRadius: "4px", background: "#fef3c7", color: "#d97706", fontWeight: 700 }}
+                            className="pill warn"
+                            style={{ cursor: "help", fontSize: "0.62rem", padding: "0.1rem 0.35rem", fontWeight: 700 }}
                           >
                             ⚠️ HE
                           </span>
@@ -1097,7 +1098,8 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                         {dayCheck.isHoliday && (
                           <span
                             title={dayCheck.label}
-                            style={{ cursor: "help", fontSize: "0.7rem", padding: "0.1rem 0.3rem", borderRadius: "4px", background: "#fee2e2", color: "#b91c1c", fontWeight: 700 }}
+                            className="pill error"
+                            style={{ cursor: "help", fontSize: "0.62rem", padding: "0.1rem 0.35rem", fontWeight: 700 }}
                           >
                             🎉 Festivo
                           </span>
@@ -1118,16 +1120,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                             <div
                               key={act.id}
                               onClick={() => handleOpenEditModal(act)}
-                              style={{
-                                background: act.activityType === "personal" ? "#faf5ff" : "#fffbeb",
-                                border: `1px solid ${act.activityType === "personal" ? "#e9d5ff" : "#fde68a"}`,
-                                borderRadius: "8px",
-                                padding: "0.5rem",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease",
-                                position: "relative"
-                              }}
-                              className="activity-card"
+                              className={`day-activity-item ${act.activityType === "personal" ? "personal" : ""}`}
                             >
                               <strong style={{ display: "block", fontSize: "0.75rem", color: "var(--text-strong)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                 {act.title}
@@ -1151,18 +1144,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
 
                     {/* Add Activity Button per Day */}
                     {isDayBlocked ? (
-                      <div style={{
-                        width: "100%",
-                        padding: "0.4rem 0.25rem",
-                        fontSize: "0.72rem",
-                        marginTop: "0.5rem",
-                        textAlign: "center",
-                        color: "#ef4444",
-                        background: "#fee2e2",
-                        border: "1px solid #fca5a5",
-                        borderRadius: "6px",
-                        fontWeight: 600
-                      }}>
+                      <div className="day-blocked-label">
                         🔒 Bloqueado
                       </div>
                     ) : (
@@ -1170,7 +1152,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                         type="button"
                         className="ghost"
                         onClick={() => handleOpenAddModal(dateKey)}
-                        style={{ width: "100%", padding: "0.25rem", fontSize: "0.72rem", marginTop: "0.5rem", borderColor: "#e5e7eb" }}
+                        style={{ width: "100%", padding: "0.25rem", fontSize: "0.72rem", marginTop: "0.5rem" }}
                       >
                         + Registrar
                       </button>
@@ -1188,7 +1170,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           
           {/* Month Navigator */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6" }}>
+          <div className="nav-bar-week" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6" }}>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button type="button" className="ghost" onClick={() => navigateMonth(-1)} style={{ padding: "0.3rem 0.6rem" }}>◀ Mes anterior</button>
               <button type="button" className="ghost" onClick={() => setSelectedDate(new Date())} style={{ padding: "0.3rem 0.6rem", fontWeight: 700 }}>📅 Hoy</button>
@@ -1202,18 +1184,19 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
           {loading ? (
             <p className="loading">Cargando...</p>
           ) : (
-            <div style={{ border: "1px solid #e5e7eb", borderRadius: "12px", overflow: "hidden", background: "#fff" }}>
+            <div className="month-grid-wrapper">
               {/* Day header names */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", background: "#f9fafb", borderBottom: "1px solid #e5e7eb", textAlign: "center", padding: "0.5rem 0" }}>
-                {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].map((dayName) => (
+              <div className="month-grid-header">
+                {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].map((dayName, index) => (
                   <span key={dayName} style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)" }}>
-                    {dayName}
+                    <span className="hide-mobile">{dayName}</span>
+                    <span className="show-mobile-only">{dayName.slice(0, index === 2 ? 3 : 2)}</span>
                   </span>
                 ))}
               </div>
 
               {/* Grid of days */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gridAutoRows: "100px" }}>
+              <div className="month-grid-body">
                 {monthDays.map(({ date, currentMonth }, idx) => {
                   const dateKey = date.toISOString().slice(0, 10);
                   const dayCheck = checkIsWeekendOrHoliday(dateKey);
@@ -1236,25 +1219,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                         setSelectedDate(date);
                         setView("week");
                       }}
-                      style={{
-                        borderRight: "1px solid #e5e7eb",
-                        borderBottom: "1px solid #e5e7eb",
-                        padding: "0.4rem",
-                        cursor: "pointer",
-                        background: isDayBlocked 
-                          ? "#fdf2f2" 
-                          : !currentMonth 
-                            ? "#f9fafb" 
-                            : isWeekend 
-                              ? "#fffcf9" 
-                              : "#fff",
-                        opacity: currentMonth ? 1 : 0.4,
-                        display: "flex",
-                        flexDirection: "column",
-                        justifyContent: "space-between",
-                        transition: "all 0.15s ease",
-                      }}
-                      className="month-day-cell"
+                      className={`month-day-cell${isDayBlocked ? " is-blocked" : ""}${!currentMonth ? " out-of-month" : ""}${isWeekend ? " is-weekend" : ""}`}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
@@ -1302,7 +1267,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
 
       {/* --- LIST TABLE VIEW --- */}
       {view === "list" && (
-        <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+        <div className="card" style={{ padding: "1.5rem" }}>
           <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.05rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
             Listado de Actividades Registradas
           </h3>
@@ -1420,7 +1385,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               <select 
                 value={reportRange} 
                 onChange={(e) => setReportRange(e.target.value as "week" | "month" | "all")}
-                style={{ padding: "0.4rem 0.8rem", borderRadius: "8px", border: "1px solid #f4d4b6", fontSize: "0.82rem", background: "#fff", fontWeight: 600, color: "#9a4f0f" }}
+                style={{ padding: "0.4rem 0.8rem", borderRadius: "8px", fontSize: "0.82rem", fontWeight: 600 }}
               >
                 <option value="week">Esta semana</option>
                 <option value="month">Este mes</option>
@@ -1432,7 +1397,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
           {/* Metric Cards Row */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
             {/* Card 1 */}
-            <div className="card glass-card" style={{ padding: "1.25rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "linear-gradient(135deg, #fff, #fef8f3)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
+            <div className="card glass-card" style={{ padding: "1.25rem" }}>
               <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Horas Reales / Estimadas</span>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
                 <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>{reportStats.totalActualHours.toFixed(1)}h</strong>
@@ -1445,7 +1410,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             </div>
 
             {/* Card 2 */}
-            <div className="card glass-card" style={{ padding: "1.25rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "linear-gradient(135deg, #fff, #fef8f3)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
+            <div className="card glass-card" style={{ padding: "1.25rem" }}>
               <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Completitud de Tareas</span>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
                 <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>{reportStats.completedPct}%</strong>
@@ -1457,7 +1422,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             </div>
 
             {/* Card 3 */}
-            <div className="card glass-card" style={{ padding: "1.25rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "linear-gradient(135deg, #fff, #fef8f3)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
+            <div className="card glass-card" style={{ padding: "1.25rem" }}>
               <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Promedio por Consultor</span>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
                 <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>
@@ -1471,7 +1436,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             </div>
 
             {/* Card 4 */}
-            <div className="card glass-card" style={{ padding: "1.25rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "linear-gradient(135deg, #fff, #fef8f3)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
+            <div className="card glass-card" style={{ padding: "1.25rem" }}>
               <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Sobrecarga de Reuniones (Teams)</span>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
                 <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>
@@ -1490,7 +1455,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
           {/* Charts Row */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }} className="grid-one-col-mobile">
             {/* Chart 1: Projects distribution */}
-            <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+            <div className="card" style={{ padding: "1.5rem" }}>
               <h4 style={{ margin: "0 0 1.25rem 0", color: "#5f2f00", fontSize: "0.95rem" }}>📂 Distribución de Horas por Proyecto</h4>
               {Object.keys(reportStats.hoursByProject).length === 0 ? (
                 <p style={{ fontStyle: "italic", color: "var(--text-soft)", fontSize: "0.85rem", textAlign: "center", padding: "2rem" }}>Sin datos de proyectos para este periodo</p>
@@ -1515,7 +1480,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             </div>
 
             {/* Chart 2: Activity Type distribution */}
-            <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+            <div className="card" style={{ padding: "1.5rem" }}>
               <h4 style={{ margin: "0 0 1.25rem 0", color: "#5f2f00", fontSize: "0.95rem" }}>📊 Horas por Tipo de Actividad</h4>
               {Object.keys(reportStats.hoursByType).length === 0 ? (
                 <p style={{ fontStyle: "italic", color: "var(--text-soft)", fontSize: "0.85rem", textAlign: "center", padding: "2rem" }}>Sin datos de tipo de actividad para este periodo</p>
@@ -1550,12 +1515,12 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
           </div>
 
           {/* Consultant workload table */}
-          <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+          <div className="card" style={{ padding: "1.5rem" }}>
             <h4 style={{ margin: "0 0 1rem 0", color: "#5f2f00", fontSize: "0.95rem" }}>👥 Carga de Trabajo de Consultores</h4>
             <div className="table-wrap">
               <table>
                 <thead>
-                  <tr style={{ background: "#fdf8f5" }}>
+                  <tr>
                     <th>Nombre</th>
                     <th>Correo</th>
                     <th style={{ textAlign: "center" }}>Actividades</th>
@@ -1635,42 +1600,20 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
 
         </div>
       )}      {/* --- CREATE / EDIT MODAL --- */}
-      {modalOpen && (
-        <div className="modal-overlay" style={{ 
-          display: "flex", 
-          justifyContent: "center", 
-          alignItems: "center",
-          background: "rgba(15, 23, 42, 0.4)",
-          backdropFilter: "blur(8px)",
-          position: "fixed",
-          inset: 0,
-          zIndex: 1000
-        }}>
-          <form onSubmit={handleSubmit} className="modal-card" style={{ 
-            maxWidth: "600px", 
-            width: "100%", 
-            maxHeight: "90vh", 
-            overflowY: "auto",
-            borderRadius: "16px",
-            border: "1px solid #f4d4b6",
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-            background: "rgba(255, 255, 255, 0.95)",
-            backdropFilter: "blur(12px)",
-            padding: "1.5rem",
-            display: "flex",
-            flexDirection: "column",
-            gap: "1.2rem"
-          }}>
-            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #fdecd8", paddingBottom: "0.75rem" }}>
-              <h3 style={{ margin: 0, color: "#5f2f00", fontSize: "1.25rem", fontWeight: 700 }}>
+      {/* --- CREATE / EDIT MODAL --- */}
+      {modalOpen && createPortal(
+        <div className="modal-overlay" onClick={() => setModalOpen(false)}>
+          <form onSubmit={handleSubmit} className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "640px" }}>
+            <div className="modal-header" style={{ marginBottom: "1.25rem", borderBottom: "1px solid var(--border-color, #f4d4b6)", paddingBottom: "0.75rem" }}>
+              <h2 style={{ margin: 0, color: "var(--text-strong, #5f2f00)", fontSize: "1.25rem", fontWeight: 700 }}>
                 {editingActivity ? "✍️ Editar Actividad" : "➕ Registrar Nueva Actividad"}
-              </h3>
-              <button type="button" className="ghost" onClick={() => setModalOpen(false)} style={{ padding: "0.25rem 0.5rem" }}>✕</button>
+              </h2>
+              <button type="button" className="ghost" onClick={() => setModalOpen(false)} style={{ fontSize: "1.1rem", padding: "0.2rem 0.5rem", lineHeight: 1 }}>✕</button>
             </div>
 
-            <div className="form-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.8rem", padding: "0.5rem 0" }}>
+            <div className="form-grid two-col" style={{ gap: "1rem" }}>
               
-              <div style={{ gridColumn: "span 2" }}>
+              <div className="full-width" style={{ gridColumn: "span 2" }}>
                 <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Título de la Actividad *</label>
                 <input
                   type="text"
@@ -1678,18 +1621,16 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                   placeholder="Ej. Diseño de base de datos, Reunión con cliente..."
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
-              <div style={{ gridColumn: "span 2" }}>
+              <div className="full-width" style={{ gridColumn: "span 2" }}>
                 <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Descripción</label>
                 <textarea
                   rows={2}
                   placeholder="Detalles adicionales del trabajo realizado..."
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
@@ -1699,7 +1640,6 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                   value={formType} 
                   onChange={(e) => setFormType(e.target.value as ActivityType)} 
                   required
-                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db", background: "#fff" }}
                 >
                   <option value="project">Proyecto</option>
                   <option value="personal">Personal / Bench</option>
@@ -1739,7 +1679,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                     type="text"
                     readOnly
                     value={myConsultant ? myConsultant.fullName : authUser?.displayName || ""}
-                    style={{ background: "#f3f4f6", cursor: "not-allowed", width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
+                    style={{ cursor: "not-allowed", opacity: 0.6 }}
                   />
                 </div>
               )}
@@ -1751,7 +1691,6 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                   required
                   value={formDate}
                   onChange={(e) => setFormDate(e.target.value)}
-                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
@@ -1764,7 +1703,6 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                   required
                   value={formEstimatedHours}
                   onChange={(e) => setFormEstimatedHours(e.target.value)}
-                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
@@ -1777,7 +1715,6 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                   required
                   value={formActualHours}
                   onChange={(e) => setFormActualHours(e.target.value)}
-                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
@@ -1787,7 +1724,6 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                   value={formPriority} 
                   onChange={(e) => setFormPriority(e.target.value as ActivityPriority)} 
                   required
-                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db", background: "#fff" }}
                 >
                   <option value="low">Baja</option>
                   <option value="medium">Media</option>
@@ -1802,7 +1738,6 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                   value={formStatus} 
                   onChange={(e) => setFormStatus(e.target.value as ActivityStatus)} 
                   required
-                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db", background: "#fff" }}
                 >
                   <option value="pending">Pendiente</option>
                   <option value="in_progress">En Progreso</option>
@@ -1819,29 +1754,19 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                   placeholder="Observaciones de avance, impedimentos, etc..."
                   value={formComments}
                   onChange={(e) => setFormComments(e.target.value)}
-                  style={{ width: "100%", padding: "0.6rem", borderRadius: "10px", border: "1px solid #d1d5db" }}
                 />
               </div>
 
               {/* AUTOMATIC EXTRA HOURS DETECTOR BOX */}
               {isExtraHoursEligible && formProjectId && (
-                <div style={{
-                  gridColumn: "span 2",
-                  background: "rgba(254, 243, 199, 0.65)",
-                  backdropFilter: "blur(10px)",
-                  border: "1px solid #fbbf24",
-                  borderRadius: "14px",
-                  padding: "1rem",
-                  marginTop: "0.5rem",
-                  boxShadow: "0 4px 6px -1px rgba(217, 119, 6, 0.05)"
-                }}>
+                <div className="extra-hours-suggestion-box">
                   <div style={{ display: "flex", gap: "0.75rem", alignItems: "flex-start" }}>
                     <span style={{ fontSize: "1.5rem" }}>⏱️</span>
                     <div>
-                      <strong style={{ display: "block", fontSize: "0.9rem", color: "#92400e", marginBottom: "0.25rem" }}>
+                      <strong style={{ display: "block", fontSize: "0.9rem", marginBottom: "0.25rem" }}>
                         Sugerencia de Horas Extras
                       </strong>
-                      <p style={{ margin: 0, fontSize: "0.78rem", color: "#b45309", lineHeight: "1.3" }}>
+                      <p style={{ margin: 0, fontSize: "0.78rem", lineHeight: "1.3" }}>
                         Esta actividad supera las 8 horas diarias estándar o se ha programado para un fin de semana/festivo. Puedes solicitar la aprobación de horas extras aquí.
                       </p>
                       
@@ -1876,36 +1801,33 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                       gridTemplateColumns: "1fr 1fr", 
                       gap: "0.75rem", 
                       marginTop: "1rem", 
-                      borderTop: "1px solid #fde68a", 
+                      borderTop: "1px solid var(--border-color, #fde68a)", 
                       paddingTop: "1rem",
                       animation: "fadeIn 0.25s ease-out" 
                     }}>
                       <div>
-                        <label style={{ fontSize: "0.75rem", color: "#92400e", display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>Hora Inicio Horas Extras</label>
+                        <label style={{ fontSize: "0.75rem", display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>Hora Inicio Horas Extras</label>
                         <input
                           type="time"
                           value={extraHoursStartTime}
                           onChange={(e) => setExtraHoursStartTime(e.target.value)}
-                          style={{ padding: "0.4rem 0.5rem", fontSize: "0.82rem", borderRadius: "6px", border: "1px solid #fde68a" }}
                         />
                       </div>
                       <div>
-                        <label style={{ fontSize: "0.75rem", color: "#92400e", display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>Hora Fin Horas Extras</label>
+                        <label style={{ fontSize: "0.75rem", display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>Hora Fin Horas Extras</label>
                         <input
                           type="time"
                           value={extraHoursEndTime}
                           onChange={(e) => setExtraHoursEndTime(e.target.value)}
-                          style={{ padding: "0.4rem 0.5rem", fontSize: "0.82rem", borderRadius: "6px", border: "1px solid #fde68a" }}
                         />
                       </div>
                       <div style={{ gridColumn: "span 2" }}>
-                        <label style={{ fontSize: "0.75rem", color: "#92400e", display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>Nota de Justificación Horas Extras</label>
+                        <label style={{ fontSize: "0.75rem", display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>Nota de Justificación Horas Extras</label>
                         <input
                           type="text"
                           value={extraHoursNote}
                           onChange={(e) => setExtraHoursNote(e.target.value)}
                           placeholder="Motivo o justificación de las horas extras..."
-                          style={{ padding: "0.4rem 0.5rem", fontSize: "0.82rem", width: "100%", borderRadius: "6px", border: "1px solid #fde68a" }}
                         />
                       </div>
                     </div>
@@ -1941,53 +1863,24 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
             </div>
           </form>
-        </div>
+        </div>,
+        document.body
       )}
       {/* --- TEAMS SYNC MODAL --- */}
-      {teamsModalOpen && (
-        <div className="modal-overlay" style={{ 
-          display: "flex", 
-          justifyContent: "center", 
-          alignItems: "center",
-          background: "rgba(15, 23, 42, 0.4)",
-          backdropFilter: "blur(8px)",
-          position: "fixed",
-          inset: 0,
-          zIndex: 1000
-        }}>
-          <div className="modal-card" style={{ 
-            maxWidth: "680px", 
-            width: "100%", 
-            maxHeight: "90vh", 
-            display: "flex", 
-            flexDirection: "column", 
-            gap: "1.2rem", 
-            overflow: "hidden", 
-            padding: "0", 
-            borderRadius: "16px",
-            border: "1px solid #c7d2fe",
-            boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)",
-            background: "rgba(255, 255, 255, 0.98)",
-            backdropFilter: "blur(16px)"
-          }}>
+      {teamsModalOpen && createPortal(
+        <div className="modal-overlay" onClick={() => setTeamsModalOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "680px", display: "flex", flexDirection: "column", overflow: "hidden", padding: 0 }}>
             {/* Teams branded header */}
-            <div className="modal-header" style={{ 
-              display: "flex", 
-              justifyContent: "space-between", 
-              alignItems: "center", 
-              background: "linear-gradient(90deg, #ececfc, #f5f3ff)", 
-              padding: "1rem 1.5rem", 
-              borderBottom: "1px solid #c7d2fe" 
-            }}>
-              <h3 style={{ margin: 0, color: "#3730a3", fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "0.6rem", fontWeight: 700 }}>
+            <div className="teams-sync-header">
+              <h3 style={{ margin: 0, fontSize: "1.2rem", display: "flex", alignItems: "center", gap: "0.6rem", fontWeight: 700 }}>
                 <MicrosoftTeamsIcon size={22} /> Sincronizar Reuniones de Teams
               </h3>
-              <button type="button" className="ghost" onClick={() => setTeamsModalOpen(false)} style={{ padding: "0.25rem 0.5rem", color: "#3730a3" }}>✕</button>
+              <button type="button" className="ghost" onClick={() => setTeamsModalOpen(false)} style={{ padding: "0.25rem 0.5rem" }}>✕</button>
             </div>
 
-            <div style={{ padding: "0 1.5rem", display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto", flex: 1 }}>
+            <div style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto", flex: 1 }}>
               
-              <div style={{ display: "flex", gap: "0.5rem", background: "#f5f3ff", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #c7d2fe", fontSize: "0.82rem", color: "#4f46e5" }}>
+              <div className="teams-sync-info">
                 <span>ℹ️</span>
                 <span>
                   Mostrando reuniones para la semana del <strong>{weekDays[0].toLocaleDateString("es-CO")}</strong> al <strong>{weekDays[6].toLocaleDateString("es-CO")}</strong>. 
@@ -1998,7 +1891,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               {/* Grid: Consultant & Project selector */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }} className="grid-one-col-mobile">
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                  <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "#3730a3" }}>Consultor a Sincronizar *</label>
+                  <label className="teams-sync-label">Consultor a Sincronizar *</label>
                   <SearchableSelect
                     options={consultants.map((c) => ({ value: c.id, label: c.fullName }))}
                     value={syncConsultantId}
@@ -2009,7 +1902,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
-                  <label style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--text-soft)" }}>Asociar actividades al Proyecto:</label>
+                  <label className="teams-sync-label">Asociar actividades al Proyecto:</label>
                   <SearchableSelect
                     options={projects.map((p) => ({ value: p.id, label: p.name }))}
                     value={syncProjectId}
@@ -2021,7 +1914,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               {/* List of events */}
-              <div style={{ flex: 1, overflowY: "auto", minHeight: "220px", border: "1px solid #e5e7eb", borderRadius: "12px", background: "#fffdfa" }}>
+              <div className="teams-event-table-container">
                 {syncLoading ? (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "3rem", gap: "0.5rem" }}>
                     <span className="loading" style={{ margin: 0 }}>Cargando eventos de Microsoft...</span>
@@ -2031,16 +1924,16 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                     No se encontraron eventos en tu calendario para esta semana.
                   </div>
                 ) : (
-                  <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <table>
                     <thead>
-                      <tr style={{ background: "#f5f3ff", borderBottom: "1px solid #e5e7eb" }}>
-                        <th style={{ width: "40px", textAlign: "center", padding: "0.6rem 0.5rem" }}>
+                      <tr className="teams-header-row">
+                        <th style={{ width: "40px", textAlign: "center" }}>
                           <input
                             type="checkbox"
                             checked={syncSelectedIds.length === syncEvents.filter(ev => !ev.isImported).length && syncEvents.filter(ev => !ev.isImported).length > 0}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setSyncSelectedIds(syncEvents.filter(ev => !ev.isImported).map(ev => ev.id));
+                                  setSyncSelectedIds(syncEvents.filter(ev => !ev.isImported).map(ev => ev.id));
                               } else {
                                 setSyncSelectedIds([]);
                               }
@@ -2049,20 +1942,16 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                             style={{ width: "16px", height: "16px", cursor: "pointer" }}
                           />
                         </th>
-                        <th style={{ padding: "0.6rem 0.5rem", textAlign: "left", fontSize: "0.75rem", fontWeight: 700, color: "#4b5563" }}>Reunión / Evento</th>
-                        <th style={{ padding: "0.6rem 0.5rem", width: "85px", textAlign: "center", fontSize: "0.75rem", fontWeight: 700, color: "#4b5563" }}>Duración</th>
-                        <th style={{ padding: "0.6rem 0.5rem", width: "120px", textAlign: "center", fontSize: "0.75rem", fontWeight: 700, color: "#4b5563" }}>Estado</th>
+                        <th style={{ textAlign: "left" }}>Reunión / Evento</th>
+                        <th style={{ width: "85px", textAlign: "center" }}>Duración</th>
+                        <th style={{ width: "120px", textAlign: "center" }}>Estado</th>
                       </tr>
                     </thead>
                     <tbody>
                       {syncEvents.map((ev) => (
                         <tr 
                           key={ev.id} 
-                          style={{ 
-                            borderBottom: "1px solid #f3f4f6", 
-                            background: ev.isImported ? "#f9fafb" : "transparent",
-                            opacity: ev.isImported ? 0.75 : 1
-                          }}
+                          className={ev.isImported ? "imported" : ""}
                         >
                           <td style={{ textAlign: "center", padding: "0.75rem 0.5rem" }}>
                             <input
@@ -2080,21 +1969,21 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                             />
                           </td>
                           <td style={{ padding: "0.75rem 0.5rem" }}>
-                            <strong style={{ display: "block", fontSize: "0.82rem", color: ev.isImported ? "var(--text-soft)" : "var(--text-strong)" }}>
+                            <strong style={{ display: "block", fontSize: "0.82rem" }}>
                               {ev.subject}
                             </strong>
-                            <span style={{ fontSize: "0.72rem", color: "#6b7280" }}>
+                            <span style={{ fontSize: "0.72rem", color: "var(--text-soft, #6b7280)" }}>
                               {formatMeetingTime(ev.start, ev.end)}
                             </span>
                           </td>
-                          <td style={{ padding: "0.75rem 0.5rem", textAlign: "center", fontWeight: 700, fontSize: "0.82rem", color: "#4f46e5" }}>
+                          <td style={{ padding: "0.75rem 0.5rem", textAlign: "center", fontWeight: 700, fontSize: "0.82rem" }}>
                             {ev.duration.toFixed(1)}h
                           </td>
                           <td style={{ padding: "0.75rem 0.5rem", textAlign: "center" }}>
                             {ev.isImported ? (
-                              <span className="pill ok" style={{ fontSize: "0.65rem", padding: "0.15rem 0.45rem", fontWeight: 700, background: "#dcfce7", color: "#15803d" }}>✓ Importado</span>
+                              <span className="pill ok" style={{ fontSize: "0.65rem", padding: "0.15rem 0.45rem", fontWeight: 700 }}>✓ Importado</span>
                             ) : (
-                              <span className="pill neutral" style={{ fontSize: "0.65rem", padding: "0.15rem 0.45rem", fontWeight: 700, background: "#f3f4f6", color: "#6b7280" }}>Pendiente</span>
+                              <span className="pill neutral" style={{ fontSize: "0.65rem", padding: "0.15rem 0.45rem", fontWeight: 700 }}>Pendiente</span>
                             )}
                           </td>
                         </tr>
@@ -2105,7 +1994,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
             </div>
 
-            <div className="modal-actions" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #e5e7eb", padding: "1rem 1.5rem", background: "#fafafa" }}>
+            <div className="teams-sync-footer">
               <span style={{ fontSize: "0.78rem", color: "var(--text-soft)", fontWeight: 600 }}>
                 {syncSelectedIds.length} seleccionados para importar
               </span>
@@ -2122,7 +2011,8 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Toast de Éxito */}

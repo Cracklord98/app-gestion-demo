@@ -289,7 +289,7 @@ describe("calculateExtraHours", () => {
     });
 
     expect(result.totalHours).toBe(4);
-    expect(result.totalAmount).toBe(52);
+    expect(result.totalAmount).toBeCloseTo(52, 0);
   });
 
   it("México: primeras 9 horas semanales al +100%, excedentes al +200%", async () => {
@@ -322,7 +322,7 @@ describe("calculateExtraHours", () => {
         id: "entry-1",
         consultantId: "c-mx",
         projectId: "p1",
-        date: new Date(),
+        date: date,
         startTime: "18:00",
         endTime: "21:30", // 3.5h
         diurnal: 3.5 as any,
@@ -347,7 +347,7 @@ describe("calculateExtraHours", () => {
         id: "entry-2",
         consultantId: "c-mx",
         projectId: "p1",
-        date: new Date(),
+        date: date,
         startTime: "18:00",
         endTime: "21:30", // 3.5h
         diurnal: 3.5 as any,

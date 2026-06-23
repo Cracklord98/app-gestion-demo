@@ -106,17 +106,21 @@ export async function calculateExtraHours(params: {
     const m = String(d.getUTCMonth() + 1).padStart(2, "0");
     const day = String(d.getUTCDate()).padStart(2, "0");
     const dateStr = `${y}-${m}-${day}`;
-    return isPublicHoliday(d, ctry) || customHolidaySet.has(dateStr);
+    const dayOfWeek = d.getUTCDay();
+    const isSundayHoliday = dayOfWeek === 0 && ctry !== "Mexico";
+    return isSundayHoliday || isPublicHoliday(d, ctry) || customHolidaySet.has(dateStr);
   };
 
   // 2. Determinar divisor de horas mensuales del país
   let divisorUsed = config.monthlyDivisor ? Number(config.monthlyDivisor) : 220;
-  if (!config.monthlyDivisor) {
-    if (country === "Colombia") {
-      // Transición de jornada laboral Ley 2101 (220h a 210h el 15 de julio de 2026)
-      const transitionDate = new Date("2026-07-15");
-      divisorUsed = date >= transitionDate ? 210 : 220;
-    } else if (country === "Peru" || country === "Ecuador" || country === "Mexico") {
+  if (country === "Colombia") {
+    // Transición de jornada laboral Ley 2101 (220h a 210h el 15 de julio de 2026)
+    const transitionDate = new Date("2026-07-15T00:00:00.000Z");
+    if (date >= transitionDate && (divisorUsed === 220 || !config.monthlyDivisor)) {
+      divisorUsed = 210;
+    }
+  } else if (!config.monthlyDivisor) {
+    if (country === "Peru" || country === "Ecuador" || country === "Mexico") {
       divisorUsed = 240;
     } else if (country === "Chile") {
       divisorUsed = 180;
@@ -215,74 +219,46 @@ export async function calculateExtraHours(params: {
 
   } else if (country === "Peru") {
     // --- PERÚ ---
-    // Primeras 2 horas del día: +25%
-    // A partir de la tercera hora: +35%
-    // Recargo nocturno (10:00 PM a 06:00 AM): +35% sobre la tarifa base de la hora extra.
-    // Domingos y festivos: +100% sobre la tarifa normal
-    
-    // 1. Determinar si es festivo o domingo
-    const isHoliday = isDayHoliday(date, "Peru");
-    
-    if (isHoliday) {
-      diurnalHoliday = totalHoursRaw;
-      diurnalHolidayAmount = diurnalHoliday * hourlyRate * Number(config.diurnalHolidayMultiplier); // 2.00x
-    } else {
-      // Recorrido minuto a minuto para separar horas diurnas y nocturnas (nocturno peruano: 22:00 a 06:00)
-      const step = 60 * 1000;
-      let current = startDateTime.getTime();
-      const end = endDateTime.getTime();
-      let regularExtraMinutes = 0;
-      let nocturnalExtraMinutes = 0;
+    // Recorrido minuto a minuto para separar horas diurnas y nocturnas (nocturno peruano: 22:00 a 06:00)
+    // Primeras 2 horas del día (120 minutos) se pagan a 1.25x. Siguientes se pagan a 1.35x.
+    // Recargo nocturno (22:00 a 06:00) añade +0.35x.
+    // Domingos y festivos se pagan a tarifa plana de 2.0x.
+    const step = 60 * 1000;
+    let current = startDateTime.getTime();
+    const end = endDateTime.getTime();
 
-      while (current < end) {
-        const curDate = new Date(current);
+    let regularMinutesDiurnal = 0;
+    let regularMinutesNocturnal = 0;
+    let holidayMinutes = 0;
+
+    while (current < end) {
+      const curDate = new Date(current);
+      const isHoliday = isDayHoliday(curDate, "Peru");
+      
+      if (isHoliday) {
+        holidayMinutes++;
+      } else {
+        const elapsedRegularMinutes = regularMinutesDiurnal + regularMinutesNocturnal;
+        const multiplier = elapsedRegularMinutes < 120 ? 1.25 : 1.35;
+
         const hour = curDate.getUTCHours() + curDate.getUTCMinutes() / 60;
         const isPeruNight = hour >= 22 || hour < 6;
 
         if (isPeruNight) {
-          nocturnalExtraMinutes++;
+          regularMinutesNocturnal++;
+          nocturnalAmount += (1 / 60) * hourlyRate * (multiplier + 0.35);
         } else {
-          regularExtraMinutes++;
+          regularMinutesDiurnal++;
+          diurnalAmount += (1 / 60) * hourlyRate * multiplier;
         }
-        current += step;
       }
-
-      const rawDiurnal = regularExtraMinutes / 60;
-      const rawNocturnal = nocturnalExtraMinutes / 60;
-
-      // Aplicar regla de 2 horas (primeras 2h a 1.25, siguientes a 1.35)
-      // Recorremos las horas acumuladas
-      let remainingHours = totalHoursRaw;
-      
-      // Primera franja (primeras 2 horas)
-      const firstTierHours = Math.min(remainingHours, 2);
-      remainingHours -= firstTierHours;
-
-      // Segunda franja (excedente)
-      const secondTierHours = remainingHours;
-
-      // Proporción de nocturnidad
-      const nocturnalRatio = rawNocturnal / totalHoursRaw;
-      
-      // Separar por franja y nocturnidad para aplicar montos
-      const firstTierNocturnal = firstTierHours * nocturnalRatio;
-      const firstTierDiurnal = firstTierHours - firstTierNocturnal;
-
-      const secondTierNocturnal = secondTierHours * nocturnalRatio;
-      const secondTierDiurnal = secondTierHours - secondTierNocturnal;
-
-      // Surcharges en Perú:
-      // Diurno primer tier: 1.25x
-      // Nocturno primer tier: 1.25x + 0.35x recargo nocturno = 1.60x
-      // Diurno segundo tier: 1.35x
-      // Nocturno segundo tier: 1.35x + 0.35x recargo nocturno = 1.70x
-      
-      diurnal = Math.round((firstTierDiurnal + secondTierDiurnal) * 100) / 100;
-      nocturnal = Math.round((firstTierNocturnal + secondTierNocturnal) * 100) / 100;
-
-      diurnalAmount = (firstTierDiurnal * hourlyRate * 1.25) + (secondTierDiurnal * hourlyRate * 1.35);
-      nocturnalAmount = (firstTierNocturnal * hourlyRate * 1.60) + (secondTierNocturnal * hourlyRate * 1.70);
+      current += step;
     }
+
+    diurnal = regularMinutesDiurnal / 60;
+    nocturnal = regularMinutesNocturnal / 60;
+    diurnalHoliday = holidayMinutes / 60;
+    diurnalHolidayAmount = diurnalHoliday * hourlyRate * 2.00;
 
   } else if (country === "Ecuador") {
     // --- ECUADOR ---
@@ -369,54 +345,74 @@ export async function calculateExtraHours(params: {
 
   } else if (country === "Mexico") {
     // --- MÉXICO ---
-    // Primeras 9 horas semanales: +100% (2.00x)
-    // Excedente de 9 horas semanales: +200% (3.00x)
-    // Prima Dominical (+25% / 0.25x) si se trabaja en domingo
-    // Feriados obligatorios nacionales se pagan al triple (3.00x) directamente
-    const isNationalHoliday = isDayHoliday(date, "Mexico");
- 
-    if (isNationalHoliday) {
-      diurnalHoliday = Math.round(totalHoursRaw * 100) / 100;
-      diurnalHolidayAmount = diurnalHoliday * hourlyRate * 3.00; // 3.00x
-    } else {
-      const isSunday = date.getUTCDay() === 0;
-      let previousHoursThisWeek = 0;
+    // Compulsory national holidays pay flat 3.0x.
+    // Normal overtime uses a weekly minute pool: first 540 minutes (9 hours) pay 2.0x; subsequent minutes pay 3.0x.
+    // Sunday minutes add +0.25x Sunday Premium.
+    const step = 60 * 1000;
+    let current = startDateTime.getTime();
+    const end = endDateTime.getTime();
 
-      if (consultantId) {
-        // Buscar horas extras ya registradas esta semana (Lunes a Domingo)
-        const { start: startOfW, end: endOfW } = getWeekRange(date);
-
-        const weeklyEntries = await prisma.extraHourEntry.findMany({
-          where: {
-            consultantId,
-            date: {
-              gte: startOfW,
-              lte: endOfW,
-            },
-            status: {
-              in: ["APPROVED", "PENDING_FINANCE", "PENDING_PM"],
-            },
+    let previousMinutesThisWeek = 0;
+    if (consultantId) {
+      const { start: startOfW, end: endOfW } = getWeekRange(date);
+      const weeklyEntries = await prisma.extraHourEntry.findMany({
+        where: {
+          consultantId,
+          date: {
+            gte: startOfW,
+            lte: endOfW,
           },
-        });
-        previousHoursThisWeek = weeklyEntries.reduce((sum, entry) => sum + Number(entry.totalHours), 0);
+          status: {
+            in: ["APPROVED", "PENDING_FINANCE", "PENDING_PM"],
+          },
+        },
+      });
+      previousMinutesThisWeek = weeklyEntries.reduce((sum, entry) => sum + Number(entry.totalHours), 0) * 60;
+    }
+
+    let weeklyMinutesAccumulated = previousMinutesThisWeek;
+
+    while (current < end) {
+      const curDate = new Date(current);
+      const isNationalHoliday = isDayHoliday(curDate, "Mexico");
+      const isSunday = curDate.getUTCDay() === 0;
+
+      if (isNationalHoliday) {
+        diurnalHoliday += 1 / 60;
+        diurnalHolidayAmount += (1 / 60) * hourlyRate * 3.00;
+      } else {
+        diurnal += 1 / 60;
+        const rateMultiplier = weeklyMinutesAccumulated < 540 ? 2.00 : 3.00;
+        const premium = isSunday ? 0.25 : 0;
+        diurnalAmount += (1 / 60) * hourlyRate * (rateMultiplier + premium);
+        weeklyMinutesAccumulated += 1;
       }
+      current += step;
+    }
 
-      const remainingDoubleSlots = Math.max(0, 9 - previousHoursThisWeek);
-      const doubleHours = Math.min(totalHoursRaw, remainingDoubleSlots);
-      const tripleHours = Math.max(0, totalHoursRaw - doubleHours);
+    diurnal = Math.round(diurnal * 100) / 100;
+    diurnalHoliday = Math.round(diurnalHoliday * 100) / 100;
 
-      diurnal = Math.round(totalHoursRaw * 100) / 100;
-      const baseOvertimeAmount = (doubleHours * hourlyRate * 2.00) + (tripleHours * hourlyRate * 3.00);
-      const sundayPremiumAmount = isSunday ? totalHoursRaw * hourlyRate * 0.25 : 0;
-      diurnalAmount = baseOvertimeAmount + sundayPremiumAmount;
-
-      if (isSunday) {
-        warnings.push(`Información: Se aplicó el recargo de Prima Dominical (+25% sobre tarifa base) por trabajo en día domingo.`);
+    let hasSunday = false;
+    let c = startDateTime.getTime();
+    while (c < endDateTime.getTime()) {
+      if (new Date(c).getUTCDay() === 0) {
+        hasSunday = true;
+        break;
       }
+      c += step;
+    }
 
-      if (previousHoursThisWeek > 0) {
-        warnings.push(`Información: El consultor ya tiene ${previousHoursThisWeek} horas extra registradas esta semana. De este reporte, ${doubleHours.toFixed(1)}h se pagan al 2.0x y ${tripleHours.toFixed(1)}h se pagan al 3.0x.`);
-      }
+    if (hasSunday) {
+      warnings.push(`Información: Se aplicó el recargo de Prima Dominical (+25% sobre tarifa base) por trabajo en día domingo.`);
+    }
+
+    const previousHoursThisWeek = previousMinutesThisWeek / 60;
+    if (previousHoursThisWeek > 0) {
+      const totalMinutesReported = totalHoursRaw * 60;
+      const doubleMinutesReported = Math.max(0, Math.min(totalMinutesReported, 540 - previousMinutesThisWeek));
+      const tripleMinutesReported = Math.max(0, totalMinutesReported - doubleMinutesReported);
+      warnings.push(`Información: El consultor ya tiene ${previousHoursThisWeek} horas extra registradas esta semana. De este reporte, ${(doubleMinutesReported/60).toFixed(1)}h se pagan al 2.0x y ${(tripleMinutesReported/60).toFixed(1)}h se pagan al 3.0x.`);
     }
 
   } else {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { PageHeader } from "../../components/PageHeader";
 import { updateProfile, type AuthUser } from "../../services/api";
 
@@ -451,26 +452,10 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
       </div>
 
       {/* MODAL ELEGANTE PARA EDICIÓN DE FOTO */}
-      {isPhotoModalOpen && (
-        <div style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(26, 15, 5, 0.5)",
-          backdropFilter: "blur(4px)",
-          display: "grid",
-          placeItems: "center",
-          zIndex: 500
-        }}>
-          <div className="card glass-card" style={{
-            width: "100%",
-            maxWidth: "480px",
-            padding: "2rem",
-            borderRadius: "20px",
-            background: "#fff",
-            boxShadow: "0 20px 25px -5px rgba(0,0,0,0.15)",
-            border: "1px solid #ffd8a8"
-          }}>
-            <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.2rem", color: "#7A3C10", fontWeight: 700 }}>
+      {isPhotoModalOpen && createPortal(
+        <div className="modal-overlay" onClick={() => setIsPhotoModalOpen(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "480px" }}>
+            <h3 style={{ margin: "0 0 1.25rem 0", fontSize: "1.2rem", fontWeight: 700 }}>
               Actualizar Foto de Perfil
             </h3>
 
@@ -503,16 +488,11 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                 <button
                   type="button"
                   onClick={handleDeviceUploadClick}
+                  className="ghost"
                   style={{
                     width: "100%",
-                    padding: "0.65rem",
-                    borderRadius: "10px",
-                    border: "1px dashed #E8A020",
-                    background: "#fff9f2",
-                    color: "#7A3C10",
+                    borderStyle: "dashed",
                     fontWeight: 700,
-                    cursor: "pointer",
-                    textAlign: "center",
                     fontSize: "0.9rem"
                   }}
                 >
@@ -537,47 +517,28 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                   value={tempPhotoUrl.startsWith("data:") ? "" : tempPhotoUrl}
                   onChange={(e) => setTempPhotoUrl(e.target.value)}
                   placeholder="https://ejemplo.com/foto.jpg"
-                  className="styled-input"
-                  style={{ width: "100%", padding: "0.6rem 0.85rem", borderRadius: "10px", border: "1px solid #f4d4b6", fontSize: "0.88rem" }}
                 />
               </div>
             </div>
 
-            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+            <div className="modal-actions" style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
               <button
                 type="button"
+                className="ghost"
                 onClick={() => setIsPhotoModalOpen(false)}
-                style={{
-                  padding: "0.55rem 1.25rem",
-                  borderRadius: "10px",
-                  border: "1px solid #ffd8a8",
-                  background: "#fff",
-                  color: "#7A3C10",
-                  cursor: "pointer",
-                  fontSize: "0.88rem"
-                }}
               >
                 Cancelar
               </button>
               <button
                 type="button"
                 onClick={savePhotoModal}
-                style={{
-                  padding: "0.55rem 1.25rem",
-                  borderRadius: "10px",
-                  border: "none",
-                  background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
-                  color: "#fff",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  fontSize: "0.88rem"
-                }}
               >
                 Aplicar
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Styling specific hover states */}
