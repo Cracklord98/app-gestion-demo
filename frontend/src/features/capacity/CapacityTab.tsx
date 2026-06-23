@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import type { FormEvent } from "react";
 import { PageHeader } from "../../components/PageHeader";
 import {
@@ -703,6 +704,7 @@ function AssignmentsPanel({
   const [multipleMode, setMultipleMode] = useState(false);
   const [selectedConsultantIds, setSelectedConsultantIds] = useState<string[]>([]);
   const [consultantSearch, setConsultantSearch] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     if (preselectedConsultantId) {
@@ -779,6 +781,7 @@ function AssignmentsPanel({
         });
       }
       setForm(emptyAssignmentForm);
+      setIsModalOpen(false);
       await reload();
     } catch (err) {
       onError(err instanceof Error ? err.message : "No se pudo crear la asignación");
@@ -824,118 +827,20 @@ function AssignmentsPanel({
   }
 
   return (
-    <section className="grid two-col">
-      {canWrite && (
-        <article className="card">
-          <h3>Nueva asignación</h3>
-          <form onSubmit={(e) => void handleCreate(e)} className="form-grid">
-            <select value={form.projectId} onChange={(e) => setForm((p) => ({ ...p, projectId: e.target.value }))} required>
-              <option value="" disabled hidden>Selecciona proyecto...</option>
-              {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-
-            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <label className="check" style={{ userSelect: "none", fontSize: "0.82rem" }}>
-                <input
-                  type="checkbox"
-                  checked={multipleMode}
-                  onChange={(e) => {
-                    setMultipleMode(e.target.checked);
-                    setSelectedConsultantIds([]);
-                  }}
-                />
-                Asignar múltiples consultores
-              </label>
-            </div>
-
-            {!multipleMode ? (
-              <select value={form.consultantId} onChange={(e) => setForm((p) => ({ ...p, consultantId: e.target.value }))} required={!multipleMode}>
-                <option value="" disabled hidden>Selecciona consultor...</option>
-                {consultants.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.fullName} — {c.role}</option>)}
-              </select>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", border: "1px solid #f1c79d", borderRadius: "10px", padding: "0.75rem", background: "#fffdfa" }}>
-                <input
-                  type="text"
-                  placeholder="Buscar consultor por nombre/rol..."
-                  value={consultantSearch}
-                  onChange={(e) => setConsultantSearch(e.target.value)}
-                  style={{ padding: "0.4rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", fontSize: "0.82rem", width: "100%", boxSizing: "border-box" }}
-                />
-                <div style={{ display: "flex", gap: "0.4rem" }}>
-                  <button
-                    type="button"
-                    className="ghost"
-                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                    onClick={() => {
-                      const filtered = consultants.filter((c) => c.active && (c.fullName.toLowerCase().includes(consultantSearch.toLowerCase()) || c.role.toLowerCase().includes(consultantSearch.toLowerCase())));
-                      setSelectedConsultantIds(filtered.map((c) => c.id));
-                    }}
-                  >
-                    Seleccionar todos
-                  </button>
-                  <button
-                    type="button"
-                    className="ghost"
-                    style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
-                    onClick={() => setSelectedConsultantIds([])}
-                  >
-                    Desmarcar todos
-                  </button>
-                </div>
-                <div style={{ maxHeight: "150px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.4rem", padding: "0.25rem" }}>
-                  {consultants
-                    .filter((c) => c.active)
-                    .filter((c) => c.fullName.toLowerCase().includes(consultantSearch.toLowerCase()) || c.role.toLowerCase().includes(consultantSearch.toLowerCase()))
-                    .map((c) => {
-                      const isChecked = selectedConsultantIds.includes(c.id);
-                      return (
-                        <label key={c.id} className="check" style={{ fontSize: "0.82rem", userSelect: "none" }}>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => {
-                              setSelectedConsultantIds((prev) =>
-                                isChecked ? prev.filter((id) => id !== c.id) : [...prev, c.id]
-                              );
-                            }}
-                          />
-                          <span>{c.fullName} <span style={{ color: "#9a4f0f", fontSize: "0.75rem" }}>({c.role})</span></span>
-                        </label>
-                      );
-                    })}
-                </div>
-                <span style={{ fontSize: "0.75rem", color: "#6b7280", fontWeight: 600 }}>
-                  {selectedConsultantIds.length} seleccionados
-                </span>
-              </div>
-            )}
-            <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} required />
-            <input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} required />
-            <select value={form.allocationMode} onChange={(e) => setForm((p) => ({ ...p, allocationMode: e.target.value as AllocationMode }))}>
-              <option value="PERCENTAGE">Por porcentaje</option>
-              <option value="HOURS">Por horas</option>
-            </select>
-            {form.allocationMode === "PERCENTAGE" ? (
-              <input type="number" min="1" max="200" step="1" placeholder="% de capacidad (ej: 100)" value={form.allocationPct} onChange={(e) => setForm((p) => ({ ...p, allocationPct: e.target.value }))} required />
-            ) : (
-              <>
-                <input type="number" min="1" step="0.5" placeholder="Horas por período" value={form.hoursPerPeriod} onChange={(e) => setForm((p) => ({ ...p, hoursPerPeriod: e.target.value }))} required />
-                <select value={form.periodUnit} onChange={(e) => setForm((p) => ({ ...p, periodUnit: e.target.value as "week" | "month" }))}>
-                  <option value="week">Por semana</option>
-                  <option value="month">Por mes</option>
-                </select>
-              </>
-            )}
-            <input placeholder="Rol en el proyecto (opcional)" value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} />
-            <textarea placeholder="Nota (opcional)" value={form.note} onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} />
-            <button type="submit" disabled={submitting}>{submitting ? "Creando…" : "Crear asignación"}</button>
-          </form>
-        </article>
-      )}
-
-      <article className="card" style={canWrite ? {} : { gridColumn: "1 / -1" }}>
-        <h3>Listado de asignaciones</h3>
+    <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+      <article className="card" style={{ width: "100%" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.5rem" }}>
+          <h3 style={{ margin: 0 }}>Listado de asignaciones</h3>
+          {canWrite && (
+            <button
+              type="button"
+              onClick={() => setIsModalOpen(true)}
+              style={{ fontSize: "0.85rem", padding: "0.5rem 1.2rem", borderRadius: "8px" }}
+            >
+              + Nueva asignación
+            </button>
+          )}
+        </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
           <div>
             <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Proyecto</label>
@@ -1040,7 +945,185 @@ function AssignmentsPanel({
         onConfirm={() => void handleDelete()}
         onCancel={() => setDeleteTarget(null)}
       />
-    </section>
+
+      {/* Modal para Crear Nueva Asignación */}
+      {canWrite && isModalOpen && createPortal(
+        <div className="modal-overlay" onClick={() => { setIsModalOpen(false); setForm(emptyAssignmentForm); }}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "680px", maxHeight: "90vh", overflowY: "auto" }}>
+            <div className="modal-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--border-color, #e2e8f0)", paddingBottom: "0.75rem", marginBottom: "1.25rem" }}>
+              <h2 style={{ margin: 0, fontSize: "1.2rem", color: "var(--text-strong, #1e293b)" }}>
+                Nueva asignación
+              </h2>
+              <button
+                type="button"
+                className="ghost"
+                onClick={() => { setIsModalOpen(false); setForm(emptyAssignmentForm); }}
+                style={{ fontSize: "1.1rem", padding: "0.2rem 0.5rem", lineHeight: 1 }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={(e) => void handleCreate(e)} className="form-grid two-col" style={{ gap: "1.2rem", alignItems: "start" }}>
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", gridColumn: "1 / -1" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong, #1e293b)" }}>Proyecto *</label>
+                <select value={form.projectId} onChange={(e) => setForm((p) => ({ ...p, projectId: e.target.value }))} required style={{ width: "100%" }}>
+                  <option value="" disabled hidden>Selecciona proyecto...</option>
+                  {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", gridColumn: "1 / -1" }}>
+                <label className="check" style={{ userSelect: "none", fontSize: "0.82rem", fontWeight: 600 }}>
+                  <input
+                    type="checkbox"
+                    checked={multipleMode}
+                    onChange={(e) => {
+                      setMultipleMode(e.target.checked);
+                      setSelectedConsultantIds([]);
+                    }}
+                  />
+                  Asignar múltiples consultores
+                </label>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", gridColumn: "1 / -1" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong, #1e293b)" }}>
+                  {multipleMode ? "Consultores *" : "Consultor *"}
+                </label>
+                {!multipleMode ? (
+                  <select value={form.consultantId} onChange={(e) => setForm((p) => ({ ...p, consultantId: e.target.value }))} required={!multipleMode} style={{ width: "100%" }}>
+                    <option value="" disabled hidden>Selecciona consultor...</option>
+                    {consultants.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.fullName} — {c.role}</option>)}
+                  </select>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", border: "1px solid #f1c79d", borderRadius: "10px", padding: "0.75rem", background: "#fffdfa" }}>
+                    <input
+                      type="text"
+                      placeholder="Buscar consultor por nombre/rol..."
+                      value={consultantSearch}
+                      onChange={(e) => setConsultantSearch(e.target.value)}
+                      style={{ padding: "0.4rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", fontSize: "0.82rem", width: "100%", boxSizing: "border-box" }}
+                    />
+                    <div style={{ display: "flex", gap: "0.4rem" }}>
+                      <button
+                        type="button"
+                        className="ghost"
+                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                        onClick={() => {
+                          const filtered = consultants.filter((c) => c.active && (c.fullName.toLowerCase().includes(consultantSearch.toLowerCase()) || c.role.toLowerCase().includes(consultantSearch.toLowerCase())));
+                          setSelectedConsultantIds(filtered.map((c) => c.id));
+                        }}
+                      >
+                        Seleccionar todos
+                      </button>
+                      <button
+                        type="button"
+                        className="ghost"
+                        style={{ padding: "0.25rem 0.5rem", fontSize: "0.75rem" }}
+                        onClick={() => setSelectedConsultantIds([])}
+                      >
+                        Desmarcar todos
+                      </button>
+                    </div>
+                    <div style={{ maxHeight: "150px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "0.4rem", padding: "0.25rem" }}>
+                      {consultants
+                        .filter((c) => c.active)
+                        .filter((c) => c.fullName.toLowerCase().includes(consultantSearch.toLowerCase()) || c.role.toLowerCase().includes(consultantSearch.toLowerCase()))
+                        .map((c) => {
+                          const isChecked = selectedConsultantIds.includes(c.id);
+                          return (
+                            <label key={c.id} className="check" style={{ fontSize: "0.82rem", userSelect: "none" }}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => {
+                                  setSelectedConsultantIds((prev) =>
+                                    isChecked ? prev.filter((id) => id !== c.id) : [...prev, c.id]
+                                  );
+                                }}
+                              />
+                              <span>{c.fullName} <span style={{ color: "#9a4f0f", fontSize: "0.75rem" }}>({c.role})</span></span>
+                            </label>
+                          );
+                        })}
+                    </div>
+                    <span style={{ fontSize: "0.75rem", color: "#6b7280", fontWeight: 600 }}>
+                      {selectedConsultantIds.length} seleccionados
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong, #1e293b)" }}>Fecha de inicio *</label>
+                <input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} required style={{ width: "100%" }} />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong, #1e293b)" }}>Fecha de fin *</label>
+                <input type="date" value={form.endDate} onChange={(e) => setForm((p) => ({ ...p, endDate: e.target.value }))} required style={{ width: "100%" }} />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong, #1e293b)" }}>Modo de asignación *</label>
+                <select value={form.allocationMode} onChange={(e) => setForm((p) => ({ ...p, allocationMode: e.target.value as AllocationMode }))} style={{ width: "100%" }}>
+                  <option value="PERCENTAGE">Por porcentaje</option>
+                  <option value="HOURS">Por horas</option>
+                </select>
+              </div>
+
+              {form.allocationMode === "PERCENTAGE" ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong, #1e293b)" }}>Porcentaje de capacidad *</label>
+                  <input type="number" min="1" max="200" step="1" placeholder="% de capacidad (ej: 100)" value={form.allocationPct} onChange={(e) => setForm((p) => ({ ...p, allocationPct: e.target.value }))} required style={{ width: "100%" }} />
+                </div>
+              ) : (
+                <div style={{ display: "flex", gap: "0.75rem", gridColumn: "span 1" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", flex: 1 }}>
+                    <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong, #1e293b)" }}>Horas *</label>
+                    <input type="number" min="1" step="0.5" placeholder="Horas" value={form.hoursPerPeriod} onChange={(e) => setForm((p) => ({ ...p, hoursPerPeriod: e.target.value }))} required style={{ width: "100%" }} />
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", flex: 1 }}>
+                    <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong, #1e293b)" }}>Período *</label>
+                    <select value={form.periodUnit} onChange={(e) => setForm((p) => ({ ...p, periodUnit: e.target.value as "week" | "month" }))} style={{ width: "100%" }}>
+                      <option value="week">Por semana</option>
+                      <option value="month">Por mes</option>
+                    </select>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", gridColumn: "1 / -1" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong, #1e293b)" }}>Rol en el proyecto (opcional)</label>
+                <input placeholder="Rol en el proyecto" value={form.role} onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))} style={{ width: "100%" }} />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem", gridColumn: "1 / -1" }}>
+                <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong, #1e293b)" }}>Nota (opcional)</label>
+                <textarea placeholder="Nota" value={form.note} onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} style={{ width: "100%", minHeight: "80px" }} />
+              </div>
+
+              <div className="modal-actions" style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1rem", gridColumn: "1 / -1", borderTop: "1px solid #e2e8f0", paddingTop: "1rem" }}>
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() => { setIsModalOpen(false); setForm(emptyAssignmentForm); }}
+                  disabled={submitting}
+                >
+                  Cancelar
+                </button>
+                <button type="submit" disabled={submitting}>
+                  {submitting ? "Creando…" : "Crear asignación"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
+      )}
+    </div>
   );
 }
 
