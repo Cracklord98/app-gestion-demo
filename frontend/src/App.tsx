@@ -665,11 +665,24 @@ function App() {
         if (!token) return;
         setApiAccessToken(token);
       } else {
+        const path = window.location.pathname.toLowerCase();
+        const isPublic = ["/", "/landing", "/login"].includes(path);
+        const hasSession = sessionStorage.getItem("bypass_auth") === "true";
+        if (isPublic && !hasSession) {
+          setAuthUser(null);
+          setLoading(false);
+          return;
+        }
         setApiAccessToken(null);
       }
       const me = await getMe();
       setOriginalUser(me);
       setAuthUser(me);
+      
+      if (!authWithMicrosoftEnabled) {
+        sessionStorage.setItem("bypass_auth", "true");
+      }
+
       const path = window.location.pathname.toLowerCase();
       const isPublic = ["/", "/landing", "/login"].includes(path);
       if (isPublic) {
@@ -690,11 +703,24 @@ function App() {
     setApiAccessToken(null);
     setOriginalUser(null);
     setAuthUser(null);
+    sessionStorage.removeItem("bypass_auth");
     goTo("/", true);
     if (authWithMicrosoftEnabled) {
       await instance.logoutRedirect({ postLogoutRedirectUri: `${window.location.origin}/` });
     }
   }
+
+  const handleBypassLogin = async () => {
+    try {
+      setLoading(true);
+      sessionStorage.setItem("bypass_auth", "true");
+      await bootstrap();
+    } catch (err) {
+      handleError(err instanceof Error ? err.message : "Error al iniciar bypass");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   function handleError(msg: string) {
     setError(msg);
@@ -726,7 +752,17 @@ function App() {
     }
 
     if (currentPath === "/" || currentPath === "/landing") {
-      return <LandingPage onLoginClick={() => goTo("/login")} />;
+      return (
+        <LandingPage
+          onLoginClick={() => {
+            if (authWithMicrosoftEnabled) {
+              goTo("/login");
+            } else {
+              void handleBypassLogin();
+            }
+          }}
+        />
+      );
     }
 
     return (
@@ -759,7 +795,12 @@ function App() {
           ) : (
             <>
               <p>Modo demo activo sin login Microsoft.</p>
-              <button type="button" className="ghost" onClick={() => goTo("/")}>Volver al Inicio</button>
+              <div className="inline-actions" style={{ flexDirection: "column", gap: "0.5rem" }}>
+                <button type="button" onClick={handleBypassLogin}>
+                  Ingresar como Administrador (Bypass)
+                </button>
+                <button type="button" className="ghost" onClick={() => goTo("/")}>Volver al Inicio</button>
+              </div>
             </>
           )}
         </section>

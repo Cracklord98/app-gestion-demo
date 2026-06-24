@@ -1,5 +1,6 @@
 import { isPublicHoliday, getHolidaysForYear } from "./holidays.js";
 import { prisma } from "../infra/prisma.js";
+import { normalizeCountry } from "./country.js";
 
 function getWeekRange(date: Date) {
   const d = new Date(date);
@@ -80,7 +81,13 @@ export async function calculateExtraHours(params: {
     }
   }
 
-  const country = consultant?.country || "Default";
+  const rawCountry = consultant?.country || "Default";
+  let country = "Default";
+  try {
+    country = normalizeCountry(rawCountry);
+  } catch {
+    country = "Default";
+  }
 
   // Cargar feriados corporativos/personalizados de la BD
   const customHolidays = await prisma.customHoliday.findMany({

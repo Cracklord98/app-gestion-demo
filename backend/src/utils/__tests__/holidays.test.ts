@@ -44,4 +44,30 @@ describe("Mexico holidays calculation", () => {
     const date = new Date(Date.UTC(2026, 2, 16));
     expect(isPublicHoliday(date, "Mexico")).toBe(true);
   });
+
+  it("Transmisión del Poder Ejecutivo Federal es el 1 de Octubre a partir de 2024", () => {
+    const transition2024 = new Date(Date.UTC(2024, 9, 1)); // 1 de Octubre (mes 9 es Octubre)
+    expect(isPublicHoliday(transition2024, "Mexico")).toBe(true);
+
+    const check2023 = new Date(Date.UTC(2023, 9, 1));
+    expect(isPublicHoliday(check2023, "Mexico")).toBe(false);
+  });
+
+  it("Domingos no son marcados automáticamente como festivos nacionales", () => {
+    const sunday = new Date(Date.UTC(2026, 4, 17)); // Domingo
+    expect(isPublicHoliday(sunday, "Mexico")).toBe(false);
+  });
+});
+
+describe("Accented and tilde country names normalization", () => {
+  it("Maneja correctamente 'México', 'Perú' y 'España' con tildes y caracteres especiales", () => {
+    const dateMexico = new Date(Date.UTC(2026, 0, 1));
+    expect(isPublicHoliday(dateMexico, "México")).toBe(true);
+
+    const datePeru = new Date(Date.UTC(2026, 0, 1));
+    expect(isPublicHoliday(datePeru, "Perú")).toBe(true);
+
+    const dateEspana = new Date(Date.UTC(2026, 0, 1));
+    expect(isPublicHoliday(dateEspana, "España")).toBe(true);
+  });
 });

@@ -83,17 +83,18 @@ export async function authenticate(request: FastifyRequest, reply: FastifyReply)
   });
 
   if (!user) {
-    // Mapear código de país de Azure AD (claim 'ctry' o 'country') a nombre completo para la lógica de horas extra y festivos
     const countryMap: Record<string, string> = {
       CO: "Colombia",
       PE: "Peru",
       CL: "Chile",
       MX: "Mexico",
       EC: "Ecuador",
-      US: "USA",
+      AR: "Argentina",
+      ES: "España",
+      US: "Default",
     };
     const rawCountry = (claims.ctry as string) || (claims.country as string) || "CO";
-    const mappedCountry = countryMap[rawCountry.toUpperCase()] || rawCountry;
+    const mappedCountry = countryMap[rawCountry.toUpperCase()] || "Default";
 
     // Si no existe, crearlo automáticamente
     user = await prisma.user.create({

@@ -167,6 +167,17 @@ async function ensureDefaultConfigs() {
     }
   });
 
+  await prisma.customHoliday.updateMany({
+    where: {
+      country: {
+        in: ["USA", "usa", "Estados Unidos", "United States", "US", "us", "Estados Unidos de América"]
+      }
+    },
+    data: {
+      country: "Default"
+    }
+  });
+
   // Fix any configurations with 24:00:00 diurnalEnd
   await prisma.extraHoursConfig.updateMany({
     where: { diurnalEnd: "24:00:00" },
