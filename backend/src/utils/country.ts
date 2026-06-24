@@ -1,4 +1,4 @@
-export const SUPPORTED_COUNTRIES = ["Colombia", "Peru", "Chile", "Mexico", "Ecuador", "Default"];
+export const SUPPORTED_COUNTRIES = ["Colombia", "Peru", "Chile", "Mexico", "Ecuador", "Argentina", "España", "Default"];
 
 export function normalizeCountry(countryName: string): string {
   const normalized = countryName
@@ -12,6 +12,8 @@ export function normalizeCountry(countryName: string): string {
   if (normalized === "chile") return "Chile";
   if (normalized === "mexico") return "Mexico";
   if (normalized === "ecuador") return "Ecuador";
+  if (normalized === "argentina") return "Argentina";
+  if (normalized === "espana" || normalized === "espanna" || normalized === "spain") return "España";
   
   if (
     normalized === "default" ||

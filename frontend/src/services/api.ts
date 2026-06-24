@@ -1659,6 +1659,11 @@ export async function getOfficialHolidays(country: string, year: number): Promis
   return response.data;
 }
 
+export async function listSupportedCountries(): Promise<string[]> {
+  const response = await request<ApiEnvelope<string[]>>("/api/extra-hours/countries");
+  return response.data;
+}
+
 // ─── Estimations ───────────────────────────────────────────────────────────────
 
 export type Estimation = {

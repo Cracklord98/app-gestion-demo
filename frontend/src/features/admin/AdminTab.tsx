@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { PageHeader } from "../../components/PageHeader";
-import { createAdminUser, updateAdminUser, type AdminUser, type AppRole } from "../../services/api";
+import { createAdminUser, updateAdminUser, listSupportedCountries, type AdminUser, type AppRole } from "../../services/api";
 
 const roleOptions: AppRole[] = ["ADMIN", "PM", "CONSULTANT", "FINANCE", "VIEWER"];
 
@@ -40,6 +40,12 @@ export function AdminTab({
   // Estados para el Modal de creación y edición
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<AdminUser | null>(null);
+
+  // Fetch supported countries from backend
+  const [supportedCountries, setSupportedCountries] = useState<string[]>([]);
+  useEffect(() => {
+    void listSupportedCountries().then(setSupportedCountries).catch(() => {});
+  }, []);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -236,13 +242,10 @@ export function AdminTab({
               <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
                 <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong)" }}>País</label>
                 <select value={form.country} onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}>
-                  <option value="Default">País: Default</option>
-                  <option value="Colombia">Colombia 🇨🇴</option>
-                  <option value="Peru">Perú 🇵🇪</option>
-                  <option value="Chile">Chile 🇨🇱</option>
-                  <option value="Mexico">México 🇲🇽</option>
-                  <option value="Ecuador">Ecuador 🇪🇨</option>
-                  <option value="USA">Estados Unidos 🇺🇸</option>
+                  {supportedCountries.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                  {supportedCountries.length === 0 && <option value="Default">Default</option>}
                 </select>
               </div>
 

@@ -6,6 +6,7 @@ import {
   createConsultant,
   deleteConsultant,
   updateConsultant,
+  listSupportedCountries,
   type Consultant,
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
@@ -15,9 +16,8 @@ import { ValidationErrorBox } from "../../components/ValidationErrorBox";
 import { isValidationError } from "../../utils/validation";
 import { CurrencyInput } from "../../components/CurrencyInput";
 
-const currencyOptions = ["COP", "USD", "EUR", "MXN", "PEN", "CLP"];
+const currencyOptions = ["COP", "USD", "EUR", "MXN", "PEN", "CLP", "ARS"];
 const roleOptions = ["Analista", "Desarrollador", "QA", "Arquitecto", "PM", "Data Engineer"];
-const countryOptions = ["Colombia", "Peru", "Argentina", "Chile", "Mexico", "Ecuador", "España", "Estados Unidos"];
 const seniorityOptions = ["Junior", "Mid", "Senior", "Lead"];
 
 function money(value: number, currency = "USD") {
@@ -85,6 +85,14 @@ export function ConsultantsTab({
   const [deleteTarget, setDeleteTarget] = useState<Consultant | null>(null);
   const [fxRates, setFxRates] = useState<Record<string, number>>({});
   const [fxLoading, setFxLoading] = useState(false);
+
+  // Fetch supported countries from backend
+  const [countryOptions, setCountryOptions] = useState<string[]>([]);
+  useEffect(() => {
+    void listSupportedCountries()
+      .then((countries) => setCountryOptions(countries.filter(c => c !== "Default")))
+      .catch(() => {});
+  }, []);
 
   const [filterActive, setFilterActive] = useState<string>("ALL");
   const [filterCountry, setFilterCountry] = useState<string>("ALL");

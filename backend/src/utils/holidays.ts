@@ -273,6 +273,55 @@ export function getHolidaysForYear(year: number, country: string): { date: Date;
     holidays.push({ date: new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000), name: "Viernes Santo" });
   }
 
+  // 6. ARGENTINA
+  else if (normalizedCountry === "argentina") {
+    const fixed = {
+      "01-01": "Año Nuevo",
+      "03-24": "Día Nacional de la Memoria por la Verdad y la Justicia",
+      "04-02": "Día del Veterano y de los Caídos en la Guerra de Malvinas",
+      "05-01": "Día del Trabajador",
+      "05-25": "Día de la Revolución de Mayo",
+      "06-20": "Paso a la Inmortalidad del Gral. Manuel Belgrano",
+      "07-09": "Día de la Independencia",
+      "08-17": "Paso a la Inmortalidad del Gral. José de San Martín",
+      "10-12": "Día del Respeto a la Diversidad Cultural",
+      "11-20": "Día de la Soberanía Nacional",
+      "12-08": "Día de la Inmaculada Concepción",
+      "12-25": "Navidad",
+    };
+    for (const [key, name] of Object.entries(fixed)) {
+      const [m, d] = key.split("-").map(Number);
+      holidays.push({ date: new Date(Date.UTC(year, m - 1, d)), name });
+    }
+
+    const easter = calculateEasterSunday(year);
+    holidays.push({ date: new Date(easter.getTime() - 48 * 24 * 60 * 60 * 1000), name: "Lunes de Carnaval" });
+    holidays.push({ date: new Date(easter.getTime() - 47 * 24 * 60 * 60 * 1000), name: "Martes de Carnaval" });
+    holidays.push({ date: new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000), name: "Viernes Santo" });
+  }
+
+  // 7. ESPAÑA
+  else if (normalizedCountry === "espana" || normalizedCountry === "espanna" || normalizedCountry === "spain") {
+    const fixed = {
+      "01-01": "Año Nuevo",
+      "01-06": "Epifanía del Señor",
+      "05-01": "Fiesta del Trabajo",
+      "08-15": "Asunción de la Virgen",
+      "10-12": "Fiesta Nacional de España",
+      "11-01": "Todos los Santos",
+      "12-06": "Día de la Constitución Española",
+      "12-08": "Inmaculada Concepción",
+      "12-25": "Navidad",
+    };
+    for (const [key, name] of Object.entries(fixed)) {
+      const [m, d] = key.split("-").map(Number);
+      holidays.push({ date: new Date(Date.UTC(year, m - 1, d)), name });
+    }
+
+    const easter = calculateEasterSunday(year);
+    holidays.push({ date: new Date(easter.getTime() - 2 * 24 * 60 * 60 * 1000), name: "Viernes Santo" });
+  }
+
   // 6. DEFAULT / USA
   else {
     // Fixed

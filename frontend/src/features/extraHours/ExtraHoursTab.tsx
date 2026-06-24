@@ -26,7 +26,8 @@ import {
   type ExtraHoursConfig,
   type ExtraHoursCalculationResult,
   type PayrollConsolidationRow,
-  type ApprovalDelegation
+  type ApprovalDelegation,
+  listSupportedCountries
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 
@@ -105,10 +106,34 @@ const LEGISLATIONS: Record<string, LegislationInfo> = {
       "Límite legal: Máximo 4 horas extras diarias, 12 horas semanales."
     ]
   },
+  Argentina: {
+    country: "Argentina",
+    flag: "🇦🇷",
+    desc: "Recargos de horas extra según la Ley 11.544 y la Ley de Contrato de Trabajo (LCT).",
+    points: [
+      "Divisor mensual: 200 horas (jornada legal de 48 horas semanales).",
+      "Horas extras en días hábiles: +50% de recargo (1.5x).",
+      "Horas extras en sábados después de las 13:00, domingos y feriados: +100% (2.0x).",
+      "Franja Nocturna (21:00–06:00): Jornada reducida a 7 horas.",
+      "Límite legal: Máximo 3 horas extras diarias, 30 horas mensuales."
+    ]
+  },
+  "España": {
+    country: "España",
+    flag: "🇪🇸",
+    desc: "Regulación de horas extraordinarias según el Estatuto de los Trabajadores (Real Decreto Legislativo 2/2015).",
+    points: [
+      "Divisor mensual: 160 horas (jornada legal de 40 horas semanales).",
+      "Recargo mínimo por hora extra: +75% (1.75x) en jornada diurna.",
+      "Recargo nocturno: +100% (2.0x) como mínimo.",
+      "Festivos y domingos: +100% (2.0x) diurno, +150% (2.5x) nocturno.",
+      "Límite legal absoluto: Máximo 80 horas extras anuales."
+    ]
+  },
   Default: {
-    country: "USA / Default",
-    flag: "🇺🇸",
-    desc: "Compensación estándar de horas extra semanales (Time and a Half).",
+    country: "Default",
+    flag: "🌐",
+    desc: "Compensación estándar de horas extra semanales aplicable cuando no hay legislación específica del país.",
     points: [
       "Cálculo semanal: Horas que superen las 40 horas semanales.",
       "Multiplicador: +50% de recargo (1.5x).",
@@ -129,6 +154,9 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
   // Global lists
   const [entries, setEntries] = useState<ExtraHourEntry[]>([]);
   const [loadingEntries, setLoadingEntries] = useState(false);
+
+  // Supported countries from backend
+  const [supportedCountries, setSupportedCountries] = useState<string[]>([]);
 
   // --- Custom Holidays state ---
   const [customHolidays, setCustomHolidays] = useState<CustomHoliday[]>([]);
@@ -339,6 +367,8 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
     if (can("extrahours:review") || authUser?.roles.includes("ADMIN")) {
       void loadDelegationsList();
     }
+    // Fetch supported countries from backend
+    void listSupportedCountries().then(setSupportedCountries).catch(() => {});
   }, [loadEntries, loadConfigs, loadCustomHolidaysList, loadDelegationsList, can, authUser]);
 
 
@@ -365,7 +395,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
           hnMult: 2.5,
           start: "06:00",
           end: "21:00",
-          divisor: selectedCountryConfig === "Colombia" ? 220 : (["Peru", "Ecuador", "Mexico"].includes(selectedCountryConfig) ? 240 : (selectedCountryConfig === "Chile" ? 180 : 220))
+          divisor: ({ Colombia: 220, Peru: 240, Ecuador: 240, Mexico: 240, Chile: 180, Argentina: 200, "España": 160 } as Record<string, number>)[selectedCountryConfig] ?? 220
         } : {
           limit: 12,
           dMult: 1.5,
@@ -1359,8 +1389,13 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
 
           {/* Country Selection Tabs (Pills) */}
           <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", borderBottom: "1px dashed #f4d4b6", paddingBottom: "1rem" }}>
-            {Object.keys(LEGISLATIONS).map((cName) => {
-              const leg = LEGISLATIONS[cName];
+            {(supportedCountries.length > 0 ? supportedCountries : Object.keys(LEGISLATIONS)).map((cName) => {
+              const leg = LEGISLATIONS[cName] || {
+                country: cName,
+                flag: "🌐",
+                desc: `Legislación y parámetros específicos para ${cName}.`,
+                points: []
+              };
               return (
                 <button
                   key={cName}
@@ -1387,29 +1422,39 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
           <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.8fr", gap: "2rem", alignItems: "start" }}>
             
             {/* Left Column: Legislation Helper */}
-            <div style={{
-              background: "#fffbf5",
-              border: "1px solid #fde68a",
-              borderRadius: "14px",
-              padding: "1.5rem",
-              boxShadow: "0 4px 12px rgba(154, 79, 15, 0.04)"
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
-                <span style={{ fontSize: "1.5rem" }}>{LEGISLATIONS[selectedCountryConfig].flag}</span>
-                <h4 style={{ margin: 0, fontSize: "1.1rem", color: "#9a4f0f", fontWeight: 700 }}>
-                  Legislación: {LEGISLATIONS[selectedCountryConfig].country}
-                </h4>
-              </div>
-              <p style={{ fontSize: "0.82rem", color: "var(--text-soft)", lineHeight: 1.5, marginBottom: "1.25rem" }}>
-                {LEGISLATIONS[selectedCountryConfig].desc}
-              </p>
-              
-              <ul style={{ paddingLeft: "1.2rem", margin: 0, display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "0.78rem", color: "#475569" }}>
-                {LEGISLATIONS[selectedCountryConfig].points.map((pt, idx) => (
-                  <li key={idx} style={{ lineHeight: 1.4 }}>{pt}</li>
-                ))}
-              </ul>
-            </div>
+            {(() => {
+              const activeLeg = LEGISLATIONS[selectedCountryConfig] || {
+                country: selectedCountryConfig,
+                flag: "🌐",
+                desc: "Configuración de parámetros legales cargada desde el backend.",
+                points: ["Los parámetros de este país se sincronizan dinámicamente con el backend."]
+              };
+              return (
+                <div style={{
+                  background: "#fffbf5",
+                  border: "1px solid #fde68a",
+                  borderRadius: "14px",
+                  padding: "1.5rem",
+                  boxShadow: "0 4px 12px rgba(154, 79, 15, 0.04)"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
+                    <span style={{ fontSize: "1.5rem" }}>{activeLeg.flag}</span>
+                    <h4 style={{ margin: 0, fontSize: "1.1rem", color: "#9a4f0f", fontWeight: 700 }}>
+                      Legislación: {activeLeg.country}
+                    </h4>
+                  </div>
+                  <p style={{ fontSize: "0.82rem", color: "var(--text-soft)", lineHeight: 1.5, marginBottom: "1.25rem" }}>
+                    {activeLeg.desc}
+                  </p>
+                  
+                  <ul style={{ paddingLeft: "1.2rem", margin: 0, display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "0.78rem", color: "#475569" }}>
+                    {activeLeg.points.map((pt, idx) => (
+                      <li key={idx} style={{ lineHeight: 1.4 }}>{pt}</li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
 
             {/* Right Column: Edit Form */}
             <form onSubmit={handleSaveConfig} className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff", display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -1667,12 +1712,11 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     onChange={(e) => setCalendarCountry(e.target.value)}
                     style={{ fontSize: "0.85rem", padding: "0.35rem 0.5rem" }}
                   >
-                    <option value="Colombia">Colombia 🇨🇴</option>
-                    <option value="Peru">Perú 🇵🇪</option>
-                    <option value="Chile">Chile 🇨🇱</option>
-                    <option value="Mexico">México 🇲🇽</option>
-                    <option value="Ecuador">Ecuador 🇪🇨</option>
-                    <option value="Default">USA / Default 🇺🇸</option>
+                    {supportedCountries.filter(c => c !== "Default").map(c => {
+                      const leg = LEGISLATIONS[c];
+                      return <option key={c} value={c}>{leg ? `${leg.country} ${leg.flag}` : c}</option>;
+                    })}
+                    {supportedCountries.includes("Default") && <option value="Default">{LEGISLATIONS.Default?.country ?? "Default"} {LEGISLATIONS.Default?.flag ?? "🌐"}</option>}
                   </select>
                 </div>
                 <div>
@@ -1774,11 +1818,10 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                       style={{ fontSize: "0.85rem", padding: "0.35rem 0.5rem" }}
                     >
                       <option value="All">Todos (Corporativo) 🌐</option>
-                      <option value="Colombia">Colombia 🇨🇴</option>
-                      <option value="Peru">Perú 🇵🇪</option>
-                      <option value="Chile">Chile 🇨🇱</option>
-                      <option value="Mexico">México 🇲🇽</option>
-                      <option value="Ecuador">Ecuador 🇪🇨</option>
+                      {supportedCountries.filter(c => c !== "Default").map(c => {
+                        const leg = LEGISLATIONS[c];
+                        return <option key={c} value={c}>{leg ? `${leg.country} ${leg.flag}` : c}</option>;
+                      })}
                     </select>
                   </div>
                 </div>

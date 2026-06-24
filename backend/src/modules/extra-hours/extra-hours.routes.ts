@@ -3,7 +3,7 @@ import { AppRole, ExtraHourStatus } from "@prisma/client";
 import { z } from "zod";
 import { authenticate, authorize } from "../../auth/guard.js";
 import { prisma } from "../../infra/prisma.js";
-import { normalizeCountry } from "../../utils/country.js";
+import { normalizeCountry, SUPPORTED_COUNTRIES } from "../../utils/country.js";
 import { getHolidaysForYear } from "../../utils/holidays.js";
 import { calculateExtraHours } from "../../utils/calculateExtraHours.js";
 import { notifyNewExtraHourRequest, notifyExtraHourApprovedByPM, notifyExtraHourFullyApproved, notifyExtraHourRejected } from "../../utils/notifications.js";
@@ -119,6 +119,28 @@ const defaultConfigs = [
     diurnalEnd: "23:59:00",
     monthlyDivisor: 240,
   },
+  {
+    country: "Argentina",
+    weeklyExtraHoursLimit: 12,
+    diurnalMultiplier: 1.50,
+    nocturnalMultiplier: 1.50,
+    diurnalHolidayMultiplier: 2.00,
+    nocturnalHolidayMultiplier: 2.00,
+    diurnalStart: "06:00:00",
+    diurnalEnd: "21:00:00",
+    monthlyDivisor: 200,
+  },
+  {
+    country: "España",
+    weeklyExtraHoursLimit: 12,
+    diurnalMultiplier: 1.75,
+    nocturnalMultiplier: 2.00,
+    diurnalHolidayMultiplier: 2.00,
+    nocturnalHolidayMultiplier: 2.50,
+    diurnalStart: "06:00:00",
+    diurnalEnd: "22:00:00",
+    monthlyDivisor: 160,
+  },
 ];
 
 async function ensureDefaultConfigs() {
@@ -152,7 +174,7 @@ async function ensureDefaultConfigs() {
   });
 
   const configs = await prisma.extraHoursConfig.findMany();
-  const requiredCountries = ["Default", "Colombia", "Peru", "Chile", "Mexico", "Ecuador"];
+  const requiredCountries = ["Default", "Colombia", "Peru", "Chile", "Mexico", "Ecuador", "Argentina", "España"];
   const existingCountries = configs.map((c) => c.country);
   const missingCountries = requiredCountries.filter((c) => !existingCountries.includes(c));
 
@@ -181,6 +203,17 @@ async function ensureDefaultConfigs() {
 }
 
 export async function extraHoursRoutes(app: FastifyInstance) {
+  // 0. Obtener países soportados dinámicamente
+  app.get(
+    "/countries",
+    {
+      preHandler: [authenticate, authorize([AppRole.ADMIN, AppRole.PM, AppRole.CONSULTANT, AppRole.FINANCE, AppRole.VIEWER])],
+    },
+    async () => {
+      return { data: SUPPORTED_COUNTRIES };
+    }
+  );
+
   // 1. Obtener listado de horas extras (con filtros por rol)
   app.get(
     "/",

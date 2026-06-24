@@ -26,6 +26,7 @@ import {
   type Project,
   type ProjectCapacitySummary,
   type ReleasingEntry,
+  listSupportedCountries,
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { downloadCsv } from "../../utils/csv";
@@ -201,6 +202,12 @@ function OverviewPanel({
   const [loading, setLoading] = useState(true);
   const [expandedConsultant, setExpandedConsultant] = useState<string | null>(null);
 
+  // Fetch supported countries from backend
+  const [supportedCountries, setSupportedCountries] = useState<string[]>([]);
+  useEffect(() => {
+    void listSupportedCountries().then(setSupportedCountries).catch(() => {});
+  }, []);
+
   async function load() {
     setLoading(true);
     try {
@@ -221,13 +228,13 @@ function OverviewPanel({
 
   const countries = useMemo(() => {
     const list = new Set<string>();
-    // Predefinir una lista de países comunes de Latinoamérica y operación:
-    ["Colombia", "Peru", "Argentina", "Chile", "Mexico", "Ecuador", "Bolivia", "Panama", "Costa Rica", "España", "Estados Unidos"].forEach(c => list.add(c));
+    // Países soportados desde el backend:
+    supportedCountries.filter(c => c !== "Default").forEach(c => list.add(c));
     // Más cualquier otro país presente en los consultores o proyectos:
     consultants.forEach((c) => { if (c.country) list.add(c.country); });
     projects.forEach((p) => { if (p.country) list.add(p.country); });
     return Array.from(list).sort((a, b) => a.localeCompare(b));
-  }, [consultants, projects]);
+  }, [consultants, projects, supportedCountries]);
 
   const seniorities = useMemo(() => {
     const list = new Set<string>();
