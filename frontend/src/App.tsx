@@ -235,153 +235,497 @@ const PATH_TAB_MAP: Record<string, TabId> = Object.fromEntries(
 
 // ── Landing Page ────────────────────────────────────────────────────────────
 
-function LandingPage({ onLoginClick }: { onLoginClick: () => void }) {
+function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boolean; toggleDarkMode: () => void; onLoginClick: () => void }) {
   return (
     <>
       <style>{`
-        @keyframes slideUp {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
+        .landing-container {
+          position: relative;
+          min-height: 100vh;
+          overflow-x: hidden;
+          background: ${darkMode ? "#0b0f19" : "radial-gradient(circle at 10% 20%, rgb(255, 252, 243) 0%, rgb(255, 240, 220) 90%)"};
+          color: ${darkMode ? "#f1f5f9" : "#1e293b"};
+          font-family: 'Outfit', 'Inter', sans-serif;
+          transition: background-color 0.5s ease;
+          display: flex;
+          flex-direction: column;
+        }
+
+        .landing-blob {
+          position: absolute;
+          border-radius: 50%;
+          filter: blur(80px);
+          opacity: ${darkMode ? 0.15 : 0.4};
+          z-index: 0;
+          pointer-events: none;
+          transition: opacity 0.5s ease;
+        }
+
+        .blob-1 {
+          top: 10%;
+          left: 5%;
+          width: 350px;
+          height: 350px;
+          background: #ff9c2c;
+          animation: floatBlob1 15s infinite ease-in-out;
+        }
+
+        .blob-2 {
+          bottom: 10%;
+          right: 5%;
+          width: 400px;
+          height: 400px;
+          background: #9a4f0f;
+          animation: floatBlob2 18s infinite ease-in-out;
+        }
+
+        @keyframes floatBlob1 {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.95); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+
+        @keyframes floatBlob2 {
+          0% { transform: translate(0px, 0px) scale(1); }
+          50% { transform: translate(-40px, 40px) scale(1.15); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(30px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes floatWidget {
+          0% { transform: translateY(0px); }
+          50% { transform: translateY(-8px); }
+          100% { transform: translateY(0px); }
+        }
+
+        @keyframes drawLine {
+          to { stroke-dashoffset: 0; }
+        }
+
+        .landing-header {
+          position: sticky;
+          top: 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 1.25rem 2.5rem;
+          background: ${darkMode ? "rgba(11, 15, 25, 0.65)" : "rgba(255, 255, 255, 0.6)"};
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(244, 212, 182, 0.4)"};
+          z-index: 10;
+        }
+
+        .landing-logo {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .landing-logo h2 {
+          margin: 0;
+          font-size: 1.35rem;
+          font-weight: 800;
+          background: ${darkMode ? "linear-gradient(135deg, #ffdcb5 0%, #ff9c2c 100%)" : "linear-gradient(135deg, #7a3c10 0%, #d97706 100%)"};
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .landing-badge {
+          font-size: 0.7rem;
+          padding: 0.2rem 0.6rem;
+          border-radius: 20px;
+          font-weight: 700;
+          background: ${darkMode ? "rgba(255, 156, 44, 0.15)" : "#fff3e3"};
+          color: #9a4f0f;
+          border: 1px solid ${darkMode ? "rgba(255, 156, 44, 0.3)" : "#ffdcb5"};
+        }
+
+        .landing-hero {
+          max-width: 1200px;
+          margin: 0 auto;
+          padding: 5rem 2rem 3rem 2rem;
+          display: grid;
+          grid-template-columns: 1.1fr 0.9fr;
+          gap: 4rem;
+          align-items: center;
+          z-index: 1;
+          position: relative;
+        }
+
+        @media (max-width: 900px) {
+          .landing-hero {
+            grid-template-columns: 1fr;
+            text-align: center;
+            gap: 3rem;
+            padding-top: 2rem;
           }
-          to {
-            opacity: 1;
-            transform: translateY(0);
+          .landing-hero-right {
+            justify-content: center;
           }
         }
+
+        .landing-hero-left {
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .landing-title {
+          font-size: 3.5rem;
+          font-weight: 800;
+          line-height: 1.15;
+          letter-spacing: -0.04em;
+          margin: 0 0 1.5rem 0;
+          color: ${darkMode ? "#f8fafc" : "#1e293b"};
+        }
+
+        .landing-title span {
+          background: linear-gradient(135deg, #ff9c2c 0%, #9a4f0f 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+        }
+
+        .landing-description {
+          font-size: 1.15rem;
+          line-height: 1.6;
+          color: ${darkMode ? "#94a3b8" : "#475569"};
+          margin-bottom: 2.5rem;
+          max-width: 540px;
+        }
+
+        @media (max-width: 900px) {
+          .landing-description {
+            margin-left: auto;
+            margin-right: auto;
+          }
+        }
+
+        .landing-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.75rem;
+          background: linear-gradient(135deg, #ff9c2c, #9a4f0f);
+          color: #fff;
+          border: none;
+          border-radius: 50px;
+          padding: 1.1rem 2.8rem;
+          font-size: 1.05rem;
+          font-weight: 700;
+          cursor: pointer;
+          box-shadow: 0 10px 25px ${darkMode ? "rgba(154, 79, 15, 0.4)" : "rgba(154, 79, 15, 0.2)"};
+          transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .landing-btn:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 15px 35px ${darkMode ? "rgba(255, 156, 44, 0.5)" : "rgba(154, 79, 15, 0.35)"};
+        }
+
+        .landing-btn:active {
+          transform: translateY(-1px);
+        }
+
+        .landing-hero-right {
+          display: flex;
+          justify-content: flex-end;
+          animation: fadeInUp 1s cubic-bezier(0.16, 1, 0.3, 1) 0.15s both;
+        }
+
+        .glass-mockup {
+          background: ${darkMode ? "rgba(30, 41, 59, 0.45)" : "rgba(255, 255, 255, 0.45)"};
+          backdrop-filter: blur(20px);
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.08)" : "rgba(244, 212, 182, 0.6)"};
+          border-radius: 24px;
+          width: 100%;
+          max-width: 440px;
+          padding: 1.75rem;
+          box-shadow: 0 25px 50px rgba(0, 0, 0, 0.08);
+          position: relative;
+        }
+
+        .floating-widget {
+          position: absolute;
+          background: ${darkMode ? "rgba(15, 23, 42, 0.85)" : "rgba(255, 255, 255, 0.85)"};
+          backdrop-filter: blur(15px);
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(244, 212, 182, 0.5)"};
+          border-radius: 16px;
+          padding: 0.75rem 1rem;
+          box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+          animation: floatWidget 6s infinite ease-in-out;
+        }
+
+        .widget-1 {
+          top: -20px;
+          left: -30px;
+          animation-delay: 0s;
+        }
+
+        .widget-2 {
+          bottom: -20px;
+          right: -25px;
+          animation-delay: 2s;
+        }
+
+        .features-section {
+          max-width: 1200px;
+          margin: 3rem auto 5rem auto;
+          padding: 0 2rem;
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 2rem;
+          z-index: 1;
+          position: relative;
+        }
+
+        @media (max-width: 860px) {
+          .features-section {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            margin-top: 2rem;
+          }
+        }
+
+        .feature-card {
+          background: ${darkMode ? "rgba(30, 41, 59, 0.35)" : "rgba(255, 255, 255, 0.55)"};
+          backdrop-filter: blur(15px);
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.06)" : "rgba(244, 212, 182, 0.5)"};
+          border-radius: 20px;
+          padding: 2rem;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+          transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          cursor: pointer;
+          animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
+        }
+
+        .feature-card:hover {
+          transform: translateY(-6px);
+          background: ${darkMode ? "rgba(30, 41, 59, 0.5)" : "rgba(255, 255, 255, 0.85)"};
+          border-color: #ff9c2c;
+          box-shadow: 0 15px 35px ${darkMode ? "rgba(255, 156, 44, 0.12)" : "rgba(154, 79, 15, 0.1)"};
+        }
+
+        .feature-icon-wrapper {
+          width: 48px;
+          height: 48px;
+          border-radius: 12px;
+          display: grid;
+          place-items: center;
+          background: ${darkMode ? "rgba(255, 156, 44, 0.15)" : "#fff3e3"};
+          color: #ff9c2c;
+          margin-bottom: 1.25rem;
+          transition: all 0.3s ease;
+        }
+
+        .feature-card:hover .feature-icon-wrapper {
+          background: linear-gradient(135deg, #ff9c2c, #9a4f0f);
+          color: #fff;
+          transform: scale(1.1) rotate(5deg);
+        }
+
+        .feature-card h3 {
+          margin: 0 0 0.5rem 0;
+          font-size: 1.2rem;
+          font-weight: 700;
+          color: ${darkMode ? "#f1f5f9" : "#7a3c10"};
+        }
+
+        .feature-card p {
+          margin: 0;
+          font-size: 0.9rem;
+          line-height: 1.5;
+          color: ${darkMode ? "#94a3b8" : "#64748b"};
+        }
+
+        .svg-chart-line {
+          stroke-dasharray: 400;
+          stroke-dashoffset: 400;
+          animation: drawLine 2.5s forwards cubic-bezier(0.4, 0, 0.2, 1);
+        }
       `}</style>
-      <div className="landing-container" style={{
-        minHeight: "100vh",
-        background: "radial-gradient(circle at 10% 20%, rgb(255, 252, 243) 0%, rgb(255, 240, 220) 90%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "2rem",
-        color: "#2a1e12",
-        fontFamily: "'Outfit', 'Inter', sans-serif",
-      }}>
-        <div className="landing-card" style={{
-          maxWidth: "900px",
-          background: "rgba(255, 255, 255, 0.75)",
-          backdropFilter: "blur(20px)",
-          borderRadius: "30px",
-          padding: "3.5rem 2.5rem",
-          boxShadow: "0 20px 50px rgba(122, 60, 16, 0.08)",
-          border: "1px solid rgba(244, 212, 182, 0.6)",
-          textAlign: "center",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          animation: "slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both"
-        }}>
-          <div style={{
-            background: "linear-gradient(135deg, #fff3e3, #ffdcb5)",
-            borderRadius: "50%",
-            padding: "1.5rem",
-            display: "inline-block",
-            marginBottom: "1.5rem",
-            boxShadow: "inset 0 2px 5px rgba(255,255,255,0.8), 0 10px 20px rgba(154, 79, 15, 0.05)"
-          }}>
-            <PyramidLogo size={72} />
+
+      <div className="landing-container">
+        {/* Background Blobs */}
+        <div className="landing-blob blob-1" />
+        <div className="landing-blob blob-2" />
+
+        {/* Flotante Header */}
+        <header className="landing-header">
+          <div className="landing-logo">
+            <PyramidLogo size={36} />
+            <h2>Synaptica</h2>
+            <span className="landing-badge">v1.1.0 (Demo)</span>
           </div>
-          
-          <h1 style={{
-            fontSize: "3rem",
-            fontWeight: 800,
-            background: "linear-gradient(135deg, #7a3c10 0%, #d97706 100%)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            margin: "0 0 1rem 0",
-            letterSpacing: "-0.03em"
-          }}>
-            Plataforma de Gestión Demo
-          </h1>
-          
-          <p style={{
-            fontSize: "1.2rem",
-            color: "#5f4530",
-            maxWidth: "600px",
-            lineHeight: "1.6",
-            margin: "0 0 2.5rem 0",
-          }}>
-            La consola ejecutiva para el control financiero, aprobaciones inteligentes y proyección de recursos de Synaptica.
-          </p>
 
-          <button 
-            onClick={onLoginClick}
-            style={{
-              background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
-              color: "#fff",
-              border: "none",
-              borderRadius: "50px",
-              padding: "1.2rem 3rem",
-              fontSize: "1.1rem",
-              fontWeight: 700,
-              cursor: "pointer",
-              boxShadow: "0 10px 25px rgba(154, 79, 15, 0.25)",
-              transition: "transform 0.2s ease, box-shadow 0.2s ease",
-              marginBottom: "3.5rem"
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = "translateY(-2px)";
-              e.currentTarget.style.boxShadow = "0 15px 30px rgba(154, 79, 15, 0.35)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = "none";
-              e.currentTarget.style.boxShadow = "0 10px 25px rgba(154, 79, 15, 0.25)";
-            }}
-          >
-            Ingresar a la Plataforma
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+            <button
+              type="button"
+              onClick={toggleDarkMode}
+              style={{
+                background: darkMode ? "rgba(255,255,255,0.08)" : "#fff",
+                border: "1px solid " + (darkMode ? "rgba(255,255,255,0.15)" : "#e2e8f0"),
+                borderRadius: "30px",
+                padding: "0.5rem 1rem",
+                color: darkMode ? "#f1f5f9" : "#475569",
+                fontSize: "0.82rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.4rem",
+                boxShadow: "0 2px 5px rgba(0,0,0,0.05)",
+                transition: "all 0.3s ease"
+              }}
+            >
+              {darkMode ? "☀️ Claro" : "🌙 Oscuro"}
+            </button>
+          </div>
+        </header>
 
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: "1.5rem",
-            width: "100%",
-            textAlign: "left"
-          }}>
-            <div style={{
-              background: "rgba(255, 255, 255, 0.5)",
-              padding: "1.5rem",
-              borderRadius: "20px",
-              border: "1px solid rgba(244, 212, 182, 0.4)"
-            }}>
-              <span style={{ fontSize: "1.5rem", display: "block", marginBottom: "0.5rem" }}>📊</span>
-              <h3 style={{ margin: "0 0 0.5rem 0", color: "#7a3c10", fontSize: "1.05rem" }}>Control Financiero</h3>
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#6b5440", lineHeight: "1.5" }}>
-                Monitoreo en tiempo real de presupuestos, márgenes brutos y rentabilidad del portafolio.
-              </p>
-            </div>
+        {/* Main Hero grid */}
+        <div className="landing-hero">
+          <div className="landing-hero-left">
+            <h1 className="landing-title">
+              Plataforma de<br />
+              <span>Gestión Inteligente</span>
+            </h1>
+            <p className="landing-description">
+              La consola ejecutiva premium para la planificación de recursos, control financiero multipaís y flujos de aprobaciones inteligentes de Synaptica.
+            </p>
+            <button type="button" className="landing-btn" onClick={onLoginClick}>
+              <span>Ingresar a la Plataforma</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="5" y1="12" x2="19" y2="12" />
+                <polyline points="12 5 19 12 12 19" />
+              </svg>
+            </button>
+          </div>
 
-            <div style={{
-              background: "rgba(255, 255, 255, 0.5)",
-              padding: "1.5rem",
-              borderRadius: "20px",
-              border: "1px solid rgba(244, 212, 182, 0.4)"
-            }}>
-              <span style={{ fontSize: "1.5rem", display: "block", marginBottom: "0.5rem" }}>⚡</span>
-              <h3 style={{ margin: "0 0 0.5rem 0", color: "#7a3c10", fontSize: "1.05rem" }}>Flujo de Aprobaciones</h3>
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#6b5440", lineHeight: "1.5" }}>
-                Validación secuencial de horas extra (Nivel 1: PM, Nivel 2: Nómina/Financiero) y notificaciones automáticas.
-              </p>
-            </div>
+          <div className="landing-hero-right">
+            <div className="glass-mockup">
+              {/* Floating Widget 1 */}
+              <div className="floating-widget widget-1" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ fontSize: "1.25rem" }}>📈</span>
+                <div>
+                  <span style={{ display: "block", fontSize: "0.6rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Margen Bruto</span>
+                  <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#16a34a" }}>+24.8%</span>
+                </div>
+              </div>
 
-            <div style={{
-              background: "rgba(255, 255, 255, 0.5)",
-              padding: "1.5rem",
-              borderRadius: "20px",
-              border: "1px solid rgba(244, 212, 182, 0.4)"
-            }}>
-              <span style={{ fontSize: "1.5rem", display: "block", marginBottom: "0.5rem" }}>🔮</span>
-              <h3 style={{ margin: "0 0 0.5rem 0", color: "#7a3c10", fontSize: "1.05rem" }}>Planificación de Recursos</h3>
-              <p style={{ margin: 0, fontSize: "0.85rem", color: "#6b5440", lineHeight: "1.5" }}>
-                Cálculo inteligente de capacidad, proyecciones mensuales y tasas FX bimoneda integradas.
-              </p>
+              {/* Floating Widget 2 */}
+              <div className="floating-widget widget-2" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                <span style={{ fontSize: "1.25rem" }}>⏰</span>
+                <div>
+                  <span style={{ display: "block", fontSize: "0.6rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Horas Extra</span>
+                  <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#ff9c2c" }}>Controlado</span>
+                </div>
+              </div>
+
+              {/* Mockup Content Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+                <div style={{ display: "flex", gap: "0.3rem" }}>
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#ef4444" }} />
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#eab308" }} />
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e" }} />
+                </div>
+                <span style={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 600 }}>Vista Ejecutiva</span>
+              </div>
+
+              {/* Mockup Main Chart */}
+              <div style={{ height: "130px", width: "100%", position: "relative", marginBottom: "1rem" }}>
+                <svg width="100%" height="100%" viewBox="0 0 300 130" style={{ overflow: "visible" }}>
+                  {/* Area background */}
+                  <path
+                    d="M0 130 Q 50 80, 100 100 T 200 40 T 300 20 L 300 130 Z"
+                    fill="url(#area-gradient)"
+                    opacity="0.25"
+                  />
+                  {/* Glowing Line */}
+                  <path
+                    className="svg-chart-line"
+                    d="M0 130 Q 50 80, 100 100 T 200 40 T 300 20"
+                    fill="none"
+                    stroke="url(#line-gradient)"
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                  />
+                  {/* Chart points */}
+                  <circle cx="200" cy="40" r="5" fill="#ff9c2c" stroke={darkMode ? "#1e293b" : "#fff"} strokeWidth="2" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))" }} />
+                  <circle cx="300" cy="20" r="6" fill="#9a4f0f" stroke={darkMode ? "#1e293b" : "#fff"} strokeWidth="2.5" style={{ filter: "drop-shadow(0 4px 8px rgba(154, 79, 15, 0.4))" }} />
+                  
+                  {/* Definitions */}
+                  <defs>
+                    <linearGradient id="area-gradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#ff9c2c" />
+                      <stop offset="100%" stopColor="#ff9c2c" stopOpacity="0" />
+                    </linearGradient>
+                    <linearGradient id="line-gradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stopColor="#ff9c2c" />
+                      <stop offset="50%" stopColor="#ff9c2c" />
+                      <stop offset="100%" stopColor="#9a4f0f" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+
+              {/* Stats widget inside card */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", borderTop: "1px dashed " + (darkMode ? "rgba(255,255,255,0.06)" : "rgba(244, 212, 182, 0.4)"), paddingTop: "1rem" }}>
+                <div>
+                  <span style={{ display: "block", fontSize: "0.65rem", color: "#94a3b8", fontWeight: 600 }}>Tasa de Rendimiento</span>
+                  <span style={{ fontSize: "1.2rem", fontWeight: 800, color: darkMode ? "#f8fafc" : "#1e293b" }}>92.4%</span>
+                </div>
+                <div>
+                  <span style={{ display: "block", fontSize: "0.65rem", color: "#94a3b8", fontWeight: 600 }}>Asignación de Staff</span>
+                  <span style={{ fontSize: "1.2rem", fontWeight: 800, color: darkMode ? "#f8fafc" : "#1e293b" }}>98.2%</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Features list */}
+        <section className="features-section">
+          {/* Card 1: Control Financiero */}
+          <div className="feature-card">
+            <div className="feature-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10" />
+                <line x1="12" y1="20" x2="12" y2="4" />
+                <line x1="6" y1="20" x2="6" y2="14" />
+              </svg>
+            </div>
+            <h3>Control Financiero</h3>
+            <p>Monitoreo en tiempo real de presupuestos, márgenes operativos y la rentabilidad unificada de todo tu portafolio.</p>
+          </div>
+
+          {/* Card 2: Flujo de Aprobaciones */}
+          <div className="feature-card">
+            <div className="feature-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                <polyline points="9 11 11 13 15 9" />
+              </svg>
+            </div>
+            <h3>Aprobación Eficiente</h3>
+            <p>Validación de horas extra en dos niveles (PM y Nómina) con recargos adaptados automáticamente a cada legislación local.</p>
+          </div>
+
+          {/* Card 3: Planificación de Recursos */}
+          <div className="feature-card">
+            <div className="feature-icon-wrapper">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </div>
+            <h3>Gestión de Capacidad</h3>
+            <p>Control exacto de staff disponible, vacaciones, bench interno y proyecciones automáticas de costos mensuales.</p>
+          </div>
+        </section>
       </div>
     </>
   );
@@ -754,6 +1098,8 @@ function App() {
     if (currentPath === "/" || currentPath === "/landing") {
       return (
         <LandingPage
+          darkMode={darkMode}
+          toggleDarkMode={toggleDarkMode}
           onLoginClick={() => {
             if (authWithMicrosoftEnabled) {
               goTo("/login");
