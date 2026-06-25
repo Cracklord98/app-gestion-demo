@@ -13,7 +13,7 @@ export function PageHeader({ icon, title, description, actions }: PageHeaderProp
       display: "flex",
       justifyContent: "space-between",
       alignItems: "center",
-      borderBottom: "1px solid #f4d4b6",
+      borderBottom: "1px solid var(--border-color)",
       paddingBottom: "1rem",
       marginBottom: "1.5rem",
       flexWrap: "wrap",

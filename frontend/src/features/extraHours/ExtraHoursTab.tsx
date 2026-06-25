@@ -30,6 +30,7 @@ import {
   listSupportedCountries
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
+import { displayCountryWithFlag } from "../../utils/statusLabels";
 
 
 
@@ -131,9 +132,9 @@ const LEGISLATIONS: Record<string, LegislationInfo> = {
     ]
   },
   Default: {
-    country: "Default",
-    flag: "🌐",
-    desc: "Compensación estándar de horas extra semanales aplicable cuando no hay legislación específica del país.",
+    country: "USA",
+    flag: "🇺🇸",
+    desc: "Compensación estándar de horas extra semanales aplicable cuando no hay legislación específica del país (USA/EEUU).",
     points: [
       "Cálculo semanal: Horas que superen las 40 horas semanales.",
       "Multiplicador: +50% de recargo (1.5x).",
@@ -701,11 +702,11 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case "PENDING_PM": return { label: "Pte. PM (Nivel 1)", bg: "#fef3c7", color: "#d97706" };
-      case "PENDING_FINANCE": return { label: "Pte. Nómina (Nivel 2)", bg: "#dbeafe", color: "#2563eb" };
-      case "APPROVED": return { label: "Aprobada total", bg: "#dcfce7", color: "#16a34a" };
-      case "REJECTED": return { label: "Rechazada", bg: "#fee2e2", color: "#dc2626" };
-      default: return { label: status, bg: "#f3f4f6", color: "#374151" };
+      case "PENDING_PM": return { label: "Pte. PM (Nivel 1)", bg: "var(--color-accent-10)", color: "var(--color-accent)" };
+      case "PENDING_FINANCE": return { label: "Pte. Nómina (Nivel 2)", bg: "var(--color-blue-10)", color: "var(--color-sec-blue)" };
+      case "APPROVED": return { label: "Aprobada total", bg: "var(--color-green-10)", color: "var(--color-sec-green)" };
+      case "REJECTED": return { label: "Rechazada", bg: "var(--color-red-10)", color: "var(--color-sec-red)" };
+      default: return { label: status, bg: "var(--color-primary-05)", color: "var(--color-primary)" };
     }
   };
 
@@ -850,7 +851,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
             </div>
             <div className="modal-actions" style={{ marginTop: "1rem" }}>
               <button type="button" className="ghost" onClick={() => setRejectionTargetId(null)}>Cancelar</button>
-              <button type="submit" style={{ background: "#ef4444", borderColor: "#ef4444" }}>Rechazar Solicitud</button>
+              <button type="submit" style={{ background: "var(--color-sec-red)", borderColor: "var(--color-sec-red)" }}>Rechazar Solicitud</button>
             </div>
           </form>
         </div>,
@@ -875,7 +876,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
           
           {/* Form and Preview */}
           <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "rgba(255, 255, 255, 0.55)" }}>
+            <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "rgba(255, 255, 255, 0.55)" }}>
               <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.05rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
                 Registrar Solicitud
               </h3>
@@ -891,7 +892,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     >
                       <option value="">-- Selecciona --</option>
                       {consultants.map((c) => (
-                        <option key={c.id} value={c.id}>{c.fullName} ({c.country || "N/A"})</option>
+                        <option key={c.id} value={c.id}>{c.fullName} ({displayCountryWithFlag(c.country || "Default")})</option>
                       ))}
                     </select>
                   </div>
@@ -901,7 +902,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     <input
                       type="text"
                       readOnly
-                      value={myConsultant ? `${myConsultant.fullName} (${myConsultant.country || "Default"})` : authUser?.displayName || ""}
+                      value={myConsultant ? `${myConsultant.fullName} (${displayCountryWithFlag(myConsultant.country || "Default")})` : authUser?.displayName || ""}
                       style={{ background: "#f3f4f6", cursor: "not-allowed" }}
                     />
                   </div>
@@ -964,7 +965,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
 
                 {/* Warnings warning box */}
                 {formWarnings.length > 0 && (
-                  <div style={{ padding: "0.5rem 0.75rem", background: "#fffbeb", border: "1px solid #fde68a", color: "#b45309", borderRadius: "8px", fontSize: "0.8rem" }}>
+                  <div style={{ padding: "0.5rem 0.75rem", background: "var(--color-accent-10)", border: "1px solid var(--color-accent-20)", color: "var(--color-primary)", borderRadius: "8px", fontSize: "0.8rem" }}>
                     ⚠️ <strong>Límite advertencia:</strong>
                     <ul style={{ margin: "0.25rem 0 0 0", paddingLeft: "1.2rem" }}>
                       {formWarnings.map((w, idx) => <li key={idx}>{w}</li>)}
@@ -975,7 +976,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 <button
                   type="submit"
                   disabled={reporting || previewLoading}
-                  style={{ marginTop: "0.5rem", width: "100%", background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)", border: "none" }}
+                  style={{ marginTop: "0.5rem", width: "100%", background: "var(--gradient-accent)", border: "none" }}
                 >
                   {reporting ? "Registrando..." : "Enviar a Aprobación"}
                 </button>
@@ -984,8 +985,8 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
 
             {/* Live calculation details card */}
             {previewResult && (
-              <div className="card" style={{ padding: "1.25rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fffcf9" }}>
-                <h4 style={{ margin: "0 0 0.5rem 0", color: "#9a4f0f", fontSize: "0.9rem", fontWeight: 700 }}>🧮 Simulación en Vivo (Cálculo Backend)</h4>
+              <div className="card" style={{ padding: "1.25rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "rgba(241, 163, 35, 0.03)" }}>
+                <h4 style={{ margin: "0 0 0.5rem 0", color: "var(--color-accent)", fontSize: "0.9rem", fontWeight: 700 }}>🧮 Simulación en Vivo (Cálculo Backend)</h4>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", fontSize: "0.8rem", color: "var(--text-soft)" }}>
                   <div>Horas Totales: <strong>{previewResult.totalHours} hrs</strong></div>
                   <div>¿Día Festivo?: <strong>{previewResult.isHoliday ? "Sí" : "No"}</strong></div>
@@ -1005,13 +1006,13 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     if (ctry === "Colombia") {
                       const isAfterLaw = previewResult.divisorUsed === 210;
                       return (
-                        <div style={{ gridColumn: "span 2", padding: "0.3rem 0.5rem", background: isAfterLaw ? "#ecfdf5" : "#f0f9ff", border: `1px solid ${isAfterLaw ? "#a7f3d0" : "#bae6fd"}`, color: isAfterLaw ? "#065f46" : "#075985", borderRadius: "6px", fontSize: "0.72rem", marginTop: "0.2rem" }}>
+                        <div style={{ gridColumn: "span 2", padding: "0.3rem 0.5rem", background: isAfterLaw ? "var(--color-green-10)" : "var(--color-blue-10)", border: `1px solid ${isAfterLaw ? "var(--color-sec-green)" : "var(--color-sec-blue)"}`, color: isAfterLaw ? "var(--color-sec-green)" : "var(--color-sec-blue)", borderRadius: "6px", fontSize: "0.72rem", marginTop: "0.2rem" }}>
                           ℹ️ Colombia: Se aplica la jornada de <strong>{isAfterLaw ? "42 hs (Ley 2101 - Jul 2026)" : "44 hs (Reglamento Anterior)"}</strong>
                         </div>
                       );
                     } else if (ctry === "Ecuador") {
                       return (
-                        <div style={{ gridColumn: "span 2", padding: "0.3rem 0.5rem", background: "#f0f9ff", border: "1px solid #bae6fd", color: "#075985", borderRadius: "6px", fontSize: "0.72rem", marginTop: "0.2rem" }}>
+                        <div style={{ gridColumn: "span 2", padding: "0.3rem 0.5rem", background: "var(--color-blue-10)", border: "1px solid var(--color-sec-blue)", color: "var(--color-sec-blue)", borderRadius: "6px", fontSize: "0.72rem", marginTop: "0.2rem" }}>
                           ℹ️ Ecuador: Código del Trabajo (Horas Suplementarias 50% / Extraordinarias 100% sobre divisor 240)
                         </div>
                       );
@@ -1019,8 +1020,8 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     return null;
                   })()}
 
-                  <div style={{ gridColumn: "span 2", borderTop: "1px dashed #f4d4b6", paddingTop: "0.4rem", marginTop: "0.2rem" }}>
-                    Valor Estimado Pago: <strong style={{ color: "#9a4f0f", fontSize: "0.95rem" }}>${previewResult.totalAmount.toLocaleString("es-CO")}</strong>
+                  <div style={{ gridColumn: "span 2", borderTop: "1px dashed var(--border-color)", paddingTop: "0.4rem", marginTop: "0.2rem" }}>
+                    Valor Estimado Pago: <strong style={{ color: "var(--color-accent)", fontSize: "0.95rem" }}>${previewResult.totalAmount.toLocaleString("es-CO")}</strong>
                   </div>
                 </div>
               </div>
@@ -1028,7 +1029,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
           </div>
 
           {/* List of my entries */}
-          <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+          <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "1rem" }}>
               <h3 style={{ margin: 0, fontSize: "1.05rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
                 Historial de Solicitudes
@@ -1107,7 +1108,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                                 {stat.label}
                               </span>
                               {entry.rejectionNote && (
-                                <span style={{ display: "block", color: "#ef4444", fontSize: "0.7rem", marginTop: "0.2rem", maxWidth: "150px" }}>
+                                <span style={{ display: "block", color: "var(--color-sec-red)", fontSize: "0.7rem", marginTop: "0.2rem", maxWidth: "150px" }}>
                                   Motivo: {entry.rejectionNote}
                                 </span>
                               )}
@@ -1117,7 +1118,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                                 <button
                                   type="button"
                                   onClick={() => setDeleteTargetId(entry.id)}
-                                  style={{ background: "none", color: "#ef4444", border: "none", cursor: "pointer", fontSize: "0.95rem" }}
+                                  style={{ background: "none", color: "var(--color-sec-red)", border: "none", cursor: "pointer", fontSize: "0.95rem" }}
                                   title="Eliminar solicitud"
                                 >
                                   🗑
@@ -1141,7 +1142,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
 
       {/* --- PM APPROVALS SUB-TAB --- */}
       {activeSubTab === "pm" && (
-        <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+        <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff" }}>
           <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.05rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
             Buzón de Aprobaciones del Supervisor (Nivel 1)
           </h3>
@@ -1169,7 +1170,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 <tbody>
                   {pmPendingEntries.map((entry) => (
                     <tr key={entry.id}>
-                      <td><strong>{entry.consultant?.fullName}</strong> ({entry.consultant?.country || "Default"})</td>
+                      <td><strong>{entry.consultant?.fullName}</strong> ({displayCountryWithFlag(entry.consultant?.country || "Default")})</td>
                       <td>{entry.project?.name}</td>
                       <td>{entry.date.slice(0, 10)}</td>
                       <td>{entry.startTime.slice(0, 5)} - {entry.endTime.slice(0, 5)}</td>
@@ -1192,7 +1193,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                             type="button"
                             disabled={approvingId === entry.id}
                             onClick={() => void handleApprove(entry.id)}
-                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", background: "#16a34a", borderColor: "#16a34a" }}
+                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", background: "var(--color-sec-green)", borderColor: "var(--color-sec-green)" }}
                           >
                             {approvingId === entry.id ? "Aprobando..." : "✓ Aprobar"}
                           </button>
@@ -1200,7 +1201,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                             type="button"
                             className="ghost"
                             onClick={() => { setRejectionTargetId(entry.id); setRejectionNote(""); }}
-                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", borderColor: "#fca5a5", color: "#dc2626", background: "#fff5f5" }}
+                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", borderColor: "var(--color-sec-red)", color: "var(--color-sec-red)", background: "var(--color-red-10)" }}
                           >
                             ✕ Rechazar
                           </button>
@@ -1217,7 +1218,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
 
       {/* --- FINANCE/PAYROLL APPROVALS SUB-TAB --- */}
       {activeSubTab === "finance" && (
-        <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+        <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff" }}>
           <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.05rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
             Buzón de Aprobaciones de Nómina / Recursos Humanos (Nivel 2)
           </h3>
@@ -1249,7 +1250,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     <tr key={entry.id}>
                       <td><strong>{entry.consultant?.fullName}</strong></td>
                       <td>{entry.consultant?.identification || "No asignado"}</td>
-                      <td>{entry.consultant?.country || "Default"}</td>
+                      <td>{displayCountryWithFlag(entry.consultant?.country || "Default")}</td>
                       <td>{entry.project?.name}</td>
                       <td>{entry.date.slice(0, 10)}</td>
                       <td>{entry.startTime.slice(0, 5)} - {entry.endTime.slice(0, 5)}</td>
@@ -1272,7 +1273,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                             type="button"
                             disabled={approvingId === entry.id}
                             onClick={() => void handleApprove(entry.id)}
-                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", background: "#16a34a", borderColor: "#16a34a" }}
+                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", background: "var(--color-sec-green)", borderColor: "var(--color-sec-green)" }}
                           >
                             {approvingId === entry.id ? "Aprobando..." : "✓ Aprobar Pago"}
                           </button>
@@ -1280,7 +1281,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                             type="button"
                             className="ghost"
                             onClick={() => { setRejectionTargetId(entry.id); setRejectionNote(""); }}
-                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", borderColor: "#fca5a5", color: "#dc2626", background: "#fff5f5" }}
+                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem", borderColor: "var(--color-sec-red)", color: "var(--color-sec-red)", background: "var(--color-red-10)" }}
                           >
                             ✕ Rechazar
                           </button>
@@ -1297,7 +1298,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
 
       {/* --- PAYROLL CLOSURE SUB-TAB --- */}
       {activeSubTab === "payroll" && (
-        <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+        <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff" }}>
           <h3 style={{ margin: "0 0 1rem 0", fontSize: "1.05rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
             Cierre Consolidado de Nómina Mensual
           </h3>
@@ -1320,11 +1321,11 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 ))}
               </select>
             </div>
-            <button type="button" onClick={handleLoadPayroll} disabled={loadingPayroll} style={{ padding: "0.55rem 1.2rem", background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)", border: "none" }}>
+            <button type="button" onClick={handleLoadPayroll} disabled={loadingPayroll} style={{ padding: "0.55rem 1.2rem", background: "var(--gradient-accent)", border: "none" }}>
               {loadingPayroll ? "Consolidando..." : "🔍 Consolidar Horas"}
             </button>
             {payrollRows.length > 0 && (
-              <button type="button" className="ghost" onClick={handleExportPayrollCSV} style={{ padding: "0.55rem 1.2rem", borderColor: "#f4d4b6" }}>
+              <button type="button" className="ghost" onClick={handleExportPayrollCSV} style={{ padding: "0.55rem 1.2rem", borderColor: "var(--border-color)" }}>
                 ⬇ Descargar Reporte CSV
               </button>
             )}
@@ -1355,7 +1356,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     <tr key={idx}>
                       <td><strong>{row.consultantName}</strong></td>
                       <td>{row.identification}</td>
-                      <td>{row.country}</td>
+                      <td>{displayCountryWithFlag(row.country || "Default")}</td>
                       <td>{row.currency}</td>
                       <td><strong>{row.totalHours}</strong></td>
                       <td>{row.diurnal}</td>
@@ -1363,7 +1364,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                       <td>{row.diurnalHoliday}</td>
                       <td>{row.nocturnalHoliday}</td>
                       <td><strong>${row.totalAmountLocal.toLocaleString("es-CO")}</strong></td>
-                      <td><strong style={{ color: "#b45309" }}>${row.totalAmountUSD.toLocaleString("es-CO", { maximumFractionDigits: 2 })} USD</strong></td>
+                      <td><strong style={{ color: "var(--color-accent)" }}>${row.totalAmountUSD.toLocaleString("es-CO", { maximumFractionDigits: 2 })} USD</strong></td>
                     </tr>
                   ))}
                 </tbody>
@@ -1378,7 +1379,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           
           {/* Header */}
-          <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "rgba(255, 255, 255, 0.55)" }}>
+          <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "rgba(255, 255, 255, 0.55)" }}>
             <h3 style={{ margin: 0, fontSize: "1.15rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
               ⚙ Configuración Multipaís de Horas Extra
             </h3>
@@ -1388,7 +1389,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
           </div>
 
           {/* Country Selection Tabs (Pills) */}
-          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", borderBottom: "1px dashed #f4d4b6", paddingBottom: "1rem" }}>
+          <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", borderBottom: "1px dashed var(--border-color)", paddingBottom: "1rem" }}>
             {(supportedCountries.length > 0 ? supportedCountries : Object.keys(LEGISLATIONS)).map((cName) => {
               const leg = LEGISLATIONS[cName] || {
                 country: cName,
@@ -1400,7 +1401,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 <button
                   key={cName}
                   type="button"
-                  className={selectedCountryConfig === cName ? "" : "ghost"}
+                  className={`country-tab-btn ${selectedCountryConfig === cName ? "active" : "ghost"}`}
                   onClick={() => setSelectedCountryConfig(cName)}
                   style={{
                     fontSize: "0.85rem",
@@ -1430,24 +1431,18 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 points: ["Los parámetros de este país se sincronizan dinámicamente con el backend."]
               };
               return (
-                <div style={{
-                  background: "#fffbf5",
-                  border: "1px solid #fde68a",
-                  borderRadius: "14px",
-                  padding: "1.5rem",
-                  boxShadow: "0 4px 12px rgba(154, 79, 15, 0.04)"
-                }}>
+                <div className="legislation-card">
                   <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.75rem" }}>
                     <span style={{ fontSize: "1.5rem" }}>{activeLeg.flag}</span>
-                    <h4 style={{ margin: 0, fontSize: "1.1rem", color: "#9a4f0f", fontWeight: 700 }}>
+                    <h4 style={{ margin: 0, fontSize: "1.1rem", fontWeight: 700 }}>
                       Legislación: {activeLeg.country}
                     </h4>
                   </div>
-                  <p style={{ fontSize: "0.82rem", color: "var(--text-soft)", lineHeight: 1.5, marginBottom: "1.25rem" }}>
+                  <p style={{ fontSize: "0.82rem", lineHeight: 1.5, marginBottom: "1.25rem" }}>
                     {activeLeg.desc}
                   </p>
                   
-                  <ul style={{ paddingLeft: "1.2rem", margin: 0, display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "0.78rem", color: "#475569" }}>
+                  <ul style={{ paddingLeft: "1.2rem", margin: 0, display: "flex", flexDirection: "column", gap: "0.6rem", fontSize: "0.78rem" }}>
                     {activeLeg.points.map((pt, idx) => (
                       <li key={idx} style={{ lineHeight: 1.4 }}>{pt}</li>
                     ))}
@@ -1457,7 +1452,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
             })()}
 
             {/* Right Column: Edit Form */}
-            <form onSubmit={handleSaveConfig} className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff", display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <form onSubmit={handleSaveConfig} className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff", display: "flex", flexDirection: "column", gap: "1rem" }}>
               <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
                 Editar Parámetros - {selectedCountryConfig}
               </h4>
@@ -1641,9 +1636,9 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                   onClick={handleRestoreDefaults}
                   disabled={savingConfig}
                   style={{
-                    background: "rgba(239, 68, 68, 0.08)",
-                    color: "#dc2626",
-                    border: "1px solid #fecaca",
+                    background: "var(--color-red-10)",
+                    color: "var(--color-sec-red)",
+                    border: "1px solid var(--color-sec-red)",
                     padding: "0.5rem 1.25rem",
                     borderRadius: "8px",
                     fontWeight: 600,
@@ -1651,8 +1646,8 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     transition: "all 0.2s ease"
                   }}
                   onMouseOver={(e) => {
-                    e.currentTarget.style.background = "rgba(239, 68, 68, 0.15)";
-                    e.currentTarget.style.borderColor = "#f87171";
+                    e.currentTarget.style.background = "var(--color-red-20)";
+                    e.currentTarget.style.borderColor = "var(--color-sec-red)";
                   }}
                   onMouseOut={(e) => {
                     e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)";
@@ -1665,11 +1660,12 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                   type="submit"
                   disabled={savingConfig}
                   style={{
-                    background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                    background: "var(--gradient-accent)",
                     border: "none",
                     fontWeight: 600,
                     padding: "0.5rem 1.25rem",
                     borderRadius: "8px",
+                    color: "white"
                   }}
                 >
                   {savingConfig ? "Guardando..." : "Guardar Configuración"}
@@ -1687,7 +1683,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           
           {/* Header */}
-          <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "rgba(255, 255, 255, 0.55)" }}>
+          <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "rgba(255, 255, 255, 0.55)" }}>
             <h3 style={{ margin: 0, fontSize: "1.15rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
               📅 Gestión de Días No Laborables y Festivos
             </h3>
@@ -1699,7 +1695,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
           <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.8fr", gap: "2rem", alignItems: "start" }}>
             
             {/* Left Column: Official Holiday Calendar */}
-            <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+            <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff" }}>
               <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
                 🗓️ Calendario de Festivos Oficiales
               </h4>
@@ -1763,12 +1759,12 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                           {formattedDate}
                         </span>
                         <span style={{ 
-                          color: h.isCustom ? "#047857" : "#9a4f0f", 
-                          background: h.isCustom ? "#ecfdf5" : "#fffbeb", 
+                          color: h.isCustom ? "var(--color-sec-green)" : "var(--color-accent)", 
+                          background: h.isCustom ? "var(--color-green-10)" : "var(--color-accent-10)", 
                           padding: "0.15rem 0.4rem", 
                           borderRadius: "12px", 
                           fontSize: "0.72rem", 
-                          border: h.isCustom ? "1px solid #a7f3d0" : "1px solid #fde68a" 
+                          border: h.isCustom ? "1px solid var(--color-sec-green)" : "1px solid var(--color-accent-20)" 
                         }}>
                           {h.name} {h.isCustom ? "🌐" : "🏛️"}
                         </span>
@@ -1783,7 +1779,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               
               {/* Form to Create Custom Holiday */}
-              <form onSubmit={handleAddHoliday} className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+              <form onSubmit={handleAddHoliday} className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff" }}>
                 <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
                   ➕ Agregar Feriado Corporativo / Especial
                 </h4>
@@ -1831,10 +1827,13 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     type="submit"
                     disabled={savingHoliday}
                     style={{
-                      background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                      background: "var(--gradient-accent)",
                       border: "none",
                       padding: "0.45rem 1rem",
-                      fontSize: "0.8rem"
+                      fontSize: "0.8rem",
+                      color: "white",
+                      borderRadius: "8px",
+                      cursor: "pointer"
                     }}
                   >
                     {savingHoliday ? "Guardando..." : "Agregar Feriado"}
@@ -1843,7 +1842,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
               </form>
 
               {/* Table of Custom Holidays */}
-              <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+              <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff" }}>
                 <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
                   📋 Feriados Corporativos Registrados
                 </h4>
@@ -1898,7 +1897,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                                   className="ghost"
                                   onClick={() => handleDeleteHoliday(h.id)}
                                   style={{
-                                    color: "#ef4444",
+                                    color: "var(--color-sec-red)",
                                     padding: "0.25rem 0.5rem",
                                     fontSize: "0.75rem",
                                     border: "none",
@@ -1930,7 +1929,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           
           {/* Header */}
-          <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "rgba(255, 255, 255, 0.55)" }}>
+          <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "rgba(255, 255, 255, 0.55)" }}>
             <h3 style={{ margin: 0, fontSize: "1.15rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
               🤝 Delegación de Aprobaciones
             </h3>
@@ -1942,7 +1941,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
           <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1.8fr", gap: "2rem", alignItems: "start" }}>
             
             {/* Left Column: Create Delegation */}
-            <form onSubmit={handleAddDelegation} className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff", display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <form onSubmit={handleAddDelegation} className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff", display: "flex", flexDirection: "column", gap: "1rem" }}>
               <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
                 ➕ Registrar Nueva Delegación
               </h4>
@@ -2003,10 +2002,15 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 type="submit"
                 disabled={savingDelegation}
                 style={{
-                  background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                  background: "var(--gradient-accent)",
                   border: "none",
                   marginTop: "0.5rem",
-                  width: "100%"
+                  width: "100%",
+                  color: "white",
+                  borderRadius: "8px",
+                  padding: "0.55rem",
+                  fontWeight: 600,
+                  cursor: "pointer"
                 }}
               >
                 {savingDelegation ? "Guardando..." : "Delegar Aprobación"}
@@ -2014,7 +2018,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
             </form>
 
             {/* Right Column: Delegations List */}
-            <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+            <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff" }}>
               <h4 style={{ margin: 0, paddingBottom: "0.5rem", borderBottom: "1px solid #f3f4f6", fontSize: "0.95rem", color: "var(--text-strong)" }}>
                 📋 Delegaciones Activas y Registradas
               </h4>
@@ -2056,7 +2060,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                                 className="ghost"
                                 onClick={() => handleDeleteDelegation(d.id)}
                                 style={{
-                                  color: "#ef4444",
+                                  color: "var(--color-sec-red)",
                                   padding: "0.25rem 0.5rem",
                                   fontSize: "0.75rem",
                                   border: "none",

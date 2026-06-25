@@ -83,7 +83,7 @@ export function DateRangePicker({
           role="listbox"
           style={{
             position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 200,
-            background: "#fff", border: "1px solid #f1c79d", borderRadius: "12px",
+            background: "#fff", border: "1px solid var(--color-primary-20)", borderRadius: "12px",
             boxShadow: "0 8px 24px rgba(15,23,42,0.12)", minWidth: "16rem",
             padding: "0.5rem",
           }}
@@ -115,8 +115,8 @@ export function DateRangePicker({
           </div>
 
           {/* Custom */}
-          <div style={{ borderTop: "1px solid #f4d4b6", paddingTop: "0.5rem" }}>
-            <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.35rem" }}>
+          <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "0.5rem" }}>
+            <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.35rem" }}>
               Personalizado
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.35rem" }}>
@@ -148,7 +148,7 @@ export function DateRangePicker({
               onClick={clear}
               style={{
                 marginTop: "0.4rem", width: "100%", background: "none",
-                border: "1px solid #f1c79d", color: "#9a3412",
+                border: "1px solid var(--color-primary-20)", color: "#9a3412",
                 fontSize: "0.75rem", padding: "0.3rem",
               }}
             >

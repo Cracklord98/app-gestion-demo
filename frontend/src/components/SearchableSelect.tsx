@@ -205,7 +205,7 @@ export function SearchableSelect({
         )}
         <span style={{
           fontSize: "0.65rem",
-          color: "#9a4f0f",
+          color: "var(--color-accent)",
           transition: "transform 0.22s ease",
           transform: isOpen ? "rotate(180deg)" : "rotate(0deg)"
         }}>
@@ -223,7 +223,7 @@ export function SearchableSelect({
             right: 0,
             marginTop: "6px",
             background: "#ffffff",
-            border: "1px solid #f1c79d",
+            border: "1px solid var(--color-primary-20)",
             borderRadius: "10px",
             boxShadow: "0 10px 25px -5px rgba(154, 79, 15, 0.15), 0 8px 10px -6px rgba(154, 79, 15, 0.15)",
             zIndex: 1000,
@@ -248,7 +248,7 @@ export function SearchableSelect({
                   padding: "0.4rem 0.6rem",
                   fontSize: "0.82rem",
                   borderRadius: "6px",
-                  border: "1px solid #f1c79d",
+                  border: "1px solid var(--color-primary-20)",
                   background: "#ffffff",
                   outline: "none",
                   boxSizing: "border-box"

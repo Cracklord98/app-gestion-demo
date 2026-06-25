@@ -713,7 +713,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
     switch (status) {
       case "completed": return { label: "Completado", bg: "#dcfce7", color: "#15803d" };
       case "in_progress": return { label: "En Progreso", bg: "#dbeafe", color: "#1d4ed8" };
-      case "pending": return { label: "Pendiente", bg: "#fef3c7", color: "#b45309" };
+      case "pending": return { label: "Pendiente", bg: "#fef3c7", color: "var(--color-accent)" };
       case "blocked": return { label: "Bloqueado", bg: "#fee2e2", color: "#b91c1c" };
       case "cancelled": return { label: "Cancelado", bg: "#f3f4f6", color: "#4b5563" };
       default: return { label: status, bg: "#f3f4f6", color: "#374151" };
@@ -867,13 +867,13 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               type="button"
               onClick={() => handleOpenAddModal()}
               style={{
-                background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                background: "var(--gradient-accent)",
                 color: "#fff",
                 border: "none",
                 fontSize: "0.85rem",
                 padding: "0.5rem 1rem",
                 borderRadius: "8px",
-                boxShadow: "0 2px 8px rgba(154, 79, 15, 0.2)",
+                boxShadow: "0 2px 8px rgba(241, 163, 35, 0.2)",
                 cursor: "pointer"
               }}
             >
@@ -884,7 +884,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
       />
 
       {/* Global Filters Panel */}
-      <div className="card glass-card filters-panel" style={{ position: "relative", zIndex: 20, padding: "1rem", borderRadius: "12px", border: "1px solid #f4d4b6", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
+      <div className="card glass-card filters-panel" style={{ position: "relative", zIndex: 20, padding: "1rem", borderRadius: "12px", border: "1px solid var(--border-color)", display: "flex", gap: "1rem", flexWrap: "wrap", alignItems: "flex-end" }}>
         {(authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM") || authUser?.roles.includes("FINANCE")) ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", minWidth: "220px" }}>
             <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)" }}>Filtrar por Consultor</label>
@@ -1001,8 +1001,8 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
       </div>
 
       {shiftConfigOpen && (
-        <div className="card glass-card" style={{ padding: "0.75rem 1rem", border: "1px solid #f4d4b6", marginTop: "-0.5rem", marginBottom: "0.5rem", display: "flex", gap: "1rem", alignItems: "center" }}>
-          <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#9a4f0f" }}>Configuración de Jornada Normal:</span>
+        <div className="card glass-card" style={{ padding: "0.75rem 1rem", border: "1px solid var(--border-color)", marginTop: "-0.5rem", marginBottom: "0.5rem", display: "flex", gap: "1rem", alignItems: "center" }}>
+          <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--color-accent)" }}>Configuración de Jornada Normal:</span>
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <label style={{ fontSize: "0.75rem", color: "var(--text-soft)" }}>Inicio:</label>
             <select
@@ -1039,7 +1039,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           
           {/* Week Selector Controls */}
-          <div className="nav-bar-week" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6" }}>
+          <div className="nav-bar-week" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid var(--border-color)" }}>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button type="button" className="ghost" onClick={() => navigateWeek(-1)} style={{ padding: "0.3rem 0.6rem" }}>◀ Semana anterior</button>
               <button type="button" className="ghost" onClick={() => setSelectedDate(new Date())} style={{ padding: "0.3rem 0.6rem", fontWeight: 700 }}>📅 Hoy</button>
@@ -1170,7 +1170,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           
           {/* Month Navigator */}
-          <div className="nav-bar-week" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6" }}>
+          <div className="nav-bar-week" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid var(--border-color)" }}>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <button type="button" className="ghost" onClick={() => navigateMonth(-1)} style={{ padding: "0.3rem 0.6rem" }}>◀ Mes anterior</button>
               <button type="button" className="ghost" onClick={() => setSelectedDate(new Date())} style={{ padding: "0.3rem 0.6rem", fontWeight: 700 }}>📅 Hoy</button>
@@ -1366,7 +1366,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
         <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
           
           {/* Header Controls for Report */}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "1rem", borderRadius: "14px", border: "1px solid #f4d4b6" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", background: "#fdf8f5", padding: "1rem", borderRadius: "14px", border: "1px solid var(--border-color)" }}>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
               <strong style={{ fontSize: "1rem", color: "var(--text-strong)" }}>
                 Reporte de Actividades del Equipo
@@ -1381,7 +1381,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             </div>
             
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Período:</span>
+              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Período:</span>
               <select 
                 value={reportRange} 
                 onChange={(e) => setReportRange(e.target.value as "week" | "month" | "all")}
@@ -1400,7 +1400,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             <div className="card glass-card" style={{ padding: "1.25rem" }}>
               <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Horas Reales / Estimadas</span>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
-                <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>{reportStats.totalActualHours.toFixed(1)}h</strong>
+                <strong style={{ fontSize: "1.8rem", color: "var(--color-accent)", fontFamily: "var(--display)" }}>{reportStats.totalActualHours.toFixed(1)}h</strong>
                 <span style={{ fontSize: "0.8rem", color: "var(--text-soft)" }}>/ {reportStats.totalEstimatedHours.toFixed(1)}h est.</span>
               </div>
               <div style={{ marginTop: "0.5rem", fontSize: "0.72rem", display: "flex", gap: "0.3rem", color: reportStats.totalActualHours >= reportStats.totalEstimatedHours ? "#16a34a" : "#dc2626" }}>
@@ -1413,7 +1413,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             <div className="card glass-card" style={{ padding: "1.25rem" }}>
               <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Completitud de Tareas</span>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
-                <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>{reportStats.completedPct}%</strong>
+                <strong style={{ fontSize: "1.8rem", color: "var(--color-accent)", fontFamily: "var(--display)" }}>{reportStats.completedPct}%</strong>
                 <span style={{ fontSize: "0.8rem", color: "var(--text-soft)" }}>({reportStats.totalCount} acts. totales)</span>
               </div>
               <div style={{ marginTop: "0.5rem", fontSize: "0.72rem", color: "var(--text-soft)" }}>
@@ -1425,7 +1425,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             <div className="card glass-card" style={{ padding: "1.25rem" }}>
               <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Promedio por Consultor</span>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
-                <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>
+                <strong style={{ fontSize: "1.8rem", color: "var(--color-accent)", fontFamily: "var(--display)" }}>
                   {(consultants.length > 0 ? reportStats.totalActualHours / consultants.length : 0).toFixed(1)}h
                 </strong>
                 <span style={{ fontSize: "0.8rem", color: "var(--text-soft)" }}>por consultor activo</span>
@@ -1439,7 +1439,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             <div className="card glass-card" style={{ padding: "1.25rem" }}>
               <span style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-soft)", textTransform: "uppercase", display: "block", marginBottom: "0.4rem" }}>Sobrecarga de Reuniones (Teams)</span>
               <div style={{ display: "flex", alignItems: "baseline", gap: "0.4rem" }}>
-                <strong style={{ fontSize: "1.8rem", color: "#9a4f0f", fontFamily: "var(--display)" }}>
+                <strong style={{ fontSize: "1.8rem", color: "var(--color-accent)", fontFamily: "var(--display)" }}>
                   {reportStats.totalActualHours > 0 
                     ? Math.round(((reportStats.hoursByType["🤝 Reunión"] || 0) / reportStats.totalActualHours) * 100)
                     : 0}%
@@ -1470,7 +1470,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                           <span>{hrs.toFixed(1)}h ({pct}% )</span>
                         </div>
                         <div style={{ width: "100%", height: "8px", background: "#f3f4f6", borderRadius: "4px", overflow: "hidden" }}>
-                          <div style={{ width: `${pct}%`, height: "100%", background: "linear-gradient(90deg, #ff9c2c, #9a4f0f)", borderRadius: "4px" }} />
+                          <div style={{ width: `${pct}%`, height: "100%", background: "var(--gradient-accent)", borderRadius: "4px" }} />
                         </div>
                       </div>
                     );
@@ -1481,7 +1481,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
 
             {/* Chart 2: Activity Type distribution */}
             <div className="card" style={{ padding: "1.5rem" }}>
-              <h4 style={{ margin: "0 0 1.25rem 0", color: "#5f2f00", fontSize: "0.95rem" }}>📊 Horas por Tipo de Actividad</h4>
+              <h4 style={{ margin: "0 0 1.25rem 0", color: "#121228", fontSize: "0.95rem" }}>📊 Horas por Tipo de Actividad</h4>
               {Object.keys(reportStats.hoursByType).length === 0 ? (
                 <p style={{ fontStyle: "italic", color: "var(--text-soft)", fontSize: "0.85rem", textAlign: "center", padding: "2rem" }}>Sin datos de tipo de actividad para este periodo</p>
               ) : (
@@ -1585,7 +1585,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                               setView("week");
                             }}
                             className="ghost"
-                            style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem", borderColor: "#f4d4b6", color: "#9a4f0f" }}
+                            style={{ padding: "0.2rem 0.5rem", fontSize: "0.75rem", borderColor: "var(--border-color)", color: "var(--color-accent)" }}
                           >
                             Ver Actividades
                           </button>
@@ -1604,7 +1604,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
       {modalOpen && createPortal(
         <div className="modal-overlay" onClick={() => setModalOpen(false)}>
           <form onSubmit={handleSubmit} className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: "640px" }}>
-            <div className="modal-header" style={{ marginBottom: "1.25rem", borderBottom: "1px solid var(--border-color, #f4d4b6)", paddingBottom: "0.75rem" }}>
+            <div className="modal-header" style={{ marginBottom: "1.25rem", borderBottom: "1px solid var(--border-color, var(--border-color))", paddingBottom: "0.75rem" }}>
               <h2 style={{ margin: 0, color: "var(--text-strong, #5f2f00)", fontSize: "1.25rem", fontWeight: 700 }}>
                 {editingActivity ? "✍️ Editar Actividad" : "➕ Registrar Nueva Actividad"}
               </h2>
@@ -1614,7 +1614,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             <div className="form-grid two-col" style={{ gap: "1rem" }}>
               
               <div className="full-width" style={{ gridColumn: "span 2" }}>
-                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Título de la Actividad *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Título de la Actividad *</label>
                 <input
                   type="text"
                   required
@@ -1625,7 +1625,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div className="full-width" style={{ gridColumn: "span 2" }}>
-                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Descripción</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Descripción</label>
                 <textarea
                   rows={2}
                   placeholder="Detalles adicionales del trabajo realizado..."
@@ -1635,7 +1635,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div>
-                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Tipo de Actividad *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Tipo de Actividad *</label>
                 <select 
                   value={formType} 
                   onChange={(e) => setFormType(e.target.value as ActivityType)} 
@@ -1651,7 +1651,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div>
-                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Proyecto Vincular (Opcional)</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Proyecto Vincular (Opcional)</label>
                 <SearchableSelect
                   options={projects.map((p) => ({ value: p.id, label: p.name }))}
                   value={formProjectId}
@@ -1663,7 +1663,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
 
               {(authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM")) ? (
                 <div>
-                  <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Consultor *</label>
+                  <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Consultor *</label>
                   <SearchableSelect
                     options={consultants.map((c) => ({ value: c.id, label: c.fullName }))}
                     value={formConsultantId}
@@ -1674,7 +1674,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                 </div>
               ) : (
                 <div>
-                  <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Consultor</label>
+                  <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Consultor</label>
                   <input
                     type="text"
                     readOnly
@@ -1685,7 +1685,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               )}
 
               <div>
-                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Fecha Planificada *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Fecha Planificada *</label>
                 <input
                   type="date"
                   required
@@ -1695,7 +1695,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div>
-                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Horas Estimadas *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Horas Estimadas *</label>
                 <input
                   type="number"
                   min="0"
@@ -1707,7 +1707,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div>
-                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Horas Reales (Ejecutadas) *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Horas Reales (Ejecutadas) *</label>
                 <input
                   type="number"
                   min="0"
@@ -1719,7 +1719,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div>
-                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Prioridad *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Prioridad *</label>
                 <select 
                   value={formPriority} 
                   onChange={(e) => setFormPriority(e.target.value as ActivityPriority)} 
@@ -1733,7 +1733,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div>
-                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Estado *</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Estado *</label>
                 <select 
                   value={formStatus} 
                   onChange={(e) => setFormStatus(e.target.value as ActivityStatus)} 
@@ -1748,7 +1748,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               </div>
 
               <div style={{ gridColumn: "span 2" }}>
-                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "#9a4f0f" }}>Comentarios / Notas internas</label>
+                <label className="form-label" style={{ fontSize: "0.78rem", fontWeight: 700, color: "var(--color-accent)" }}>Comentarios / Notas internas</label>
                 <textarea
                   rows={2}
                   placeholder="Observaciones de avance, impedimentos, etc..."
@@ -1856,7 +1856,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                 <button
                   type="submit"
                   disabled={submitting}
-                  style={{ background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)", border: "none", color: "#fff", cursor: "pointer", borderRadius: "6px", padding: "0.5rem 1rem", fontWeight: 700 }}
+                  style={{ background: "var(--gradient-accent)", border: "none", color: "#fff", cursor: "pointer", borderRadius: "6px", padding: "0.5rem 1rem", fontWeight: 700 }}
                 >
                   {submitting ? "Guardando..." : "Guardar Actividad"}
                 </button>

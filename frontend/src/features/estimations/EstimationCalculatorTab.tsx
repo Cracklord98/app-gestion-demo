@@ -959,11 +959,11 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
             <button type="button" onClick={() => setShowEducation((v) => !v)} className="ghost" style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px", borderColor: "#c4b5fd", color: "#7c3aed" }}>
               {showEducation ? "🎓 Ocultar Guía Educativa" : "🎓 Mostrar Guía Educativa"}
             </button>
-            <button type="button" onClick={handleExportCSV} className="ghost" style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px", borderColor: "#ff9c2c", color: "#9a4f0f" }}>
+            <button type="button" onClick={handleExportCSV} className="ghost" style={{ fontSize: "0.85rem", padding: "0.5rem 1rem", borderRadius: "8px", borderColor: "var(--border-color)", color: "#d97706" }}>
               ⬇ Exportar CSV
             </button>
             {canWrite && (
-              <button type="button" onClick={handleSave} disabled={saving} style={{ fontSize: "0.85rem", padding: "0.5rem 1.25rem", borderRadius: "8px", border: "none", background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)", color: "#fff", fontWeight: 700, cursor: "pointer" }}>
+              <button type="button" onClick={handleSave} disabled={saving} style={{ fontSize: "0.85rem", padding: "0.5rem 1.25rem", borderRadius: "8px", border: "none", background: "var(--gradient-accent)", color: "#fff", fontWeight: 700, cursor: "pointer" }}>
                 {saving ? "Guardando..." : "💾 Guardar Estimación"}
               </button>
             )}
@@ -978,7 +978,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
       )}
 
       {/* Main Tab selectors for Estimator / Weights Calibrator */}
-      <div style={{ display: "flex", gap: "0.5rem", borderBottom: "1px solid #ffd8a8", paddingBottom: "0.5rem", marginBottom: "-1rem" }}>
+      <div style={{ display: "flex", gap: "0.5rem", borderBottom: "1px solid var(--border-color)", paddingBottom: "0.5rem", marginBottom: "-1rem" }}>
         <button
           type="button"
           onClick={() => setActiveMainTab("estimator")}
@@ -986,11 +986,11 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
             padding: "0.6rem 1.25rem",
             borderRadius: "8px 8px 0 0",
             border: "none",
-            background: activeMainTab === "estimator" ? "linear-gradient(135deg, #ffe8cc, #fffdfb)" : "transparent",
-            color: activeMainTab === "estimator" ? "#9a4f0f" : "var(--text-soft)",
+            background: activeMainTab === "estimator" ? "rgba(241, 163, 35, 0.08)" : "transparent",
+            color: activeMainTab === "estimator" ? "#d97706" : "var(--text-soft)",
             fontWeight: 700,
             cursor: "pointer",
-            borderBottom: activeMainTab === "estimator" ? "3px solid #ff9c2c" : "none",
+            borderBottom: activeMainTab === "estimator" ? "3px solid #f1a323" : "none",
             transition: "all 0.2s"
           }}
         >
@@ -1003,11 +1003,11 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
             padding: "0.6rem 1.25rem",
             borderRadius: "8px 8px 0 0",
             border: "none",
-            background: activeMainTab === "weights" ? "linear-gradient(135deg, #ffe8cc, #fffdfb)" : "transparent",
-            color: activeMainTab === "weights" ? "#9a4f0f" : "var(--text-soft)",
+            background: activeMainTab === "weights" ? "rgba(241, 163, 35, 0.08)" : "transparent",
+            color: activeMainTab === "weights" ? "#d97706" : "var(--text-soft)",
             fontWeight: 700,
             cursor: "pointer",
-            borderBottom: activeMainTab === "weights" ? "3px solid #ff9c2c" : "none",
+            borderBottom: activeMainTab === "weights" ? "3px solid #f1a323" : "none",
             transition: "all 0.2s"
           }}
         >
@@ -1020,13 +1020,13 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
           {/* Educational Guide Drawer */}
           {showEducation && (
             <div style={{
-              background: "linear-gradient(135deg, #fff9f2, #fffcf8)",
-              border: "1px solid #ffd8a8",
+              background: "rgba(241, 163, 35, 0.02)",
+              border: "1px solid var(--border-color)",
               borderRadius: "14px",
               padding: "1.5rem"
             }}>
               {/* Tab Selector */}
-              <div style={{ display: "flex", gap: "0.25rem", borderBottom: "2px solid #ffe8cc", paddingBottom: "0", marginBottom: "1.25rem" }}>
+              <div style={{ display: "flex", gap: "0.25rem", borderBottom: "1px solid var(--color-primary-10)", paddingBottom: "0", marginBottom: "1.25rem" }}>
                 {(["concepts", "example", "factors"] as const).map((tab) => {
                   const labels: Record<string, string> = { concepts: "📖 Conceptos Clave", example: "🔢 Ejemplo Real", factors: "⚖️ Tabla de Factores" };
                   return (
@@ -1037,9 +1037,9 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                       style={{
                         padding: "0.4rem 0.9rem",
                         border: "none",
-                        borderBottom: guideTab === tab ? "3px solid #ff9c2c" : "3px solid transparent",
+                        borderBottom: guideTab === tab ? "3px solid #f1a323" : "3px solid transparent",
                         background: "transparent",
-                        color: guideTab === tab ? "#9a4f0f" : "var(--text-soft)",
+                        color: guideTab === tab ? "#d97706" : "var(--text-soft)",
                         fontWeight: guideTab === tab ? 700 : 500,
                         fontSize: "0.82rem",
                         cursor: "pointer",
@@ -1065,7 +1065,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                       },
                       {
                         icon: "🔬", title: "Complejidad (U-Factor)",
-                        color: "#b45309", bg: "#fffbeb", border: "#fde68a",
+                        color: "var(--color-accent)", bg: "#fffbeb", border: "#fde68a",
                         body: `El factor base de incertidumbre. Rutinaria (×${weights.compRoutine}): trabajo conocido. Incógnitas (×${weights.compKnownUnknowns}): dependencias externas. Inexplorado (×${weights.compUnknownUnknowns}): tecnología nueva o sin documentar.`,
                         tip: "Sé conservador: un CRUD con un API externa que no conoces es 'Incógnitas', no 'Rutinaria'."
                       },
@@ -1128,17 +1128,17 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   </div>
 
                   {/* Interactive SVG */}
-                  <div style={{ background: "#fff", padding: "1rem", borderRadius: "12px", border: "1px solid #ffd8a8", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
+                  <div style={{ background: "#fff", padding: "1rem", borderRadius: "12px", border: "1px solid var(--color-primary-20)", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem" }}>
                     <div style={{ textAlign: "center" }}>
                       <h5 style={{ margin: "0 0 0.2rem 0", color: "#5f2f00", fontSize: "0.82rem", fontWeight: 700 }}>Red de Canales (Brooks' Law)</h5>
                       <p style={{ margin: 0, fontSize: "0.68rem", color: "var(--text-soft)" }}>{totalDevs} devs → {totalChannels} canales de comunicación</p>
                     </div>
-                    <div style={{ width: "210px", height: "210px", background: "#fffdfb", border: "1px solid #f4d4b6", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ width: "210px", height: "210px", background: "var(--color-primary-05)", border: "1px solid var(--border-color)", borderRadius: "8px", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {totalDevs <= 1 ? (
                         <span style={{ fontSize: "0.72rem", color: "var(--text-soft)", fontStyle: "italic", textAlign: "center", padding: "0 1rem" }}>Agrega más devs en los parámetros para ver los canales</span>
                       ) : (
                         <svg width="200" height="200" viewBox="0 0 210 210" style={{ display: "block" }}>
-                          {lines.map((line, idx) => (<line key={idx} x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} stroke="#ffd8a8" strokeWidth="1" strokeOpacity="0.75" />))}
+                          {lines.map((line, idx) => (<line key={idx} x1={line.x1} y1={line.y1} x2={line.x2} y2={line.y2} stroke="var(--color-accent-20)" strokeWidth="1" strokeOpacity="0.75" />))}
                           {nodes.map((node, idx) => (
                             <g key={idx}>
                               <circle cx={node.x} cy={node.y} r={totalDevs > 10 ? "6" : "8"} fill={node.color} stroke="#fff" strokeWidth="1.5" style={{ filter: "drop-shadow(0px 2px 4px rgba(0,0,0,0.1))" }} />
@@ -1156,7 +1156,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                       ))}
                     </div>
                     {totalChannels > 0 && (
-                      <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "8px", padding: "0.5rem 0.75rem", fontSize: "0.72rem", color: "#c2410c", textAlign: "center", lineHeight: 1.4 }}>
+                      <div style={{ background: "var(--color-accent-05)", border: "1px solid var(--color-primary-20)", borderRadius: "8px", padding: "0.5rem 0.75rem", fontSize: "0.72rem", color: "#c2410c", textAlign: "center", lineHeight: 1.4 }}>
                         <strong>{totalChannels} canales</strong> × {(weights.brooksFactor * 100).toFixed(0)}% = <strong>+{Math.round(totalChannels * weights.brooksFactor * 100)}%</strong> overhead de coordinación
                       </div>
                     )}
@@ -1188,7 +1188,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     </div>
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                    <h4 style={{ margin: "0 0 0.25rem 0", color: "#9a4f0f", fontSize: "0.9rem", fontWeight: 700 }}>🧮 Cálculo paso a paso</h4>
+                    <h4 style={{ margin: "0 0 0.25rem 0", color: "var(--color-accent)", fontSize: "0.9rem", fontWeight: 700 }}>🧮 Cálculo paso a paso</h4>
                     {(() => {
                       const ideal = 8;
                       const base = ideal * weights.compKnownUnknowns;
@@ -1201,7 +1201,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                       const total = base + expOv + depOv + brooks + ceremonies;
                       const steps = [
                         { label: "🏗 Base (8h × complejidad)",        value: base,     color: "#15803d" },
-                        { label: `🔬 Incertidumbre (×${weights.compKnownUnknowns} - 1)`, value: unc, color: "#b45309" },
+                        { label: `🔬 Incertidumbre (×${weights.compKnownUnknowns} - 1)`, value: unc, color: "var(--color-accent)" },
                         { label: `👥 Overhead equipo (factor ×${avgExp.toFixed(2)})`, value: expOv, color: "#c2410c" },
                         { label: `🔗 Dep. externa (+${Math.round((weights.depExternal-1)*100)}%)`, value: depOv, color: "#0e7490" },
                         { label: `💬 Brooks (1 canal × ${(weights.brooksFactor*100).toFixed(0)}%)`, value: brooks, color: "#6d28d9" },
@@ -1216,9 +1216,9 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                               <strong style={{ color: s.color }}>{i === 0 ? "" : "+"}{s.value.toFixed(1)}h</strong>
                             </div>
                           ))}
-                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem", background: "linear-gradient(135deg, #fffcf9, #fff6ee)", borderRadius: "6px", border: "2px solid #ff9c2c", fontSize: "0.82rem", fontWeight: 700, marginTop: "0.25rem" }}>
-                            <span style={{ color: "#9a4f0f" }}>⏱ Total real estimado:</span>
-                            <span style={{ color: "#9a4f0f", fontSize: "1rem" }}>{total.toFixed(1)}h</span>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.5rem", background: "rgba(241, 163, 35, 0.04)", borderRadius: "6px", border: "2px solid #f1a323", fontSize: "0.82rem", fontWeight: 700, marginTop: "0.25rem" }}>
+                            <span style={{ color: "#d97706" }}>⏱ Total real estimado:</span>
+                            <span style={{ color: "#d97706", fontSize: "1rem" }}>{total.toFixed(1)}h</span>
                           </div>
                           <div style={{ fontSize: "0.7rem", color: "var(--text-soft)", textAlign: "center", fontStyle: "italic" }}>
                             8h de código → {total.toFixed(1)}h de trabajo real (×{(total/8).toFixed(2)} factor de crecimiento)
@@ -1231,7 +1231,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
               ) : (
                 /* Factors table */
                 <div style={{ overflowX: "auto", fontSize: "0.76rem" }}>
-                  <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.78rem", color: "#7a3c10", background: "#fff7ed", borderRadius: "8px", padding: "0.6rem 0.75rem", border: "1px solid #fed7aa" }}>
+                  <p style={{ margin: "0 0 0.75rem 0", fontSize: "0.78rem", color: "var(--color-primary)", background: "var(--color-accent-05)", borderRadius: "8px", padding: "0.6rem 0.75rem", border: "1px solid var(--color-primary-20)" }}>
                     💡 Estos factores son <strong>configurables</strong> en la pestaña <strong>⚙️ Configuración de Pesos</strong>. Ajústalos según la realidad histórica de tu equipo.
                   </p>
                   <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
@@ -1270,7 +1270,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                         <tr key={i} style={{ background: i % 2 === 0 ? "#fffcf9" : "#fff", borderBottom: "1px solid #fdefd9" }}>
                           <td style={{ padding: "0.35rem 0.6rem", fontWeight: cat ? 700 : 400, color: cat ? "#7c3aed" : "var(--text-soft)" }}>{cat}</td>
                           <td style={{ padding: "0.35rem 0.6rem", color: "#374151" }}>{level}</td>
-                          <td style={{ padding: "0.35rem 0.6rem", fontWeight: 700, color: "#9a4f0f", fontFamily: "monospace" }}>{factor}</td>
+                          <td style={{ padding: "0.35rem 0.6rem", fontWeight: 700, color: "var(--color-accent)", fontFamily: "monospace" }}>{factor}</td>
                           <td style={{ padding: "0.35rem 0.6rem", color: "var(--text-soft)", fontSize: "0.72rem", fontStyle: "italic" }}>{when}</td>
                         </tr>
                       ))}
@@ -1287,7 +1287,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               
               {/* Global Config Card */}
-              <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "rgba(255, 255, 255, 0.5)", maxWidth: "1100px" }}>
+              <div className="card glass-card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "rgba(255, 255, 255, 0.5)", maxWidth: "1100px" }}>
                 <h3 style={{ margin: "0 0 1rem 0", fontSize: "1rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
                   ⚙ Parámetros Globales de Estimación
                 </h3>
@@ -1298,7 +1298,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     <select 
                       value={selectedProjectId} 
                       onChange={(e) => setSelectedProjectId(e.target.value)}
-                      style={{ width: "100%", padding: "0.55rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                      style={{ width: "100%", padding: "0.55rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff" }}
                     >
                       <option value="">-- Sin Vincular / Personal --</option>
                       {projects.map((p) => (
@@ -1317,7 +1317,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                       value={estimationContext} 
                       onChange={(e) => setEstimationContext(e.target.value)} 
                       placeholder="Ej. Sprint 3 - Integración de Pagos"
-                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff" }}
                     />
                   </div>
 
@@ -1329,7 +1329,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                       max={12} 
                       value={hoursPerDay} 
                       onChange={(e) => setHoursPerDay(Number(e.target.value) || 8)} 
-                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                     />
                   </div>
 
@@ -1341,7 +1341,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                       max={30} 
                       value={sprintDays} 
                       onChange={(e) => setSprintDays(Number(e.target.value) || 10)} 
-                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                     />
                   </div>
 
@@ -1353,7 +1353,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                       max={100} 
                       value={bufferPercentage} 
                       onChange={(e) => setBufferPercentage(Number(e.target.value) || 0)} 
-                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                     />
                   </div>
 
@@ -1363,7 +1363,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                       type="date" 
                       value={startDate} 
                       onChange={(e) => setStartDate(e.target.value)} 
-                      style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                      style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                     />
                   </div>
 
@@ -1372,7 +1372,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     <select 
                       value={estimationCountry} 
                       onChange={(e) => setEstimationCountry(e.target.value)}
-                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                      style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff" }}
                     >
                       <option value="US">USA / Default (Federal)</option>
                       <option value="CO">Colombia 🇨🇴</option>
@@ -1388,7 +1388,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     <select 
                       value={scopeDefinition} 
                       onChange={(e) => setScopeDefinition(e.target.value)}
-                      style={{ width: "100%", padding: "0.55rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                      style={{ width: "100%", padding: "0.55rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff" }}
                     >
                       {scopeDefinitionLevels.map((s) => (
                         <option key={s.key} value={s.key}>{s.label}</option>
@@ -1397,9 +1397,9 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   </div>
 
                   {/* Team Grid composition inputs */}
-                  <div className="calculator-grid-span-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", background: "rgba(255, 156, 44, 0.05)", padding: "0.75rem", borderRadius: "10px", border: "1px solid #ffe8cc" }}>
+                  <div className="calculator-grid-span-2" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", background: "var(--color-accent-05)", padding: "0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)" }}>
                     <div style={{ gridColumn: "span 3", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#9a4f0f" }}>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-accent)" }}>
                         👥 Composición del Equipo: <InfoTooltip text="Número de programadores. Afecta el rendimiento y los canales de comunicación." />
                       </span>
                       {/* Live factor chip */}
@@ -1421,7 +1421,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                         type="number" min={0} max={20}
                         value={teamSeniorCount} 
                         onChange={(e) => setTeamSeniorCount(Math.max(0, Number(e.target.value) || 0))} 
-                        style={{ width: "100%", padding: "0.35rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                        style={{ width: "100%", padding: "0.35rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                       />
                     </div>
                     <div>
@@ -1430,7 +1430,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                         type="number" min={0} max={20}
                         value={teamMidCount} 
                         onChange={(e) => setTeamMidCount(Math.max(0, Number(e.target.value) || 0))} 
-                        style={{ width: "100%", padding: "0.35rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                        style={{ width: "100%", padding: "0.35rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                       />
                     </div>
                     <div>
@@ -1439,15 +1439,15 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                         type="number" min={0} max={20}
                         value={teamJuniorCount} 
                         onChange={(e) => setTeamJuniorCount(Math.max(0, Number(e.target.value) || 0))} 
-                        style={{ width: "100%", padding: "0.35rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                        style={{ width: "100%", padding: "0.35rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                       />
                     </div>
                   </div>
 
                   {/* Calendar simulation options card */}
-                  <div className="calculator-grid-span-2" style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: "0.75rem", background: "rgba(255, 156, 44, 0.05)", padding: "0.75rem", borderRadius: "10px", border: "1px solid #ffe8cc" }}>
+                  <div className="calculator-grid-span-2" style={{ display: "grid", gridTemplateRows: "auto 1fr", gap: "0.75rem", background: "var(--color-accent-05)", padding: "0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "#9a4f0f" }}>
+                      <span style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--color-accent)" }}>
                         📅 Opciones de Calendario: <InfoTooltip text="Configura si los fines de semana y festivos se consideran días laborables en la simulación temporal." />
                       </span>
                     </div>
@@ -1497,9 +1497,9 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     style={{ 
                       padding: "0.4rem 1rem", 
                       borderRadius: "8px", 
-                      border: "1px solid #f4d4b6", 
-                      background: "#ffe8cc", 
-                      color: "#9a4f0f", 
+                      border: "1px solid var(--border-color)", 
+                      background: "var(--color-accent-10)", 
+                      color: "var(--color-accent)", 
                       fontWeight: 700, 
                       fontSize: "0.82rem",
                       cursor: "pointer" 
@@ -1514,15 +1514,15 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   display: "flex", 
                   gap: "1rem", 
                   background: "rgba(255, 255, 255, 0.45)", 
-                  border: "1px solid #ffd8a8", 
+                  border: "1px solid var(--color-primary-20)", 
                   borderRadius: "14px", 
                   padding: "1rem", 
                   backdropFilter: "blur(12px)",
                   minHeight: "580px"
                 }}>
                   {/* Panel Izquierdo: Master Task list (35% width) */}
-                  <div className="split-pane-master" style={{ width: "35%", display: "flex", flexDirection: "column", gap: "0.75rem", borderRight: "1px solid #ffd8a8", paddingRight: "1rem" }}>
-                    <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)", borderBottom: "1px solid #ffd8a8", paddingBottom: "0.25rem", display: "flex", justifyContent: "space-between" }}>
+                  <div className="split-pane-master" style={{ width: "35%", display: "flex", flexDirection: "column", gap: "0.75rem", borderRight: "1px solid var(--color-primary-20)", paddingRight: "1rem" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)", borderBottom: "1px solid var(--color-primary-10)", paddingBottom: "0.25rem", display: "flex", justifyContent: "space-between" }}>
                       <span>Tareas</span>
                       <span>Horas Estimadas</span>
                     </div>
@@ -1537,8 +1537,8 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                             style={{
                               padding: "0.6rem 0.85rem",
                               borderRadius: "10px",
-                              background: isActive ? "linear-gradient(135deg, #ffe8cc, #ffd8a8)" : "rgba(255, 255, 255, 0.6)",
-                              border: isActive ? "2px solid #ff9c2c" : "1px solid #e5e7eb",
+                              background: isActive ? "rgba(241, 163, 35, 0.08)" : "rgba(255, 255, 255, 0.6)",
+                              border: isActive ? "2px solid #f1a323" : "1px solid var(--border-color)",
                               cursor: "pointer",
                               display: "flex",
                               justifyContent: "space-between",
@@ -1593,7 +1593,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   <div className="split-pane-detail" style={{ width: "65%", display: "flex", flexDirection: "column", gap: "1rem", overflowY: "auto", maxHeight: "580px", paddingRight: "0.5rem", paddingLeft: "0.25rem" }}>
                     {activeTask ? (
                       <div key={activeTask.id} className="fade-in-detail" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffd8a8", paddingBottom: "0.5rem", marginBottom: "0.25rem" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-primary-10)", paddingBottom: "0.5rem", marginBottom: "0.25rem" }}>
                           <h4 style={{ margin: 0, fontSize: "0.92rem", color: "#5f2f00", fontFamily: "var(--display)" }}>
                             📝 Parámetros de Simulación de Tarea
                           </h4>
@@ -1618,7 +1618,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                               value={activeTask.name} 
                               onChange={(e) => handleUpdateTask(activeTask.id, "name", e.target.value)} 
                               placeholder="Ej. Integración pasarela PSE"
-                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff" }}
                             />
                           </div>
 
@@ -1630,7 +1630,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                               step={0.5}
                               value={activeTask.idealHours} 
                               onChange={(e) => handleUpdateTask(activeTask.id, "idealHours", Number(e.target.value) || 1)} 
-                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff" }}
                             />
                           </div>
 
@@ -1639,7 +1639,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                             <select 
                               value={activeTask.complexity} 
                               onChange={(e) => handleUpdateTask(activeTask.id, "complexity", e.target.value)}
-                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff" }}
                             >
                               {complexityLevels.map((c) => (
                                 <option key={c.key} value={c.key}>{c.label}</option>
@@ -1652,7 +1652,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                             <select 
                               value={activeTask.techDebt} 
                               onChange={(e) => handleUpdateTask(activeTask.id, "techDebt", e.target.value)}
-                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff" }}
                             >
                               {techDebtOptions.map((d) => (
                                 <option key={d.key} value={d.key}>{d.label}</option>
@@ -1665,7 +1665,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                             <select 
                               value={activeTask.dependencies} 
                               onChange={(e) => handleUpdateTask(activeTask.id, "dependencies", e.target.value)}
-                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff" }}
                             >
                               {dependencyOptions.map((d) => (
                                 <option key={d.key} value={d.key}>{d.label}</option>
@@ -1678,7 +1678,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                             <select 
                               value={activeTask.meetingsPerDay} 
                               onChange={(e) => handleUpdateTask(activeTask.id, "meetingsPerDay", Number(e.target.value))}
-                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff" }}
+                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff" }}
                             >
                               <option value={0}>0 (Sin interrupciones)</option>
                               <option value={1}>1 (~45 min ocupados)</option>
@@ -1741,7 +1741,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                               value={activeTask.notes} 
                               onChange={(e) => handleUpdateTask(activeTask.id, "notes", e.target.value)}
                               placeholder="Ej. VPN de terceros inestable, requiere aprobación del arquitecto principal..."
-                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid #f4d4b6", background: "#fff", resize: "vertical" }}
+                              style={{ width: "100%", padding: "0.5rem", borderRadius: "6px", border: "1px solid var(--border-color)", background: "#fff", resize: "vertical" }}
                             />
                           </div>
 
@@ -1771,7 +1771,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                           // Named breakdown rows
                           const rows = [
                             { icon: "🏗", label: "Base ideal (sin ajustes)",        value: breakdown.base,              color: "#15803d" },
-                            { icon: "🔬", label: `Incertidumbre (complejidad)`,     value: breakdown.uncertainty,       color: "#b45309" },
+                            { icon: "🔬", label: `Incertidumbre (complejidad)`,     value: breakdown.uncertainty,       color: "var(--color-accent)" },
                             { icon: "👥", label: "Overhead de equipo (exp + Brooks)", value: breakdown.teamOverhead,    color: "#c2410c" },
                             { icon: "⚠️", label: "Deuda técnica del entorno",       value: breakdown.debtOverhead,      color: "#7c3aed" },
                             { icon: "🔗", label: "Dependencias externas",           value: breakdown.depOverhead,       color: "#0e7490" },
@@ -1783,14 +1783,14 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                           ].filter(r => r.value > 0.01);
 
                           return (
-                            <div style={{ marginTop: "0.5rem", padding: "1rem", background: "#fffdfa", border: "1px solid #ffd8a8", borderRadius: "10px" }}>
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.82rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.75rem" }}>
+                            <div style={{ marginTop: "0.5rem", padding: "1rem", background: "var(--color-primary-05)", border: "1px solid var(--color-primary-20)", borderRadius: "10px" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "0.82rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.75rem" }}>
                                 <span>📊 Desglose Completo de Esfuerzo:</span>
                                 <span>Crecimiento: <strong style={{ color: riskColor }}>x{combinedFactor.toFixed(2)}</strong> — Riesgo: <strong style={{ color: riskColor, textTransform: "uppercase" }}>{riskLevel}</strong></span>
                               </div>
                               
                               {/* Stacked effort bar */}
-                              <div style={{ display: "flex", height: "14px", borderRadius: "7px", overflow: "hidden", border: "1px solid #ffd8a8", background: "#f3f4f6", marginBottom: "0.75rem" }}>
+                              <div style={{ display: "flex", height: "14px", borderRadius: "7px", overflow: "hidden", border: "1px solid var(--color-primary-20)", background: "#f3f4f6", marginBottom: "0.75rem" }}>
                                 {segments.map((s, i) => (
                                   <div
                                     key={i}
@@ -1817,7 +1817,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                                 ))}
                               </div>
 
-                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.6rem", paddingTop: "0.5rem", borderTop: "2px solid #ffd8a8", fontSize: "0.82rem", fontWeight: 700, color: "#9a4f0f" }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.6rem", paddingTop: "0.5rem", borderTop: "2px solid var(--color-primary-20)", fontSize: "0.82rem", fontWeight: 700, color: "var(--color-accent)" }}>
                                 <span>⏱ Esfuerzo Real Total:</span>
                                 <span style={{ fontSize: "1rem" }}>{totalEffort.toFixed(1)}h</span>
                               </div>
@@ -1840,8 +1840,8 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
             <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
               
               {/* Resumen Total Card */}
-              <div className="card" style={{ padding: "1.75rem", borderRadius: "14px", border: "2px solid #ff9c2c", background: "linear-gradient(135deg, #fffcf9, #fff6ee)", boxShadow: "0 4px 20px rgba(154, 79, 15, 0.05)" }}>
-                <h3 style={{ margin: "0 0 1.25rem 0", color: "#5f2f00", fontFamily: "var(--display)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div className="card" style={{ padding: "1.75rem", borderRadius: "14px", border: "2px solid #f1a323", background: "rgba(241, 163, 35, 0.02)", boxShadow: "0 4px 20px rgba(241, 163, 35, 0.05)" }}>
+                <h3 style={{ margin: "0 0 1.25rem 0", color: "#121228", fontFamily: "var(--display)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
                   📊 Consolidado del Proyecto
                 </h3>
 
@@ -1853,12 +1853,12 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
                   <div className="summary-row">
                     <span style={{ color: "var(--text-soft)", display: "flex", alignItems: "center" }}>Esfuerzo Real Calculado <InfoTooltip text="Horas reales necesarias incluyendo el U-Factor, ceremonias, deuda y comunicación." />:</span>
-                    <strong style={{ fontSize: "1.1rem", color: "#b45309" }}>{totals.adjustedHours.toFixed(1)}h</strong>
+                    <strong style={{ fontSize: "1.1rem", color: "var(--color-accent)" }}>{totals.adjustedHours.toFixed(1)}h</strong>
                   </div>
 
                   <div className="summary-row">
                     <span style={{ color: "var(--text-soft)", display: "flex", alignItems: "center" }}>Días Hábiles con Buffer <InfoTooltip text="Duración en días laborables de esfuerzo incluyendo el colchón de imprevistos." />:</span>
-                    <strong style={{ fontSize: "1.3rem", color: "#9a4f0f" }}>{totals.withBuffer.toFixed(1)} días</strong>
+                    <strong style={{ fontSize: "1.3rem", color: "var(--color-accent)" }}>{totals.withBuffer.toFixed(1)} días</strong>
                   </div>
 
                   <div className="summary-row">
@@ -1879,7 +1879,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                   </div>
                 </div>
 
-                <div style={{ background: "rgba(255, 156, 44, 0.08)", border: "1px dashed #f0b07d", borderRadius: "8px", padding: "1rem", marginTop: "1rem", fontSize: "0.85rem", color: "#7a3c10", lineHeight: "140%" }}>
+                <div style={{ background: "var(--color-accent-10)", border: "1px dashed var(--color-accent)", borderRadius: "8px", padding: "1rem", marginTop: "1rem", fontSize: "0.85rem", color: "var(--color-primary)", lineHeight: "140%" }}>
                   💡 <strong>Recomendación Comercial:</strong> Al negociar o armar la propuesta, comunica un rango de <strong>{totals.realDays.toFixed(0)} a {totals.withBuffer.toFixed(0)} días hábiles</strong>. Nunca des una sola cifra rígida.
                 </div>
 
@@ -1890,7 +1890,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     padding: "0.75rem 1rem",
                     background: "#fffbeb",
                     border: "1px solid #fde68a",
-                    color: "#b45309",
+                    color: "var(--color-accent)",
                     borderRadius: "8px",
                     fontSize: "0.82rem",
                     lineHeight: "1.4"
@@ -1914,14 +1914,14 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                 )}
 
                 {/* Comparación visual de Ideal vs Ajustada */}
-                <div style={{ marginTop: "1.25rem", paddingTop: "1.25rem", borderTop: "1px solid #f4d4b6" }}>
-                  <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.85rem", color: "#5f2f00", fontWeight: 700 }}>
+                <div style={{ marginTop: "1.25rem", paddingTop: "1.25rem", borderTop: "1px solid var(--border-color)" }}>
+                  <h4 style={{ margin: "0 0 0.5rem 0", fontSize: "0.85rem", color: "#121228", fontWeight: 700 }}>
                     Comparación: Ideal vs. Realidad Calculada
                   </h4>
                   <div style={{ display: "flex", height: "24px", background: "#f3f4f6", borderRadius: "6px", overflow: "hidden", margin: "0.5rem 0" }}>
                     <div style={{
                       width: `${Math.max(15, Math.min(85, (totals.idealHours / Math.max(totals.adjustedHours, 1)) * 100))}%`,
-                      background: "#3b82f6",
+                      background: "#234175",
                       color: "#fff",
                       display: "flex",
                       alignItems: "center",
@@ -1934,7 +1934,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     </div>
                     <div style={{
                       flexGrow: 1,
-                      background: "#ff9c2c",
+                      background: "#f1a323",
                       color: "#fff",
                       display: "flex",
                       alignItems: "center",
@@ -1962,7 +1962,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
               </div>
 
               {/* Saved Estimations List */}
-              <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid #f4d4b6", background: "#fff" }}>
+              <div className="card" style={{ padding: "1.5rem", borderRadius: "14px", border: "1px solid var(--border-color)", background: "#fff" }}>
                 <h3 style={{ margin: "0 0 1rem 0", fontSize: "1rem", color: "var(--text-strong)", fontFamily: "var(--display)" }}>
                   💾 Estimaciones Guardadas en Sistema ({estimations.length})
                 </h3>
@@ -1978,15 +1978,15 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                         style={{ 
                           padding: "0.75rem", 
                           borderRadius: "8px", 
-                          border: "1px solid #f4d4b6", 
-                          background: "#fffdfa", 
+                          border: "1px solid var(--border-color)", 
+                          background: "var(--color-primary-05)", 
                           display: "flex", 
                           justifyContent: "space-between", 
                           alignItems: "center" 
                         }}
                       >
                         <div style={{ cursor: "pointer", flex: 1 }} onClick={() => loadSavedData(est)}>
-                          <strong style={{ fontSize: "0.85rem", color: "#9a4f0f", display: "block" }}>{est.projectName}</strong>
+                          <strong style={{ fontSize: "0.85rem", color: "var(--color-accent)", display: "block" }}>{est.projectName}</strong>
                           <span style={{ fontSize: "0.75rem", color: "var(--text-soft)" }}>
                             {Number(est.totalAdjustedHours).toFixed(1)}h | Riesgo: {est.riskLevel.toUpperCase()}
                           </span>
@@ -2012,7 +2012,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
         </div>
       ) : (
         /* Weights Config Tab */
-        <div className="card glass-card fade-in-tab" style={{ padding: "1.75rem", borderRadius: "14px", border: "1px solid #ffd8a8", background: "#fffdfb" }}>
+        <div className="card glass-card fade-in-tab" style={{ padding: "1.75rem", borderRadius: "14px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)" }}>
           <h3 style={{ margin: "0 0 1.5rem 0", color: "#5f2f00", fontFamily: "var(--display)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
             ⚙️ Configuración y Calibración de Pesos (Factores Científicos)
           </h3>
@@ -2025,11 +2025,11 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
             
             {/* 1. Complejidad (U-Factor) */}
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
-                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-primary-10)", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "var(--color-accent)" }}>
                   1. Complejidad del Trabajo (U-Factor base)
                 </h4>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "var(--color-accent)", fontWeight: "bold", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={weights.useComplexityFactor !== false}
@@ -2047,7 +2047,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useComplexityFactor === false}
                     value={weights.compRoutine}
                     onChange={(e) => setWeights({ ...weights, compRoutine: Number(e.target.value) || 1.3 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2057,7 +2057,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useComplexityFactor === false}
                     value={weights.compKnownUnknowns}
                     onChange={(e) => setWeights({ ...weights, compKnownUnknowns: Number(e.target.value) || 2.0 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2067,7 +2067,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useComplexityFactor === false}
                     value={weights.compUnknownUnknowns}
                     onChange={(e) => setWeights({ ...weights, compUnknownUnknowns: Number(e.target.value) || 3.5 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
               </div>
@@ -2075,11 +2075,11 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
             {/* 2. Experiencia (Seniority) */}
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
-                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-primary-10)", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "var(--color-accent)" }}>
                   2. Coeficientes de Seniority / Experiencia
                 </h4>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "var(--color-accent)", fontWeight: "bold", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={weights.useExperienceFactor !== false}
@@ -2097,7 +2097,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useExperienceFactor === false}
                     value={weights.expSenior}
                     onChange={(e) => setWeights({ ...weights, expSenior: Number(e.target.value) || 1.0 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2107,7 +2107,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useExperienceFactor === false}
                     value={weights.expMid}
                     onChange={(e) => setWeights({ ...weights, expMid: Number(e.target.value) || 1.25 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2117,7 +2117,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useExperienceFactor === false}
                     value={weights.expJunior}
                     onChange={(e) => setWeights({ ...weights, expJunior: Number(e.target.value) || 1.6 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
               </div>
@@ -2125,11 +2125,11 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
             {/* 3. Deuda Técnica */}
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
-                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-primary-10)", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "var(--color-accent)" }}>
                   3. Fricción por Deuda Técnica
                 </h4>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "var(--color-accent)", fontWeight: "bold", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={weights.useTechDebtFactor !== false}
@@ -2147,7 +2147,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useTechDebtFactor === false}
                     value={weights.debtClean}
                     onChange={(e) => setWeights({ ...weights, debtClean: Number(e.target.value) || 1.0 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2157,7 +2157,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useTechDebtFactor === false}
                     value={weights.debtModerate}
                     onChange={(e) => setWeights({ ...weights, debtModerate: Number(e.target.value) || 1.3 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2167,7 +2167,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useTechDebtFactor === false}
                     value={weights.debtHeavy}
                     onChange={(e) => setWeights({ ...weights, debtHeavy: Number(e.target.value) || 1.6 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2177,7 +2177,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useTechDebtFactor === false}
                     value={weights.debtLegacy}
                     onChange={(e) => setWeights({ ...weights, debtLegacy: Number(e.target.value) || 2.0 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
               </div>
@@ -2185,11 +2185,11 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
             {/* 4. Dependencias */}
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
-                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-primary-10)", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "var(--color-accent)" }}>
                   4. Bloqueos por Dependencias Externas
                 </h4>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "var(--color-accent)", fontWeight: "bold", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={weights.useDependencyFactor !== false}
@@ -2207,7 +2207,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useDependencyFactor === false}
                     value={weights.depNone}
                     onChange={(e) => setWeights({ ...weights, depNone: Number(e.target.value) || 1.0 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2217,7 +2217,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useDependencyFactor === false}
                     value={weights.depInternal}
                     onChange={(e) => setWeights({ ...weights, depInternal: Number(e.target.value) || 1.2 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2227,7 +2227,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useDependencyFactor === false}
                     value={weights.depExternal}
                     onChange={(e) => setWeights({ ...weights, depExternal: Number(e.target.value) || 1.4 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2237,7 +2237,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useDependencyFactor === false}
                     value={weights.depMultiple}
                     onChange={(e) => setWeights({ ...weights, depMultiple: Number(e.target.value) || 1.6 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
               </div>
@@ -2245,11 +2245,11 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
             {/* 5. Ceremonias, Contexto & Brooks' Law */}
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
-                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-primary-10)", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "var(--color-accent)" }}>
                   5. Ceremonias, Contexto y Ley de Brooks
                 </h4>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "var(--color-accent)", fontWeight: "bold", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={weights.useBrooksFactor !== false}
@@ -2266,7 +2266,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     type="number" step="0.01" min="0.0" max="1.0"
                     value={weights.ceremonyCodeReview}
                     onChange={(e) => setWeights({ ...weights, ceremonyCodeReview: Number(e.target.value) || 0.15 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2275,7 +2275,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     type="number" step="0.01" min="0.0" max="1.0"
                     value={weights.ceremonyTesting}
                     onChange={(e) => setWeights({ ...weights, ceremonyTesting: Number(e.target.value) || 0.25 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2284,7 +2284,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     type="number" step="0.01" min="0.0" max="1.0"
                     value={weights.ceremonyDocumentation}
                     onChange={(e) => setWeights({ ...weights, ceremonyDocumentation: Number(e.target.value) || 0.10 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2293,7 +2293,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     type="number" step="0.05" min="1.0" max="2.0"
                     value={weights.contextSwitchingPenalty}
                     onChange={(e) => setWeights({ ...weights, contextSwitchingPenalty: Number(e.target.value) || 1.15 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div style={{ opacity: weights.useBrooksFactor !== false ? 1 : 0.5 }}>
@@ -2303,7 +2303,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useBrooksFactor === false}
                     value={weights.brooksFactor}
                     onChange={(e) => setWeights({ ...weights, brooksFactor: Number(e.target.value) || 0.08 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
               </div>
@@ -2311,11 +2311,11 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
             {/* 6. Riesgo de Alcance */}
             <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid #ffe8cc", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
-                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "#9a4f0f" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--color-primary-10)", paddingBottom: "0.25rem", marginBottom: "0.75rem" }}>
+                <h4 style={{ margin: 0, fontSize: "0.9rem", color: "var(--color-accent)" }}>
                   6. Coeficientes por Claridad de Alcance
                 </h4>
-                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "#9a4f0f", fontWeight: "bold", cursor: "pointer" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: "var(--color-accent)", fontWeight: "bold", cursor: "pointer" }}>
                   <input
                     type="checkbox"
                     checked={weights.useScopeFactor !== false}
@@ -2333,7 +2333,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useScopeFactor === false}
                     value={weights.scopeClosed}
                     onChange={(e) => setWeights({ ...weights, scopeClosed: Number(e.target.value) || 1.0 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2343,7 +2343,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useScopeFactor === false}
                     value={weights.scopePending}
                     onChange={(e) => setWeights({ ...weights, scopePending: Number(e.target.value) || 1.25 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2353,7 +2353,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useScopeFactor === false}
                     value={weights.scopeDiffuse}
                     onChange={(e) => setWeights({ ...weights, scopeDiffuse: Number(e.target.value) || 1.6 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
                 <div>
@@ -2363,7 +2363,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                     disabled={weights.useScopeFactor === false}
                     value={weights.scopeNoTechnicalClosure}
                     onChange={(e) => setWeights({ ...weights, scopeNoTechnicalClosure: Number(e.target.value) || 2.0 })}
-                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid #f4d4b6" }}
+                    style={{ width: "100%", padding: "0.45rem", borderRadius: "6px", border: "1px solid var(--border-color)" }}
                   />
                 </div>
               </div>
@@ -2371,7 +2371,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
 
           </div>
           
-          <div style={{ display: "flex", gap: "1rem", marginTop: "2rem", borderTop: "1px solid #ffd8a8", paddingTop: "1.5rem" }}>
+          <div style={{ display: "flex", gap: "1rem", marginTop: "2rem", borderTop: "1px solid var(--border-color)", paddingTop: "1.5rem" }}>
             <button
               type="button"
               onClick={() => handleSaveWeights(weights)}
@@ -2379,7 +2379,7 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
                 padding: "0.6rem 1.5rem",
                 borderRadius: "8px",
                 border: "none",
-                background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                background: "var(--gradient-accent)",
                 color: "#fff",
                 fontWeight: 700,
                 cursor: "pointer"
@@ -2393,9 +2393,9 @@ export function EstimationCalculatorTab({ projects, canWrite, onError }: Estimat
               style={{
                 padding: "0.6rem 1.5rem",
                 borderRadius: "8px",
-                border: "1px solid #f4d4b6",
-                background: "#ffe8cc",
-                color: "#9a4f0f",
+                border: "1px solid var(--border-color)",
+                background: "var(--color-accent-10)",
+                color: "var(--color-accent)",
                 fontWeight: 700,
                 cursor: "pointer"
               }}

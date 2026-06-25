@@ -15,6 +15,7 @@ import { downloadCsv } from "../../utils/csv";
 import { ValidationErrorBox } from "../../components/ValidationErrorBox";
 import { isValidationError } from "../../utils/validation";
 import { CurrencyInput } from "../../components/CurrencyInput";
+import { displayCountryWithFlag } from "../../utils/statusLabels";
 
 const currencyOptions = ["COP", "USD", "EUR", "MXN", "PEN", "CLP", "ARS"];
 const roleOptions = ["Analista", "Desarrollador", "QA", "Arquitecto", "PM", "Data Engineer"];
@@ -309,7 +310,7 @@ export function ConsultantsTab({
               </select>
               <select value={form.country} onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))} required>
                 <option value="" disabled hidden>País...</option>
-                {countryOptions.map((c) => <option key={c} value={c}>{c}</option>)}
+                {countryOptions.map((c) => <option key={c} value={c}>{displayCountryWithFlag(c)}</option>)}
               </select>
               <select value={form.seniority} onChange={(e) => setForm((p) => ({ ...p, seniority: e.target.value }))} required>
                 <option value="" disabled hidden>Seniority...</option>
@@ -327,7 +328,7 @@ export function ConsultantsTab({
                 value={form.hourlyRate}
                 onChange={(v) => setForm((p) => ({ ...p, hourlyRate: v }))}
               />
-              <select value={form.isInternal ? "true" : "false"} onChange={(e) => setForm((p) => ({ ...p, isInternal: e.target.value === "true" }))} style={{ height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", width: "100%" }}>
+              <select value={form.isInternal ? "true" : "false"} onChange={(e) => setForm((p) => ({ ...p, isInternal: e.target.value === "true" }))} style={{ height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)", width: "100%" }}>
                 <option value="true">Interno</option>
                 <option value="false">Externo</option>
               </select>
@@ -355,50 +356,50 @@ export function ConsultantsTab({
                 gap: "0.75rem",
                 padding: "1rem",
                 background: "#fffcf7",
-                border: "1px solid #f1c79d",
+                border: "1px solid var(--color-primary-20)",
                 borderRadius: "12px",
                 marginBottom: "0.5rem"
               }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Estado</label>
-                  <select value={filterActive} onChange={(e) => setFilterActive(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Estado</label>
+                  <select value={filterActive} onChange={(e) => setFilterActive(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)", fontSize: "0.82rem", outline: "none" }}>
                     <option value="ALL">Todos los estados</option>
                     <option value="ACTIVE">Activo</option>
                     <option value="INACTIVE">Inactivo</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>País</label>
-                  <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
-                    <option value="ALL">Todos los países</option>
-                    {countryOptions.map((c) => <option key={`filter-country-${c}`} value={c}>{c}</option>)}
-                  </select>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>País</label>
+                  <select value={filterCountry} onChange={(e) => setFilterCountry(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)", fontSize: "0.82rem", outline: "none" }}>
+                  <option value="ALL">Todos los países</option>
+                  {countryOptions.map((c) => <option key={`filter-country-${c}`} value={c}>{displayCountryWithFlag(c)}</option>)}
+                </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Tipo</label>
-                  <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Tipo</label>
+                  <select value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)", fontSize: "0.82rem", outline: "none" }}>
                     <option value="ALL">Todos los tipos</option>
                     <option value="INTERNAL">Interno</option>
                     <option value="EXTERNAL">Externo</option>
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Empresa</label>
-                  <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Empresa</label>
+                  <select value={filterCompany} onChange={(e) => setFilterCompany(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)", fontSize: "0.82rem", outline: "none" }}>
                     <option value="ALL">Todas las empresas</option>
                     {companies.map((c) => <option key={`filter-company-${c}`} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Rol</label>
-                  <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Rol</label>
+                  <select value={filterRole} onChange={(e) => setFilterRole(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)", fontSize: "0.82rem", outline: "none" }}>
                     <option value="ALL">Todos los roles</option>
                     {roleOptions.map((r) => <option key={`filter-role-${r}`} value={r}>{r}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Seniority</label>
-                  <select value={filterSeniority} onChange={(e) => setFilterSeniority(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12", fontSize: "0.82rem", outline: "none" }}>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Seniority</label>
+                  <select value={filterSeniority} onChange={(e) => setFilterSeniority(e.target.value)} style={{ width: "100%", padding: "0.5rem 0.6rem", borderRadius: "8px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)", fontSize: "0.82rem", outline: "none" }}>
                     <option value="ALL">Todos los seniority</option>
                     {seniorityOptions.map((s) => <option key={`filter-seniority-${s}`} value={s}>{s}</option>)}
                   </select>
@@ -427,7 +428,7 @@ export function ConsultantsTab({
                         <td>{c.fullName}</td>
                         <td>{c.role}</td>
                         <td><span className="pill neutral" style={{ fontSize: "0.75rem", fontWeight: 600 }}>{c.seniority || "—"}</span></td>
-                        <td>{c.country || "—"}</td>
+                        <td>{c.country ? displayCountryWithFlag(c.country) : "—"}</td>
                         <td>{c.company || "—"}</td>
                         <td>
                           <span className={`pill ${c.isInternal !== false ? "ok" : "warn"}`} style={{ fontSize: "0.7rem" }}>
@@ -531,36 +532,36 @@ export function ConsultantsTab({
 
               <div className="consultant-form-row row-1">
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Nombre completo *</label>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Nombre completo *</label>
                   <input value={editForm.fullName} onChange={(e) => setEditForm((p) => p && { ...p, fullName: e.target.value })} placeholder="Nombre completo" required />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Correo</label>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Correo</label>
                   <input type="email" value={editForm.email} onChange={(e) => setEditForm((p) => p && { ...p, email: e.target.value })} placeholder="Correo" />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Empresa</label>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Empresa</label>
                   <input value={editForm.company} onChange={(e) => setEditForm((p) => p && { ...p, company: e.target.value })} placeholder="Empresa" />
                 </div>
               </div>
 
               <div className="consultant-form-row row-2">
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Rol *</label>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Rol *</label>
                   <select value={editForm.role} onChange={(e) => setEditForm((p) => p && { ...p, role: e.target.value })} required>
                     <option value="" disabled hidden>Selecciona un rol...</option>
                     {roleOptions.map((r) => <option key={`edit-${r}`} value={r}>{r}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>País *</label>
-                  <select value={editForm.country} onChange={(e) => setEditForm((p) => p && { ...p, country: e.target.value })} required>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>País *</label>
+                   <select value={editForm.country} onChange={(e) => setEditForm((p) => p && { ...p, country: e.target.value })} required>
                     <option value="" disabled hidden>Selecciona un país...</option>
-                    {countryOptions.map((c) => <option key={`edit-country-${c}`} value={c}>{c}</option>)}
+                    {countryOptions.map((c) => <option key={`edit-country-${c}`} value={c}>{displayCountryWithFlag(c)}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Seniority *</label>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Seniority *</label>
                   <select value={editForm.seniority} onChange={(e) => setEditForm((p) => p && { ...p, seniority: e.target.value })} required>
                     <option value="" disabled hidden>Selecciona seniority...</option>
                     {seniorityOptions.map((s) => <option key={`edit-seniority-${s}`} value={s}>{s}</option>)}
@@ -570,13 +571,13 @@ export function ConsultantsTab({
 
               <div className="consultant-form-row row-3" style={{ gridTemplateColumns: "0.8fr 1.2fr 1fr auto auto" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Moneda</label>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Moneda</label>
                   <select value={editForm.rateCurrency} onChange={(e) => setEditForm((p) => p && { ...p, rateCurrency: e.target.value })}>
                     {currencyOptions.map((c) => <option key={`edit-cur-${c}`} value={c}>{c}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Tarifa/h</label>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Tarifa/h</label>
                   <CurrencyInput
                     currency={editForm.rateCurrency}
                     value={editForm.hourlyRate}
@@ -585,8 +586,8 @@ export function ConsultantsTab({
                   />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Tipo</label>
-                  <select value={editForm.isInternal ? "true" : "false"} onChange={(e) => setEditForm((p) => p && { ...p, isInternal: e.target.value === "true" })} style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Tipo</label>
+                  <select value={editForm.isInternal ? "true" : "false"} onChange={(e) => setEditForm((p) => p && { ...p, isInternal: e.target.value === "true" })} style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}>
                     <option value="true">Interno</option>
                     <option value="false">Externo</option>
                   </select>

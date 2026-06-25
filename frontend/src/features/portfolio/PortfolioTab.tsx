@@ -263,7 +263,7 @@ export function PortfolioTab({
       <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", background: "var(--bg-card, #fff)", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "1rem" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Empresa</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Empresa</label>
             <SearchableSelect
               options={companyOptions}
               value={companyFilter}
@@ -274,7 +274,7 @@ export function PortfolioTab({
             />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Proyecto</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Proyecto</label>
             <SearchableSelect
               options={projectOptions}
               value={projectFilter}
@@ -287,8 +287,8 @@ export function PortfolioTab({
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Salud</label>
-            <select value={healthFilter} onChange={(e) => setHealthFilter(e.target.value as HealthStatus | "")} style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Salud</label>
+            <select value={healthFilter} onChange={(e) => setHealthFilter(e.target.value as HealthStatus | "")} style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}>
               <option value="">Todas</option>
               <option value="GREEN">Saludable</option>
               <option value="YELLOW">Advertencia</option>
@@ -296,8 +296,8 @@ export function PortfolioTab({
             </select>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Estado</label>
-            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Estado</label>
+            <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}>
               <option value="">Todos</option>
               <option value="ACTIVE">Activo</option>
               <option value="PAUSED">Pausado</option>

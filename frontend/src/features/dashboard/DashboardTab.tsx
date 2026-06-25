@@ -848,7 +848,7 @@ export function DashboardTab({
                   top: "100%",
                   right: 0,
                   background: "#fff",
-                  border: "1px solid #f4d4b6",
+                  border: "1px solid var(--border-color)",
                   borderRadius: "8px",
                   boxShadow: "0 4px 12px rgba(154,79,15,0.08)",
                   zIndex: 50,
@@ -964,7 +964,7 @@ export function DashboardTab({
               {viewMenuOpen && (
                 <div style={{
                   position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 100,
-                  background: "#fff", border: "1px solid #f4d4b6", borderRadius: "10px",
+                  background: "#fff", border: "1px solid var(--border-color)", borderRadius: "10px",
                   boxShadow: "0 6px 20px rgba(15,23,42,0.1)", minWidth: "15rem",
                   padding: "0.75rem",
                 }}>
@@ -988,7 +988,7 @@ export function DashboardTab({
                       ))}
                     </div>
                   )}
-                  <div style={{ borderTop: "1px solid #f4d4b6", paddingTop: "0.5rem", display: "flex", gap: "0.3rem" }}>
+                  <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "0.5rem", display: "flex", gap: "0.3rem" }}>
                     <input
                       placeholder="Nombre de la vista"
                       value={viewName}
@@ -1009,7 +1009,7 @@ export function DashboardTab({
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", alignItems: "flex-end" }}>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Empresa</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Empresa</label>
             <SearchableSelect
               options={companyOptions}
               value={company}
@@ -1020,7 +1020,7 @@ export function DashboardTab({
             />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Proyecto</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Proyecto</label>
             <SearchableSelect
               options={projectOptions}
               value={projectId}
@@ -1031,11 +1031,11 @@ export function DashboardTab({
             />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Estado del Proyecto</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Estado del Proyecto</label>
             <select
               value={projectStatus}
               onChange={(e) => { setProjectStatus(e.target.value); setTablePage(1); }}
-              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}
             >
               <option value="">Todos los estados</option>
               <option value="ACTIVE">Activos</option>
@@ -1044,11 +1044,11 @@ export function DashboardTab({
             </select>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Tipo de Proyecto</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Tipo de Proyecto</label>
             <select
               value={projectType}
               onChange={(e) => { setProjectType(e.target.value); setTablePage(1); }}
-              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}
             >
               <option value="">Todos los tipos</option>
               <option value="FIXED_PRICE">Precio Fijo (Fixed Price)</option>
@@ -1057,18 +1057,18 @@ export function DashboardTab({
             </select>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Rango de Fechas</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Rango de Fechas</label>
             <DateRangePicker
               value={dateRange}
               onChange={(r) => { setDateRange(r); setTablePage(1); }}
             />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Moneda Base</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem" }}>Moneda Base</label>
             <select
               value={baseCurrency}
               onChange={(e) => void changeBaseCurrency(e.target.value)}
-              style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+              style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}
             >
               {["COP","USD","EUR","MXN","PEN","CLP"].map((c) => <option key={c} value={c}>Ver en {c}</option>)}
             </select>
@@ -1236,7 +1236,7 @@ export function DashboardTab({
               {exportMenuOpen && (
                 <div style={{
                   position: "absolute", right: 0, top: "calc(100% + 4px)", zIndex: 100,
-                  background: "#fff", border: "1px solid #f4d4b6", borderRadius: "8px",
+                  background: "#fff", border: "1px solid var(--border-color)", borderRadius: "8px",
                   boxShadow: "0 4px 14px rgba(15,23,42,0.1)", overflow: "hidden",
                 }}>
                   <button type="button" className="ghost"
@@ -1246,7 +1246,7 @@ export function DashboardTab({
                   </button>
                   <button type="button" className="ghost"
                     onClick={() => { void exportPdf(); setExportMenuOpen(false); }}
-                    style={{ display: "block", width: "100%", borderRadius: 0, textAlign: "left", fontSize: "0.82rem", borderTop: "1px solid #f4d4b6" }}>
+                    style={{ display: "block", width: "100%", borderRadius: 0, textAlign: "left", fontSize: "0.82rem", borderTop: "1px solid var(--border-color)" }}>
                     📄 PDF ejecutivo
                   </button>
                 </div>
@@ -1313,7 +1313,7 @@ export function DashboardTab({
         {/* Paginación */}
         {totalPages > 1 && (
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.75rem", flexWrap: "wrap", gap: "0.5rem" }}>
-            <span style={{ fontSize: "0.78rem", color: "#9a4f0f" }}>
+            <span style={{ fontSize: "0.78rem", color: "var(--color-accent)" }}>
               Página {tablePage} de {totalPages} · {filteredProjects.length} proyectos
             </span>
             <div style={{ display: "flex", gap: "0.3rem" }}>
@@ -1345,7 +1345,7 @@ export function DashboardTab({
           </div>
         )}
         {totalPages <= 1 && filteredProjects.length > 0 && (
-          <p style={{ marginTop: "0.4rem", fontSize: "0.75rem", color: "#9a4f0f" }}>
+          <p style={{ marginTop: "0.4rem", fontSize: "0.75rem", color: "var(--color-accent)" }}>
             {filteredProjects.length} proyectos
           </p>
         )}

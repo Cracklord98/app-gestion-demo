@@ -35,7 +35,7 @@ export function MonthYearPicker({
     <div style={{ display: "flex", flexDirection: "column", gap: "0.2rem" }}>
       <label
         htmlFor={`${id ?? label}-month`}
-        style={{ fontSize: "0.7rem", color: "#9a4f0f", fontWeight: 600 }}
+        style={{ fontSize: "0.7rem", color: "var(--color-accent)", fontWeight: 600 }}
       >
         {label}
       </label>

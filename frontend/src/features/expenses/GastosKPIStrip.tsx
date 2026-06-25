@@ -28,18 +28,18 @@ function KPI({
       flex: "1 1 0",
       minWidth: "9rem",
       background: "#fff8f0",
-      border: "1px solid #f4d4b6",
+      border: "1px solid var(--border-color)",
       borderRadius: "10px",
       padding: "0.65rem 0.9rem",
     }}>
-      <div style={{ fontSize: "0.68rem", color: "#9a4f0f", fontWeight: 600, marginBottom: "0.15rem" }}>
+      <div style={{ fontSize: "0.68rem", color: "var(--color-accent)", fontWeight: 600, marginBottom: "0.15rem" }}>
         {label}
       </div>
       <div style={{ fontSize: "1.05rem", fontWeight: 800, color: accent ?? "#5f2f00" }}>
         {value}
       </div>
       {sub && (
-        <div style={{ fontSize: "0.68rem", color: "#9a4f0f", marginTop: "0.1rem" }}>{sub}</div>
+        <div style={{ fontSize: "0.68rem", color: "var(--color-accent)", marginTop: "0.1rem" }}>{sub}</div>
       )}
       {delta != null && (
         <div style={{

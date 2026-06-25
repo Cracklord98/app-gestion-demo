@@ -133,7 +133,7 @@ export function AlertsPanel({
         style={{
           position: "fixed", top: 0, right: open ? 0 : "-26rem",
           width: "min(25rem, 100vw)", height: "100dvh",
-          background: "#fffdf9", borderLeft: "1px solid #f4d4b6",
+          background: "var(--color-primary-05)", borderLeft: "1px solid var(--border-color)",
           boxShadow: "-6px 0 28px rgba(15,23,42,0.14)",
           zIndex: 301, display: "flex", flexDirection: "column",
           transition: "right 0.25s ease",
@@ -141,7 +141,7 @@ export function AlertsPanel({
       >
         {/* Header */}
         <div style={{
-          padding: "1rem 1.25rem", borderBottom: "1px solid #f4d4b6",
+          padding: "1rem 1.25rem", borderBottom: "1px solid var(--border-color)",
           display: "flex", alignItems: "center", justifyContent: "space-between",
           background: "#fff8f0",
         }}>
@@ -149,7 +149,7 @@ export function AlertsPanel({
             <h2 style={{ margin: 0, fontSize: "1rem", color: "#5f2f00" }}>
               🔔 Alertas activas
             </h2>
-            <p style={{ margin: 0, fontSize: "0.75rem", color: "#9a4f0f" }}>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--color-accent)" }}>
               {unreadCount} sin resolver
             </p>
           </div>
@@ -179,7 +179,7 @@ export function AlertsPanel({
         {/* Body */}
         <div style={{ flex: 1, overflowY: "auto", padding: "0.75rem" }}>
           {groups.length === 0 ? (
-            <div className="alert-empty-state" style={{ padding: "2rem 1rem", textAlign: "center", color: "#9a4f0f" }}>
+            <div className="alert-empty-state" style={{ padding: "2rem 1rem", textAlign: "center", color: "var(--color-accent)" }}>
               <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>✅</div>
               <p style={{ fontWeight: 700 }}>Sin alertas activas</p>
             </div>
@@ -194,7 +194,7 @@ export function AlertsPanel({
                   style={{
                     width: "100%", display: "flex", alignItems: "center",
                     justifyContent: "space-between", background: "#fff4ea",
-                    border: "1px solid #f4d4b6", borderRadius: "8px",
+                    border: "1px solid var(--border-color)", borderRadius: "8px",
                     padding: "0.5rem 0.75rem", cursor: "pointer",
                     color: "#5f2f00", fontWeight: 700, fontSize: "0.82rem",
                   }}

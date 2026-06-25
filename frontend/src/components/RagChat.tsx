@@ -213,9 +213,9 @@ export function RagChat({ projects, statsProjects = [], fxConfigs, consultants =
       height: "450px",
       background: "rgba(255, 255, 255, 0.95)",
       backdropFilter: "blur(12px)",
-      border: "1px solid #f4d4b6",
+      border: "1px solid var(--border-color)",
       borderRadius: "16px",
-      boxShadow: "0 8px 32px rgba(154, 79, 15, 0.18)",
+      boxShadow: "0 8px 32px rgba(241, 163, 35, 0.18)",
       display: "flex",
       flexDirection: "column",
       zIndex: 10000,
@@ -224,7 +224,7 @@ export function RagChat({ projects, statsProjects = [], fxConfigs, consultants =
     }}>
       {/* Header */}
       <div style={{
-        background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+        background: "var(--gradient-accent)",
         color: "#fff",
         padding: "0.85rem 1rem",
         display: "flex",
@@ -310,12 +310,12 @@ export function RagChat({ projects, statsProjects = [], fxConfigs, consultants =
             }}
           >
             <div style={{
-              background: msg.sender === "user" ? "linear-gradient(135deg, #ff9c2c, #9a4f0f)" : "#fff",
+              background: msg.sender === "user" ? "var(--gradient-accent)" : "#fff",
               color: msg.sender === "user" ? "#fff" : "var(--text-strong)",
               padding: "0.65rem 0.85rem",
               borderRadius: msg.sender === "user" ? "12px 12px 2px 12px" : "12px 12px 12px 2px",
               fontSize: "0.8rem",
-              border: msg.sender === "user" ? "none" : "1px solid #f4d4b6",
+              border: msg.sender === "user" ? "none" : "1px solid var(--border-color)",
               boxShadow: "0 2px 4px rgba(0,0,0,0.02)",
               whiteSpace: "pre-line"
             }}>
@@ -325,7 +325,7 @@ export function RagChat({ projects, statsProjects = [], fxConfigs, consultants =
             {msg.sources && msg.sources.length > 0 && (
               <div style={{
                 fontSize: "0.62rem",
-                color: "#9a4f0f",
+                color: "var(--color-accent)",
                 fontStyle: "italic",
                 alignSelf: "flex-start",
                 paddingLeft: "4px"
@@ -337,14 +337,14 @@ export function RagChat({ projects, statsProjects = [], fxConfigs, consultants =
         ))}
 
         {isTyping && (
-          <div style={{ alignSelf: "flex-start", background: "#fff", border: "1px solid #f4d4b6", padding: "0.5rem 0.85rem", borderRadius: "12px 12px 12px 2px", fontSize: "0.8rem", color: "var(--text-soft)" }}>
+          <div style={{ alignSelf: "flex-start", background: "#fff", border: "1px solid var(--border-color)", padding: "0.5rem 0.85rem", borderRadius: "12px 12px 12px 2px", fontSize: "0.8rem", color: "var(--text-soft)" }}>
             Generando respuesta... ⏳
           </div>
         )}
       </div>
 
       {/* Input Form */}
-      <form onSubmit={handleSend} style={{ display: "flex", padding: "0.5rem", borderTop: "1px solid #f4d4b6", background: "#fff" }}>
+      <form onSubmit={handleSend} style={{ display: "flex", padding: "0.5rem", borderTop: "1px solid var(--border-color)", background: "#fff" }}>
         <input
           type="text"
           value={input}
@@ -362,7 +362,7 @@ export function RagChat({ projects, statsProjects = [], fxConfigs, consultants =
         <button
           type="submit"
           style={{
-            background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+            background: "var(--gradient-accent)",
             color: "#fff",
             border: "none",
             borderRadius: "50%",

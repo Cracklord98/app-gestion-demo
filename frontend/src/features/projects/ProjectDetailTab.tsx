@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { PageHeader } from "../../components/PageHeader";
-import { CHANGE_REQUEST_STATUS_LABELS, CHANGE_REQUEST_TYPE_LABELS, RISK_STATUS_LABELS, ASSIGNMENT_STATUS_LABELS, ISSUE_SEVERITY_LABELS, ISSUE_STATUS_LABELS, label } from "../../utils/statusLabels";
+import { CHANGE_REQUEST_STATUS_LABELS, CHANGE_REQUEST_TYPE_LABELS, RISK_STATUS_LABELS, ASSIGNMENT_STATUS_LABELS, ISSUE_SEVERITY_LABELS, ISSUE_STATUS_LABELS, label, displayCountryWithFlag } from "../../utils/statusLabels";
 import {
   getProjectDetail,
   getProjectTimeline,
@@ -51,8 +51,8 @@ function pct(n: number | null | undefined) {
 }
 
 function RagDot({ status }: { status: HealthStatus | null | undefined }) {
-  if (!status) return <span style={{ color: "#9ca3af" }}>—</span>;
-  const colors: Record<HealthStatus, string> = { GREEN: "#22c55e", YELLOW: "#f59e0b", RED: "#ef4444" };
+  if (!status) return <span style={{ color: "var(--color-sec-gray)" }}>—</span>;
+  const colors: Record<HealthStatus, string> = { GREEN: "var(--color-sec-green)", YELLOW: "var(--color-accent)", RED: "var(--color-sec-red)" };
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: "0.35rem",
@@ -70,25 +70,25 @@ function RagDot({ status }: { status: HealthStatus | null | undefined }) {
 function KpiCard({ label, value, sub }: { label: string; value: React.ReactNode; sub?: string }) {
   return (
     <div style={{
-      background: "var(--bg-card, #fff)", border: "1px solid #e5e7eb", borderRadius: "0.5rem",
+      background: "#fff", border: "1px solid var(--border-color)", borderRadius: "0.5rem",
       padding: "0.75rem 1rem", minWidth: "9rem",
     }}>
-      <div style={{ fontSize: "0.7rem", color: "#6b7280", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>
+      <div style={{ fontSize: "0.7rem", color: "var(--color-sec-gray)", marginBottom: "0.25rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>
       <div style={{ fontSize: "1.15rem", fontWeight: 700 }}>{value}</div>
-      {sub && <div style={{ fontSize: "0.7rem", color: "#9ca3af", marginTop: "0.1rem" }}>{sub}</div>}
+      {sub && <div style={{ fontSize: "0.7rem", color: "var(--color-sec-gray)", marginTop: "0.1rem" }}>{sub}</div>}
     </div>
   );
 }
 
 function BudgetBar({ pct: p }: { pct: number }) {
   const capped = Math.min(p, 100);
-  const color = p > 100 ? "#ef4444" : p > 90 ? "#f59e0b" : "#22c55e";
+  const color = p > 100 ? "var(--color-sec-red)" : p > 90 ? "var(--color-accent)" : "var(--color-sec-green)";
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-      <div style={{ flex: 1, height: "0.6rem", background: "#e5e7eb", borderRadius: "9999px", overflow: "hidden" }}>
+      <div style={{ flex: 1, height: "0.6rem", background: "var(--color-primary-10)", borderRadius: "9999px", overflow: "hidden" }}>
         <div style={{ width: `${capped}%`, height: "100%", background: color }} />
       </div>
-      <span style={{ fontSize: "0.75rem", color: "#374151", minWidth: "3rem", textAlign: "right" }}>{p.toFixed(1)}%</span>
+      <span style={{ fontSize: "0.75rem", color: "var(--color-primary)", minWidth: "3rem", textAlign: "right" }}>{p.toFixed(1)}%</span>
     </div>
   );
 }
@@ -102,7 +102,7 @@ function BurndownChart({ timeline }: { timeline: ProjectTimeline }) {
   ).sort();
 
   if (allMonths.length === 0) {
-    return <p style={{ color: "#9ca3af", fontSize: "0.8rem", margin: 0 }}>Sin datos de costos aún.</p>;
+    return <p style={{ color: "var(--color-sec-gray)", fontSize: "0.8rem", margin: 0 }}>Sin datos de costos aún.</p>;
   }
 
   const pvMap = new Map(plannedValue.map((x) => [x.month, x.pv]));
@@ -266,7 +266,7 @@ function ResumenTab({ project, financials, evm, canWrite, onReload, projectId }:
       </div>
 
       {/* Budget bar */}
-      <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "0.75rem 1rem" }}>
+      <div style={{ background: "var(--color-primary-05)", border: "1px solid var(--border-color)", borderRadius: "0.5rem", padding: "0.75rem 1rem" }}>
         <div style={{ fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.4rem" }}>Uso de presupuesto</div>
         <BudgetBar pct={financials.usedBudgetPercent} />
       </div>
@@ -292,8 +292,8 @@ function ResumenTab({ project, financials, evm, canWrite, onReload, projectId }:
         <div style={{ flex: "1 1 16rem" }}>
           <div style={{ fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.35rem" }}>Línea base</div>
           {hasBaseline ? (
-            <div style={{ fontSize: "0.8rem", color: "#374151" }}>
-              <span style={{ color: "#22c55e", fontWeight: 600 }}>Establecida</span>
+            <div style={{ fontSize: "0.8rem", color: "var(--color-primary)" }}>
+              <span style={{ color: "var(--color-sec-green)", fontWeight: 600 }}>Establecida</span>
               {" — "}{new Date(project.baselineSetAt!).toLocaleDateString("es-CO")}
               {project.baselineSetBy ? ` por ${project.baselineSetBy}` : ""}
             </div>
@@ -307,23 +307,23 @@ function ResumenTab({ project, financials, evm, canWrite, onReload, projectId }:
 
       {/* Baseline comparison */}
       {hasBaseline && (
-        <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "0.75rem 1rem" }}>
+        <div style={{ background: "var(--color-primary-05)", border: "1px solid var(--border-color)", borderRadius: "0.5rem", padding: "0.75rem 1rem" }}>
           <div style={{ fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.4rem" }}>Comparación vs línea base</div>
           <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap", fontSize: "0.8rem" }}>
-            <div><span style={{ color: "#6b7280" }}>Presupuesto base:</span> {fmt(Number(project.baselineBudget ?? 0), project.currency)}</div>
-            <div><span style={{ color: "#6b7280" }}>Inicio base:</span> {project.baselineStartDate ? new Date(project.baselineStartDate).toLocaleDateString("es-CO") : "—"}</div>
-            <div><span style={{ color: "#6b7280" }}>Fin base:</span> {project.baselineEndDate ? new Date(project.baselineEndDate).toLocaleDateString("es-CO") : "—"}</div>
+            <div><span style={{ color: "var(--color-sec-gray)" }}>Presupuesto base:</span> {fmt(Number(project.baselineBudget ?? 0), project.currency)}</div>
+            <div><span style={{ color: "var(--color-sec-gray)" }}>Inicio base:</span> {project.baselineStartDate ? new Date(project.baselineStartDate).toLocaleDateString("es-CO") : "—"}</div>
+            <div><span style={{ color: "var(--color-sec-gray)" }}>Fin base:</span> {project.baselineEndDate ? new Date(project.baselineEndDate).toLocaleDateString("es-CO") : "—"}</div>
           </div>
         </div>
       )}
 
       {/* EVM Burndown chart */}
-      <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "0.5rem", padding: "0.75rem 1rem" }}>
+      <div style={{ background: "var(--color-primary-05)", border: "1px solid var(--border-color)", borderRadius: "0.5rem", padding: "0.75rem 1rem" }}>
         <div style={{ fontSize: "0.75rem", fontWeight: 600, marginBottom: "0.5rem" }}>Curva S — Valor planeado vs Costo real (EVM)</div>
         {timeline ? (
           <BurndownChart timeline={timeline} />
         ) : (
-          <p style={{ color: "#9ca3af", fontSize: "0.8rem", margin: 0 }}>Cargando datos de cronograma…</p>
+          <p style={{ color: "var(--color-sec-gray)", fontSize: "0.8rem", margin: 0 }}>Cargando datos de cronograma…</p>
         )}
       </div>
     </div>
@@ -566,7 +566,7 @@ function RecursosTab({ assignments }: { assignments: ProjectDetail["assignments"
             <tr key={a.id}>
               <td style={{ fontWeight: 600 }}>{a.consultant?.fullName ?? "—"}</td>
               <td>{a.consultant?.role ?? a.role ?? "—"}</td>
-              <td>{a.consultant?.country ?? "—"}</td>
+              <td>{a.consultant?.country ? displayCountryWithFlag(a.consultant.country) : "—"}</td>
               <td>
                 <span style={{
                   fontWeight: 600, fontSize: "0.75rem",

@@ -30,6 +30,7 @@ import {
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { downloadCsv } from "../../utils/csv";
+import { displayCountryWithFlag } from "../../utils/statusLabels";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -297,19 +298,19 @@ function OverviewPanel({
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", alignItems: "flex-end" }}>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Desde</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }} />
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>Desde</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }} />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Hasta</label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }} />
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>Hasta</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }} />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Estado</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>Estado</label>
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as AvailabilityStatus | "")}
-              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}
             >
               <option value="">Todos los estados</option>
               <option value="FREE">Libre</option>
@@ -319,34 +320,34 @@ function OverviewPanel({
             </select>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>País</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>País</label>
             <select
               value={countryFilter}
               onChange={(e) => setCountryFilter(e.target.value)}
-              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}
             >
               <option value="">Todos los países</option>
-              {countries.map((c) => <option key={c} value={c}>{c}</option>)}
+              {countries.map((c) => <option key={c} value={c}>{displayCountryWithFlag(c)}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Seniority</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>Seniority</label>
             <select
               value={seniorityFilter}
               onChange={(e) => setSeniorityFilter(e.target.value)}
-              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}
             >
               <option value="">Todos los seniority</option>
               {seniorities.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Skill / Especialidad</label>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>Skill / Especialidad</label>
             <input
               placeholder="Ej: React, SQL..."
               value={skillFilter}
               onChange={(e) => setSkillFilter(e.target.value)}
-              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+              style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}
             />
           </div>
         </div>
@@ -400,7 +401,7 @@ function OverviewPanel({
                     <tr>
                       <td>{row.fullName}</td>
                       <td>{row.role}</td>
-                      <td>{row.country || "—"}</td>
+                      <td>{row.country ? displayCountryWithFlag(row.country) : "—"}</td>
                       <td><span className={`pill ${STATUS_CLASS[row.availabilityStatus]}`}>{STATUS_LABELS[row.availabilityStatus]}</span></td>
                       <td>{row.capacityHours.toFixed(1)}h</td>
                       <td>{row.committedHours.toFixed(1)}h</td>
@@ -448,7 +449,7 @@ function OverviewPanel({
                       <tr key={c.consultantId}>
                         <td>{c.fullName}</td>
                         <td>{c.role}</td>
-                        <td>{c.country || "—"}</td>
+                        <td>{c.country ? displayCountryWithFlag(c.country) : "—"}</td>
                         <td style={{ color: "#16a34a", fontWeight: 600 }}>{c.capacityHours.toFixed(1)}h</td>
                         <td>
                           <div className="tag-list">
@@ -582,12 +583,12 @@ function ByProjectPanel({ onError }: { onError: (msg: string) => void }) {
         <h3>Filtros de período</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem" }}>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Desde</label>
-            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }} />
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>Desde</label>
+            <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }} />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Hasta</label>
-            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }} />
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>Hasta</label>
+            <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }} />
           </div>
         </div>
       </article>
@@ -850,22 +851,22 @@ function AssignmentsPanel({
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Proyecto</label>
-            <select value={filterProject} onChange={(e) => setFilterProject(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>Proyecto</label>
+            <select value={filterProject} onChange={(e) => setFilterProject(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}>
               <option value="">Todos los proyectos</option>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Consultor</label>
-            <select value={filterConsultant} onChange={(e) => setFilterConsultant(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>Consultor</label>
+            <select value={filterConsultant} onChange={(e) => setFilterConsultant(e.target.value)} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}>
               <option value="">Todos los consultores</option>
               {consultants.map((c) => <option key={c.id} value={c.id}>{c.fullName}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem", textAlign: "center" }}>Estado de Asignación</label>
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as AssignmentStatus | "")} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}>
+            <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-accent)", marginBottom: "0.25rem", textAlign: "center" }}>Estado de Asignación</label>
+            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as AssignmentStatus | "")} style={{ width: "100%", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}>
               <option value="">Todos los estados</option>
               {(Object.keys(ASSIGNMENT_STATUS_LABELS) as AssignmentStatus[]).map((s) => (
                 <option key={s} value={s}>{ASSIGNMENT_STATUS_LABELS[s]}</option>
@@ -1005,13 +1006,13 @@ function AssignmentsPanel({
                     {consultants.filter((c) => c.active).map((c) => <option key={c.id} value={c.id}>{c.fullName} — {c.role}</option>)}
                   </select>
                 ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", border: "1px solid #f1c79d", borderRadius: "10px", padding: "0.75rem", background: "#fffdfa" }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", border: "1px solid var(--color-primary-20)", borderRadius: "10px", padding: "0.75rem", background: "var(--color-primary-05)" }}>
                     <input
                       type="text"
                       placeholder="Buscar consultor por nombre/rol..."
                       value={consultantSearch}
                       onChange={(e) => setConsultantSearch(e.target.value)}
-                      style={{ padding: "0.4rem 0.6rem", borderRadius: "8px", border: "1px solid #f1c79d", fontSize: "0.82rem", width: "100%", boxSizing: "border-box" }}
+                      style={{ padding: "0.4rem 0.6rem", borderRadius: "8px", border: "1px solid var(--color-primary-20)", fontSize: "0.82rem", width: "100%", boxSizing: "border-box" }}
                     />
                     <div style={{ display: "flex", gap: "0.4rem" }}>
                       <button
@@ -1051,7 +1052,7 @@ function AssignmentsPanel({
                                   );
                                 }}
                               />
-                              <span>{c.fullName} <span style={{ color: "#9a4f0f", fontSize: "0.75rem" }}>({c.role})</span></span>
+                              <span>{c.fullName} <span style={{ color: "var(--color-accent)", fontSize: "0.75rem" }}>({c.role})</span></span>
                             </label>
                           );
                         })}

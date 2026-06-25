@@ -65,7 +65,7 @@ export function GastosFilters({
         />
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-          <label style={{ fontSize: "0.72rem", color: "#9a4f0f", fontWeight: 600, whiteSpace: "nowrap" }}>
+          <label style={{ fontSize: "0.72rem", color: "var(--color-accent)", fontWeight: 600, whiteSpace: "nowrap" }}>
             Agrupar por
           </label>
           <select
@@ -80,7 +80,7 @@ export function GastosFilters({
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "0.3rem" }}>
-          <label style={{ fontSize: "0.72rem", color: "#9a4f0f", fontWeight: 600, whiteSpace: "nowrap" }}>
+          <label style={{ fontSize: "0.72rem", color: "var(--color-accent)", fontWeight: 600, whiteSpace: "nowrap" }}>
             Moneda base
           </label>
           <select
@@ -156,7 +156,7 @@ export function GastosFilters({
                     padding: "0.2rem 0.55rem",
                     borderRadius: "9999px",
                     border: "1px solid",
-                    borderColor: active ? "#ea580c" : "#f4d4b6",
+                    borderColor: active ? "#ea580c" : "var(--border-color)",
                     background: active ? "#ea580c" : "#fff8f0",
                     color: active ? "#fff" : "#9a3412",
                     fontWeight: 600,

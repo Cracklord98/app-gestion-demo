@@ -172,19 +172,19 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
           borderRadius: "20px", 
           marginBottom: "1.5rem", 
           textAlign: "center",
-          border: "1px solid rgba(232, 160, 32, 0.35)",
-          background: "linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,243,232,0.7) 100%)",
-          boxShadow: "0 8px 32px 0 rgba(154, 79, 15, 0.08)"
+          border: "1px solid var(--border-color)",
+          background: "linear-gradient(135deg, rgba(255,255,255,0.7) 0%, var(--color-primary-05) 100%)",
+          boxShadow: "0 8px 32px 0 var(--color-primary-05)"
         }}
       >
-        <div style={{ color: "#E8A020", fontSize: "1.5rem", marginBottom: "0.5rem" }}>“</div>
+        <div style={{ color: "var(--color-accent)", fontSize: "1.5rem", marginBottom: "0.5rem" }}>“</div>
         <h1 
           style={{ 
             fontFamily: "var(--display)", 
             fontSize: "1.6rem", 
             fontWeight: 700, 
             fontStyle: "italic",
-            color: "#7A3C10", 
+            color: "var(--color-primary)", 
             margin: "0 auto",
             lineHeight: 1.4,
             letterSpacing: "-0.01em",
@@ -193,7 +193,7 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
         >
           {phrase || "Define tu frase motivacional o visión personal en el formulario"}
         </h1>
-        <div style={{ color: "#E8A020", fontSize: "1.5rem", marginTop: "0.5rem" }}>”</div>
+        <div style={{ color: "var(--color-accent)", fontSize: "1.5rem", marginTop: "0.5rem" }}>”</div>
       </div>
 
       <div className="card glass-card" style={{ padding: "2.5rem", borderRadius: "20px" }}>
@@ -214,9 +214,9 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
               overflow: "hidden", 
               display: "grid", 
               placeItems: "center", 
-              background: "linear-gradient(135deg, #E8A020, #7A3C10)", 
+              background: "var(--gradient-accent)", 
               border: "4px solid #fff", 
-              boxShadow: "0 8px 24px rgba(122,60,16,0.15)", 
+              boxShadow: "0 8px 24px var(--color-accent-30)", 
               color: "#fff", 
               fontWeight: 800, 
               fontSize: "2.8rem",
@@ -238,14 +238,14 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
               <div className="avatar-hover-overlay" style={{
                 position: "absolute",
                 inset: 0,
-                background: "rgba(26, 15, 5, 0.65)",
+                background: "var(--color-primary-80)",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
                 opacity: 0,
                 transition: "opacity 0.25s ease",
-                color: "#f5e6d8",
+                color: "#ffffff",
                 fontSize: "0.75rem",
                 fontWeight: 700,
                 gap: "0.25rem"
@@ -265,7 +265,7 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
             </p>
             <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", flexWrap: "wrap" }}>
               {authUser.roles.map((role) => (
-                <span key={role} className="pill neutral" style={{ background: "#fff3e8", color: "#7A3C10", border: "1px solid #f4d4b6", fontSize: "0.75rem", fontWeight: 700 }}>
+                <span key={role} className="pill neutral" style={{ fontSize: "0.75rem" }}>
                   {role}
                 </span>
               ))}
@@ -274,7 +274,7 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
         </div>
 
         {successMsg && (
-          <div style={{ padding: "0.75rem 1rem", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#166534", borderRadius: "10px", marginBottom: "1.5rem", fontWeight: 600, fontSize: "0.9rem" }}>
+          <div style={{ padding: "0.75rem 1rem", background: "var(--color-green-10)", border: "1px solid var(--color-sec-green)", color: "var(--color-sec-green)", borderRadius: "10px", marginBottom: "1.5rem", fontWeight: 600, fontSize: "0.9rem" }}>
             ✓ {successMsg}
           </div>
         )}
@@ -293,7 +293,7 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                 onChange={(e) => setDisplayName(e.target.value)}
                 placeholder="Ej. Andres Toro"
                 className="styled-input"
-                style={{ width: "100%", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6", background: "rgba(255,255,255,0.8)", fontSize: "0.95rem" }}
+                style={{ width: "100%", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid var(--border-color)", background: "rgba(255,255,255,0.8)", fontSize: "0.95rem" }}
               />
             </div>
 
@@ -306,7 +306,7 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                 onChange={(e) => setPhrase(e.target.value)}
                 placeholder="Tu visión en una frase corta..."
                 className="styled-input"
-                style={{ width: "100%", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6", background: "rgba(255,255,255,0.8)", fontSize: "0.95rem" }}
+                style={{ width: "100%", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid var(--border-color)", background: "rgba(255,255,255,0.8)", fontSize: "0.95rem" }}
               />
             </div>
           </div>
@@ -320,12 +320,12 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
               onChange={(e) => setBio(e.target.value)}
               placeholder="Cuéntanos un poco sobre ti, tu trayectoria y tus áreas de interés..."
               className="styled-input"
-              style={{ width: "100%", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6", background: "rgba(255,255,255,0.8)", fontSize: "0.95rem", resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }}
+              style={{ width: "100%", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid var(--border-color)", background: "rgba(255,255,255,0.8)", fontSize: "0.95rem", resize: "vertical", fontFamily: "inherit", lineHeight: 1.5 }}
             />
           </div>
 
           {/* 3. SECCIÓN DE HABILIDADES TÉCNICAS (ZONA INFERIOR) */}
-          <div style={{ borderTop: "1px solid #f4d4b6", paddingTop: "1.5rem", marginTop: "1rem" }}>
+          <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1.5rem", marginTop: "1rem" }}>
             <label className="form-label" style={{ fontWeight: 700, color: "var(--text-strong)", display: "block", marginBottom: "0.5rem" }}>
               Habilidades Duras / Técnicas
             </label>
@@ -342,13 +342,13 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                     display: "inline-flex", 
                     alignItems: "center", 
                     gap: "0.35rem", 
-                    background: "#ffe8cc", 
-                    color: "#7A3C10", 
+                    background: "var(--color-accent-10)", 
+                    color: "var(--color-primary)", 
                     padding: "0.35rem 0.75rem", 
                     borderRadius: "20px", 
                     fontSize: "0.82rem",
                     fontWeight: 700,
-                    border: "1px solid #ffd8a8"
+                    border: "1px solid var(--color-accent-20)"
                   }}
                 >
                   {skill}
@@ -359,7 +359,7 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                       all: "unset", 
                       cursor: "pointer", 
                       fontSize: "0.75rem", 
-                      color: "#b05c1d", 
+                      color: "var(--color-sec-red)", 
                       fontWeight: "bold",
                       padding: "0 2px"
                     }}
@@ -389,7 +389,7 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                 onKeyDown={handleKeyDown}
                 placeholder="Escribe una habilidad (ej. React) y presiona Enter..."
                 className="styled-input"
-                style={{ width: "100%", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid #f4d4b6", background: "rgba(255,255,255,0.8)", fontSize: "0.95rem" }}
+                style={{ width: "100%", padding: "0.75rem 1rem", borderRadius: "10px", border: "1px solid var(--border-color)", background: "rgba(255,255,255,0.8)", fontSize: "0.95rem" }}
               />
               
               {showSuggestions && skillInput.trim() !== "" && filteredSuggestions.length > 0 && (
@@ -399,7 +399,7 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                   left: 0,
                   right: 0,
                   background: "#fff",
-                  border: "1px solid #f4d4b6",
+                  border: "1px solid var(--border-color)",
                   borderRadius: "10px",
                   boxShadow: "0 8px 16px rgba(0,0,0,0.1)",
                   zIndex: 20,
@@ -418,7 +418,7 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                         color: "var(--text-strong)",
                         transition: "background 0.15s"
                       }}
-                      onMouseEnter={(e) => e.currentTarget.style.background = "#fff3e8"}
+                      onMouseEnter={(e) => e.currentTarget.style.background = "var(--color-accent-10)"}
                       onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
                     >
                       {suggestion}
@@ -437,12 +437,12 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                 padding: "0.75rem 2rem",
                 borderRadius: "10px",
                 border: "none",
-                background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                background: "var(--gradient-accent)",
                 color: "#fff",
                 fontWeight: 700,
                 cursor: saving ? "not-allowed" : "pointer",
                 transition: "transform 0.2s, box-shadow 0.2s",
-                boxShadow: "0 4px 12px rgba(154, 79, 15, 0.2)",
+                boxShadow: "0 4px 12px var(--color-accent-30)",
               }}
             >
               {saving ? "Guardando..." : "Guardar Cambios"}
@@ -466,8 +466,8 @@ export function ProfileTab({ authUser, onRefreshAuth, onError }: ProfileTabProps
                 height: "110px",
                 borderRadius: "50%",
                 overflow: "hidden",
-                background: "linear-gradient(135deg, #E8A020, #7A3C10)",
-                border: "3px solid #ffd8a8",
+                background: "var(--gradient-accent)",
+                border: "3px solid var(--color-accent-20)",
                 display: "grid",
                 placeItems: "center",
                 color: "#fff",

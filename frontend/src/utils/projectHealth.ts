@@ -22,10 +22,10 @@ export type ProjectHealthResult = {
 };
 
 const HEALTH_MAP: Record<HealthLevel, Omit<ProjectHealthResult, "nivel">> = {
-  VERDE:    { label: "Verde",   color: "#16a34a", pillClass: "ok",    icon: "●" },
-  AMARILLO: { label: "Amarillo", color: "#d97706", pillClass: "warn",  icon: "●" },
-  ROJO:     { label: "Rojo",    color: "#dc2626", pillClass: "error", icon: "●" },
-  CRITICO:  { label: "Crítico", color: "#7f1d1d", pillClass: "error", icon: "▲" },
+  VERDE:    { label: "Verde",   color: "#6bb42d", pillClass: "ok",    icon: "●" },
+  AMARILLO: { label: "Amarillo", color: "#f1a323", pillClass: "warn",  icon: "●" },
+  ROJO:     { label: "Rojo",    color: "#a8194c", pillClass: "error", icon: "●" },
+  CRITICO:  { label: "Crítico", color: "#a8194c", pillClass: "error", icon: "▲" },
 };
 
 export function calcularSaludProyecto(params: {

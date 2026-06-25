@@ -43,16 +43,7 @@ import { RagChat } from "./components/RagChat";
 import "./App.css";
 import "./responsive.css";
 
-// ── Logo ─────────────────────────────────────────────────────────────────────
 
-function PyramidLogo({ size = 48 }: { size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 100 90" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Logo">
-      <polygon points="50,0 0,90 50,90" fill="#E8A020" />
-      <polygon points="50,0 50,90 100,90" fill="#7A3C10" />
-    </svg>
-  );
-}
 
 // ── Sidebar config ──────────────────────────────────────────────────────────
 
@@ -172,12 +163,12 @@ function FxDrawer({ open, onClose, fxConfigs }: { open: boolean; onClose: () => 
           </div>
         </div>
 
-        <div style={{ background: "#fff8f0", border: "1px solid #f4d4b6", borderRadius: "10px", padding: "0.75rem" }}>
+        <div style={{ background: "#fff8f0", border: "1px solid var(--border-color)", borderRadius: "10px", padding: "0.75rem" }}>
           {result === null
             ? <p style={{ color: "#9ca3af", fontSize: "0.85rem", margin: 0 }}>Define una tasa mayor a 0</p>
             : <p style={{ color: "#5f2f00", fontWeight: 800, fontSize: "1.1rem", margin: 0 }}>
                 {conv.from} {Number(conv.amount).toLocaleString("es-CO")}
-                <span style={{ color: "#9a4f0f", fontSize: "0.85rem", fontWeight: 600, margin: "0 0.4rem" }}>→</span>
+                <span style={{ color: "var(--color-accent)", fontSize: "0.85rem", fontWeight: 600, margin: "0 0.4rem" }}>→</span>
                 {conv.to} {result.toLocaleString("es-CO", { maximumFractionDigits: 2 })}
               </p>
           }
@@ -185,7 +176,7 @@ function FxDrawer({ open, onClose, fxConfigs }: { open: boolean; onClose: () => 
 
         {fxConfigs.length > 0 && (
           <div>
-            <p style={{ fontSize: "0.7rem", color: "#9a4f0f", fontWeight: 700, marginBottom: "0.4rem" }}>
+            <p style={{ fontSize: "0.7rem", color: "var(--color-accent)", fontWeight: 700, marginBottom: "0.4rem" }}>
               Tasas configuradas
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
@@ -266,7 +257,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           left: 5%;
           width: 350px;
           height: 350px;
-          background: #ff9c2c;
+          background: var(--color-accent);
           animation: floatBlob1 15s infinite ease-in-out;
         }
 
@@ -275,7 +266,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           right: 5%;
           width: 400px;
           height: 400px;
-          background: #9a4f0f;
+          background: var(--color-sec-blue);
           animation: floatBlob2 18s infinite ease-in-out;
         }
 
@@ -330,7 +321,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           margin: 0;
           font-size: 1.35rem;
           font-weight: 800;
-          background: ${darkMode ? "linear-gradient(135deg, #ffdcb5 0%, #ff9c2c 100%)" : "linear-gradient(135deg, #7a3c10 0%, #d97706 100%)"};
+          background: var(--gradient-accent);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
@@ -340,9 +331,9 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           padding: 0.2rem 0.6rem;
           border-radius: 20px;
           font-weight: 700;
-          background: ${darkMode ? "rgba(255, 156, 44, 0.15)" : "#fff3e3"};
-          color: #9a4f0f;
-          border: 1px solid ${darkMode ? "rgba(255, 156, 44, 0.3)" : "#ffdcb5"};
+          background: ${darkMode ? "var(--color-accent-15)" : "var(--color-accent-05)"};
+          color: var(--color-accent);
+          border: 1px solid ${darkMode ? "var(--color-accent-30)" : "var(--color-accent-15)"};
         }
 
         .landing-hero {
@@ -383,7 +374,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         }
 
         .landing-title span {
-          background: linear-gradient(135deg, #ff9c2c 0%, #9a4f0f 100%);
+          background: var(--gradient-accent);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
@@ -407,7 +398,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           display: inline-flex;
           align-items: center;
           gap: 0.75rem;
-          background: linear-gradient(135deg, #ff9c2c, #9a4f0f);
+          background: var(--gradient-accent);
           color: #fff;
           border: none;
           border-radius: 50px;
@@ -415,13 +406,13 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           font-size: 1.05rem;
           font-weight: 700;
           cursor: pointer;
-          box-shadow: 0 10px 25px ${darkMode ? "rgba(154, 79, 15, 0.4)" : "rgba(154, 79, 15, 0.2)"};
+          box-shadow: 0 10px 25px ${darkMode ? "rgba(241, 163, 35, 0.4)" : "rgba(241, 163, 35, 0.2)"};
           transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .landing-btn:hover {
           transform: translateY(-3px);
-          box-shadow: 0 15px 35px ${darkMode ? "rgba(255, 156, 44, 0.5)" : "rgba(154, 79, 15, 0.35)"};
+          box-shadow: 0 15px 35px ${darkMode ? "rgba(241, 163, 35, 0.5)" : "rgba(241, 163, 35, 0.35)"};
         }
 
         .landing-btn:active {
@@ -437,7 +428,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         .glass-mockup {
           background: ${darkMode ? "rgba(30, 41, 59, 0.45)" : "rgba(255, 255, 255, 0.45)"};
           backdrop-filter: blur(20px);
-          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.08)" : "rgba(244, 212, 182, 0.6)"};
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.08)" : "var(--color-accent-15)"};
           border-radius: 24px;
           width: 100%;
           max-width: 440px;
@@ -450,7 +441,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           position: absolute;
           background: ${darkMode ? "rgba(15, 23, 42, 0.85)" : "rgba(255, 255, 255, 0.85)"};
           backdrop-filter: blur(15px);
-          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.1)" : "rgba(244, 212, 182, 0.5)"};
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.1)" : "var(--color-accent-15)"};
           border-radius: 16px;
           padding: 0.75rem 1rem;
           box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
@@ -491,7 +482,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         .feature-card {
           background: ${darkMode ? "rgba(30, 41, 59, 0.35)" : "rgba(255, 255, 255, 0.55)"};
           backdrop-filter: blur(15px);
-          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.06)" : "rgba(244, 212, 182, 0.5)"};
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.06)" : "var(--color-accent-15)"};
           border-radius: 20px;
           padding: 2rem;
           box-shadow: 0 10px 30px rgba(0,0,0,0.02);
@@ -503,8 +494,8 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         .feature-card:hover {
           transform: translateY(-6px);
           background: ${darkMode ? "rgba(30, 41, 59, 0.5)" : "rgba(255, 255, 255, 0.85)"};
-          border-color: #ff9c2c;
-          box-shadow: 0 15px 35px ${darkMode ? "rgba(255, 156, 44, 0.12)" : "rgba(154, 79, 15, 0.1)"};
+          border-color: #f1a323;
+          box-shadow: 0 15px 35px ${darkMode ? "rgba(241, 163, 35, 0.12)" : "rgba(241, 163, 35, 0.1)"};
         }
 
         .feature-icon-wrapper {
@@ -513,14 +504,14 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           border-radius: 12px;
           display: grid;
           place-items: center;
-          background: ${darkMode ? "rgba(255, 156, 44, 0.15)" : "#fff3e3"};
-          color: #ff9c2c;
+          background: ${darkMode ? "var(--color-accent-15)" : "var(--color-accent-05)"};
+          color: #f1a323;
           margin-bottom: 1.25rem;
           transition: all 0.3s ease;
         }
 
         .feature-card:hover .feature-icon-wrapper {
-          background: linear-gradient(135deg, #ff9c2c, #9a4f0f);
+          background: var(--gradient-accent);
           color: #fff;
           transform: scale(1.1) rotate(5deg);
         }
@@ -529,7 +520,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           margin: 0 0 0.5rem 0;
           font-size: 1.2rem;
           font-weight: 700;
-          color: ${darkMode ? "#f1f5f9" : "#7a3c10"};
+          color: ${darkMode ? "#f1f5f9" : "var(--color-primary)"};
         }
 
         .feature-card p {
@@ -554,8 +545,12 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         {/* Flotante Header */}
         <header className="landing-header">
           <div className="landing-logo">
-            <PyramidLogo size={36} />
-            <h2>Synaptica</h2>
+            <div className="logo-slot" style={{ height: "64px", transform: "scale(1.4)", transformOrigin: "left center", marginRight: "1.5rem" }}>
+              <img 
+                src={darkMode ? "/Logos/logo_Synaptica-02.png" : "/Logos/logo_Synaptica-01.png"} 
+                alt="Synaptica Logo" 
+              />
+            </div>
             <span className="landing-badge">v1.1.0 (Demo)</span>
           </div>
 
@@ -588,7 +583,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         <div className="landing-hero">
           <div className="landing-hero-left">
             <h1 className="landing-title">
-              Plataforma de<br />
+              SynaTrack<br />
               <span>Gestión Inteligente</span>
             </h1>
             <p className="landing-description">
@@ -605,12 +600,12 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
 
           <div className="landing-hero-right">
             <div className="glass-mockup">
-              {/* Floating Widget 1 */}
+               {/* Floating Widget 1 */}
               <div className="floating-widget widget-1" style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
                 <span style={{ fontSize: "1.25rem" }}>📈</span>
                 <div>
                   <span style={{ display: "block", fontSize: "0.6rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Margen Bruto</span>
-                  <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#16a34a" }}>+24.8%</span>
+                  <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--color-sec-green)" }}>+24.8%</span>
                 </div>
               </div>
 
@@ -619,16 +614,16 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
                 <span style={{ fontSize: "1.25rem" }}>⏰</span>
                 <div>
                   <span style={{ display: "block", fontSize: "0.6rem", color: "#64748b", fontWeight: 700, textTransform: "uppercase" }}>Horas Extra</span>
-                  <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "#ff9c2c" }}>Controlado</span>
+                  <span style={{ fontSize: "0.9rem", fontWeight: 800, color: "var(--color-accent)" }}>Controlado</span>
                 </div>
               </div>
 
               {/* Mockup Content Header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
                 <div style={{ display: "flex", gap: "0.3rem" }}>
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#ef4444" }} />
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#eab308" }} />
-                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#22c55e" }} />
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--color-sec-red)" }} />
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--color-accent)" }} />
+                  <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--color-sec-green)" }} />
                 </div>
                 <span style={{ fontSize: "0.7rem", color: "#94a3b8", fontWeight: 600 }}>Vista Ejecutiva</span>
               </div>
@@ -652,26 +647,26 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
                     strokeLinecap="round"
                   />
                   {/* Chart points */}
-                  <circle cx="200" cy="40" r="5" fill="#ff9c2c" stroke={darkMode ? "#1e293b" : "#fff"} strokeWidth="2" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))" }} />
-                  <circle cx="300" cy="20" r="6" fill="#9a4f0f" stroke={darkMode ? "#1e293b" : "#fff"} strokeWidth="2.5" style={{ filter: "drop-shadow(0 4px 8px rgba(154, 79, 15, 0.4))" }} />
+                  <circle cx="200" cy="40" r="5" fill="var(--color-accent)" stroke={darkMode ? "#1e293b" : "#fff"} strokeWidth="2" style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.2))" }} />
+                  <circle cx="300" cy="20" r="6" fill="var(--color-sec-red)" stroke={darkMode ? "#1e293b" : "#fff"} strokeWidth="2.5" style={{ filter: "drop-shadow(0 4px 8px rgba(168, 25, 76, 0.4))" }} />
                   
                   {/* Definitions */}
                   <defs>
                     <linearGradient id="area-gradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#ff9c2c" />
-                      <stop offset="100%" stopColor="#ff9c2c" stopOpacity="0" />
+                      <stop offset="0%" stopColor="var(--color-accent)" />
+                      <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0" />
                     </linearGradient>
                     <linearGradient id="line-gradient" x1="0" y1="0" x2="1" y2="0">
-                      <stop offset="0%" stopColor="#ff9c2c" />
-                      <stop offset="50%" stopColor="#ff9c2c" />
-                      <stop offset="100%" stopColor="#9a4f0f" />
+                      <stop offset="0%" stopColor="var(--color-accent)" />
+                      <stop offset="50%" stopColor="var(--color-accent)" />
+                      <stop offset="100%" stopColor="var(--color-sec-red)" />
                     </linearGradient>
                   </defs>
                 </svg>
               </div>
 
               {/* Stats widget inside card */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", borderTop: "1px dashed " + (darkMode ? "rgba(255,255,255,0.06)" : "rgba(244, 212, 182, 0.4)"), paddingTop: "1rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", borderTop: "1px dashed " + (darkMode ? "var(--color-primary-20)" : "rgba(244, 212, 182, 0.4)"), paddingTop: "1rem" }}>
                 <div>
                   <span style={{ display: "block", fontSize: "0.65rem", color: "#94a3b8", fontWeight: 600 }}>Tasa de Rendimiento</span>
                   <span style={{ fontSize: "1.2rem", fontWeight: 800, color: darkMode ? "#f8fafc" : "#1e293b" }}>92.4%</span>
@@ -746,6 +741,15 @@ function App() {
   const [preselectedCapacityConsultantId, setPreselectedCapacityConsultantId] = useState<string | null>(null);
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
   const [originalUser, setOriginalUser] = useState<AuthUser | null>(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 15);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const handleSwitchRole = useCallback((role: "ADMIN" | "PM" | "CONSULTANT" | "FINANCE") => {
     if (!originalUser) return;
@@ -1087,8 +1091,10 @@ function App() {
       return (
         <main className="auth-shell">
           <section className="auth-card">
-            <div className="logo-slot"><PyramidLogo /></div>
-            <h1>App Gestion Demo</h1>
+            <div className="logo-slot" style={{ height: "48px", width: "auto", margin: "0 auto 1.5rem", display: "flex", justifyContent: "center" }}>
+              <img src={darkMode ? "/Logos/logo_Synaptica-02.png" : "/Logos/logo_Synaptica-01.png"} alt="Synaptica Logo" style={{ height: "100%", width: "auto" }} />
+            </div>
+            <h1>SynaTrack</h1>
             <p>Inicializando sesión…</p>
           </section>
         </main>
@@ -1114,8 +1120,10 @@ function App() {
     return (
       <main className="auth-shell">
         <section className="auth-card">
-          <div className="logo-slot"><PyramidLogo /></div>
-          <h1>App Gestion Demo</h1>
+          <div className="logo-slot" style={{ height: "48px", width: "auto", margin: "0 auto 1.5rem", display: "flex", justifyContent: "center" }}>
+            <img src={darkMode ? "/Logos/logo_Synaptica-02.png" : "/Logos/logo_Synaptica-01.png"} alt="Synaptica Logo" style={{ height: "100%", width: "auto" }} />
+          </div>
+          <h1>SynaTrack</h1>
           {error && <p className="error-banner">{error}</p>}
           {authWithMicrosoftEnabled ? (
             isAuthenticated ? (
@@ -1162,8 +1170,7 @@ function App() {
   // ── Authenticated ────────────────────────────────────────────────────────
   return (
     <div className="shell">
-      {/* Header */}
-      <header className="hero">
+            <header className={`hero ${scrolled ? "scrolled" : ""}`}>
         <div className="hero-left">
           <button
             type="button"
@@ -1174,9 +1181,11 @@ function App() {
           >
             ☰
           </button>
-          <div className="logo-slot"><PyramidLogo /></div>
+          <div className="logo-slot">
+            <img src={darkMode ? "/Logos/logo_Synaptica-02.png" : "/Logos/logo_Synaptica-01.png"} alt="Synaptica Logo" />
+          </div>
           <div>
-            <h1>App Gestion Demo</h1>
+            <h1>SynaTrack</h1>
             <p>Gestión integral de proyectos, horas, gastos y proyecciones</p>
             {lastUpdatedLabel && (
               <div className="hero-meta">
@@ -1201,13 +1210,13 @@ function App() {
             <div className="role-switcher" style={{
               display: "flex",
               alignItems: "center",
-              background: "rgba(154, 79, 15, 0.08)",
-              border: "1px solid #f4d4b6",
+              background: "var(--color-accent-05)",
+              border: "1px solid var(--color-accent-30)",
               borderRadius: "20px",
               padding: "2px",
               marginRight: "0.5rem"
             }}>
-              <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "#9a4f0f", padding: "0 6px 0 10px" }}>VISTA:</span>
+              <span style={{ fontSize: "0.65rem", fontWeight: 700, color: "var(--color-accent)", padding: "0 6px 0 10px" }}>VISTA:</span>
               {(["ADMIN", "PM", "CONSULTANT", "FINANCE"] as const).map((r) => {
                 const isActive = authUser.roles.includes(r) && authUser.roles.length === 1;
                 return (
@@ -1216,8 +1225,8 @@ function App() {
                     type="button"
                     onClick={() => handleSwitchRole(r)}
                     style={{
-                      background: isActive ? "linear-gradient(135deg, #ff9c2c, #9a4f0f)" : "none",
-                      color: isActive ? "#fff" : "#9a4f0f",
+                      background: isActive ? "var(--gradient-accent)" : "none",
+                      color: isActive ? "#fff" : "var(--color-sec-blue)",
                       border: "none",
                       borderRadius: "16px",
                       padding: "4px 10px",
@@ -1276,13 +1285,13 @@ function App() {
                 height: "38px",
                 borderRadius: "50%",
                 overflow: "hidden",
-                background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)",
+                background: "var(--gradient-primary)",
                 color: "#fff",
                 fontWeight: 800,
                 display: "grid",
                 placeItems: "center",
                 fontSize: "0.9rem",
-                boxShadow: "0 2px 8px rgba(154, 79, 15, 0.2)",
+                boxShadow: "0 2px 8px var(--color-primary-20)",
                 border: "2px solid #fff"
               }}>
                 {authUser.photoUrl ? (
@@ -1298,7 +1307,7 @@ function App() {
                 <span>{authUser.displayName.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}</span>
               </div>
             </button>
-
+ 
             {profileDropdownOpen && (
               <div
                   style={{
@@ -1306,11 +1315,11 @@ function App() {
                     top: "45px",
                     right: 0,
                     width: "220px",
-                    background: "rgba(255, 255, 255, 0.95)",
+                    background: "rgba(255, 255, 255, 0.98)",
                     backdropFilter: "blur(12px)",
-                    border: "1px solid #f4d4b6",
+                    border: "1px solid var(--border-color)",
                     borderRadius: "12px",
-                    boxShadow: "0 8px 30px rgba(154, 79, 15, 0.15)",
+                    boxShadow: "0 8px 30px var(--color-primary-15)",
                     padding: "0.75rem",
                     zIndex: 300,
                     display: "flex",
@@ -1318,7 +1327,7 @@ function App() {
                     gap: "0.4rem"
                   }}
                 >
-                  <div style={{ padding: "0.25rem 0.5rem 0.5rem 0.5rem", borderBottom: "1px dashed #f4d4b6" }}>
+                  <div style={{ padding: "0.25rem 0.5rem 0.5rem 0.5rem", borderBottom: "1px dashed var(--border-color)" }}>
                     <strong style={{ fontSize: "0.85rem", color: "var(--text-strong)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {authUser.displayName}
                     </strong>
@@ -1329,7 +1338,7 @@ function App() {
                       {authUser.roles.join(", ")}
                     </span>
                   </div>
-
+ 
                   <button
                     type="button"
                     className="ghost"
@@ -1345,14 +1354,14 @@ function App() {
                       border: "none",
                       padding: "0.4rem 0.5rem",
                       fontSize: "0.82rem",
-                      color: "#9a4f0f",
+                      color: "var(--color-sec-blue)",
                       cursor: "pointer",
                       borderRadius: "6px"
                     }}
                   >
                     👤 Ver mi Perfil
                   </button>
-
+ 
                   <button
                     type="button"
                     className="ghost"
@@ -1367,7 +1376,7 @@ function App() {
                       border: "none",
                       padding: "0.4rem 0.5rem",
                       fontSize: "0.82rem",
-                      color: "#dc2626",
+                      color: "var(--color-sec-red)",
                       cursor: "pointer",
                       borderRadius: "6px"
                     }}
@@ -1668,6 +1677,7 @@ function App() {
         appVersion="1.0.0"
         environment={import.meta.env.MODE === "production" ? "Producción" : "Demo"}
         onOpenFeedback={() => setFeedbackOpen(true)}
+        darkMode={darkMode}
       />
 
       <RagChat
@@ -1711,7 +1721,7 @@ function App() {
               </div>
             </div>
             <div className="modal-actions" style={{ marginTop: "1rem" }}>
-              <button type="button" onClick={() => setShortcutsHelpOpen(false)} style={{ width: "100%", background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)", border: "none" }}>Entendido</button>
+              <button type="button" onClick={() => setShortcutsHelpOpen(false)} style={{ width: "100%", background: "var(--gradient-accent)", border: "none" }}>Entendido</button>
             </div>
           </div>
         </div>
@@ -1760,7 +1770,7 @@ function App() {
             </div>
             <div className="modal-actions" style={{ marginTop: "1rem" }}>
               <button type="button" className="ghost" onClick={() => setFeedbackOpen(false)}>Cancelar</button>
-              <button type="submit" disabled={sendingFeedback} style={{ background: "linear-gradient(135deg, #ff9c2c, #9a4f0f)", border: "none" }}>
+              <button type="submit" disabled={sendingFeedback} style={{ background: "var(--gradient-accent)", border: "none" }}>
                 {sendingFeedback ? "Enviando..." : "Enviar Comentarios"}
               </button>
             </div>

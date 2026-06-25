@@ -23,7 +23,7 @@ import { isValidationError } from "../../utils/validation";
 import { CurrencyInput } from "../../components/CurrencyInput";
 
 function RagBadge({ status }: { status: HealthStatus | undefined }) {
-  if (!status) return <span style={{ color: "#888", fontSize: "0.75rem" }}>—</span>;
+  if (!status) return <span style={{ color: "var(--color-sec-gray)", fontSize: "0.75rem" }}>—</span>;
   const result = backendHealthToResult(status);
   return (
     <span
@@ -46,9 +46,9 @@ function RagBadge({ status }: { status: HealthStatus | undefined }) {
 
 function BudgetBar({ pct }: { pct: number }) {
   const capped = Math.min(pct, 100);
-  const color = pct > 100 ? "#ef4444" : pct > 90 ? "#f59e0b" : "#22c55e";
+  const color = pct > 100 ? "var(--color-sec-red)" : pct > 90 ? "var(--color-accent)" : "var(--color-sec-green)";
   return (
-    <div style={{ width: "6rem", height: "0.5rem", background: "#e5e7eb", borderRadius: "9999px", overflow: "hidden" }}>
+    <div style={{ width: "6rem", height: "0.5rem", background: "var(--color-primary-10)", borderRadius: "9999px", overflow: "hidden" }}>
       <div style={{ width: `${capped}%`, height: "100%", background: color, transition: "width 0.3s" }} />
     </div>
   );
@@ -327,7 +327,7 @@ export function ProjectsTab({
             {/* Filters */}
             <div style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Proyecto</label>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-sec-blue)", marginBottom: "0.25rem" }}>Proyecto</label>
                 <SearchableSelect
                   options={projectOptions}
                   value={projectFilter}
@@ -338,7 +338,7 @@ export function ProjectsTab({
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Empresa</label>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-sec-blue)", marginBottom: "0.25rem" }}>Empresa</label>
                 <SearchableSelect
                   options={companyOptions}
                   value={companyFilter}
@@ -349,11 +349,11 @@ export function ProjectsTab({
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "#9a4f0f", marginBottom: "0.25rem" }}>Salud</label>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 700, color: "var(--color-sec-blue)", marginBottom: "0.25rem" }}>Salud</label>
                 <select
                   value={healthFilter}
                   onChange={(e) => setHealthFilter(e.target.value as HealthStatus | "")}
-                  style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid #f1c79d", background: "#fffdfa", color: "#2a1e12" }}
+                  style={{ width: "100%", height: "42px", padding: "0.6rem 0.75rem", borderRadius: "10px", border: "1px solid var(--color-primary-20)", background: "var(--color-primary-05)", color: "var(--color-primary)" }}
                 >
                   <option value="">Todas</option>
                   <option value="GREEN">Verde (OK)</option>

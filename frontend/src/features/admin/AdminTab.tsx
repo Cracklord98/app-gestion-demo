@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { PageHeader } from "../../components/PageHeader";
 import { createAdminUser, updateAdminUser, listSupportedCountries, type AdminUser, type AppRole } from "../../services/api";
+import { displayCountryWithFlag } from "../../utils/statusLabels";
 
 const roleOptions: AppRole[] = ["ADMIN", "PM", "CONSULTANT", "FINANCE", "VIEWER"];
 
@@ -167,7 +168,7 @@ export function AdminTab({
                             })}
                           </div>
                         </td>
-                        <td>{user.country || "Default"}</td>
+                        <td>{displayCountryWithFlag(user.country)}</td>
                         <td>
                           <span className={`pill ${user.active ? "ok" : "neutral"}`}>{user.active ? "Activo" : "Inactivo"}</span>
                         </td>
@@ -243,9 +244,9 @@ export function AdminTab({
                 <label style={{ fontSize: "0.8rem", fontWeight: 700, color: "var(--text-strong)" }}>País</label>
                 <select value={form.country} onChange={(e) => setForm((p) => ({ ...p, country: e.target.value }))}>
                   {supportedCountries.map((c) => (
-                    <option key={c} value={c}>{c}</option>
+                    <option key={c} value={c}>{displayCountryWithFlag(c)}</option>
                   ))}
-                  {supportedCountries.length === 0 && <option value="Default">Default</option>}
+                  {supportedCountries.length === 0 && <option value="Default">{displayCountryWithFlag("Default")}</option>}
                 </select>
               </div>
 

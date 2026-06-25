@@ -33,7 +33,7 @@ function StatusBadge({ status }: { status: GroupedGasto["status"] }) {
 function EmptyState() {
   return (
     <tr>
-      <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "#9a4f0f" }}>
+      <td colSpan={6} style={{ padding: "2rem", textAlign: "center", color: "var(--color-accent)" }}>
         <div style={{ fontSize: "1.5rem", marginBottom: "0.3rem" }}>📋</div>
         <p style={{ margin: 0, fontWeight: 600 }}>Sin gastos para los filtros seleccionados</p>
       </td>
@@ -143,7 +143,7 @@ export function GastosSummaryTable({
                         border: "none",
                         cursor: "pointer",
                         fontSize: "0.75rem",
-                        color: "#9a4f0f",
+                        color: "var(--color-accent)",
                         fontWeight: 700,
                         padding: "0.2rem 0.35rem",
                         borderRadius: "4px",
@@ -178,7 +178,7 @@ export function GastosSummaryTable({
         {/* Grand total footer */}
         {groups.length > 0 && (
           <tfoot>
-            <tr style={{ borderTop: "2px solid #f4d4b6", background: "#fff4ea" }}>
+            <tr style={{ borderTop: "2px solid var(--border-color)", background: "#fff4ea" }}>
               <td style={{ padding: "0.5rem 0.75rem", fontWeight: 800, color: "#5f2f00" }}>
                 Total general
               </td>

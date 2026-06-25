@@ -129,7 +129,7 @@ export function AlertsTab({
       {/* KPI stats bar */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "0.75rem" }}>
         <div style={{
-          background: "var(--bg-card, #fff)", border: "1px solid #f4d4b6", borderRadius: "0.5rem",
+          background: "var(--bg-card, #fff)", border: "1px solid var(--border-color)", borderRadius: "0.5rem",
           padding: "1rem 1.25rem", minWidth: "10rem", flex: "1 1 10rem",
         }}>
           <div style={{ fontSize: "0.68rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>Alertas activas</div>
@@ -138,7 +138,7 @@ export function AlertsTab({
         </div>
 
         <div style={{
-          background: "var(--bg-card, #fff)", border: "1px solid #f4d4b6", borderRadius: "0.5rem",
+          background: "var(--bg-card, #fff)", border: "1px solid var(--border-color)", borderRadius: "0.5rem",
           padding: "1rem 1.25rem", minWidth: "10rem", flex: "1 1 10rem",
         }}>
           <div style={{ fontSize: "0.68rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>Alertas Críticas</div>
@@ -149,7 +149,7 @@ export function AlertsTab({
         </div>
 
         <div style={{
-          background: "var(--bg-card, #fff)", border: "1px solid #f4d4b6", borderRadius: "0.5rem",
+          background: "var(--bg-card, #fff)", border: "1px solid var(--border-color)", borderRadius: "0.5rem",
           padding: "1rem 1.25rem", minWidth: "10rem", flex: "1 1 10rem",
         }}>
           <div style={{ fontSize: "0.68rem", color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.3rem" }}>Advertencias</div>
@@ -184,7 +184,7 @@ export function AlertsTab({
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {groups.length === 0 ? (
           <div className="alert-empty-state" style={{
-            background: "#fff", border: "1px solid #f4d4b6", borderRadius: "14px",
+            background: "#fff", border: "1px solid var(--border-color)", borderRadius: "14px",
             padding: "3rem 1rem", textAlign: "center", color: "#5f2f00"
           }}>
             <div style={{ fontSize: "3rem", marginBottom: "0.75rem" }}>🎉</div>
@@ -196,7 +196,7 @@ export function AlertsTab({
         ) : (
           groups.map((group) => (
             <div key={group.key} style={{
-              background: "#fff", border: "1px solid #f4d4b6", borderRadius: "14px",
+              background: "#fff", border: "1px solid var(--border-color)", borderRadius: "14px",
               padding: "1rem 1.25rem", boxShadow: "0 4px 16px rgba(15, 23, 42, 0.04)"
             }}>
               {/* Category Header */}
@@ -207,7 +207,7 @@ export function AlertsTab({
                 <span>{group.icon}</span>
                 <span>{group.label}</span>
                 <span style={{
-                  fontSize: "0.75rem", background: "#fff3e8", color: "#9a3412",
+                  fontSize: "0.75rem", background: "var(--color-accent-10)", color: "#9a3412",
                   padding: "0.1rem 0.5rem", borderRadius: "99px", fontWeight: 600
                 }}>
                   {group.items.length}

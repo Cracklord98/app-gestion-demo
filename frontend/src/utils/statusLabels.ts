@@ -99,3 +99,33 @@ export function label(map: Record<string, string>, code: string | null | undefin
   if (!code) return "—";
   return map[code] ?? code;
 }
+
+export function getCountryFlag(country: string | null | undefined): string {
+  if (!country) return "🌐";
+  const name = country.trim().toLowerCase();
+  if (name === "colombia") return "🇨🇴";
+  if (name === "peru" || name === "perú") return "🇵🇪";
+  if (name === "chile") return "🇨🇱";
+  if (name === "mexico" || name === "méxico") return "🇲🇽";
+  if (name === "ecuador") return "🇪🇨";
+  if (name === "argentina") return "🇦🇷";
+  if (name === "espana" || name === "españa" || name === "spain") return "🇪🇸";
+  if (name === "default" || name === "usa" || name === "us" || name === "estados unidos") return "🇺🇸";
+  return "🌐";
+}
+
+export function displayCountry(country: string | null | undefined): string {
+  if (!country) return "USA";
+  const name = country.trim();
+  const lower = name.toLowerCase();
+  if (lower === "default" || lower === "usa" || lower === "us" || lower === "estados unidos") {
+    return "USA";
+  }
+  return name;
+}
+
+export function displayCountryWithFlag(country: string | null | undefined): string {
+  const name = displayCountry(country);
+  const flag = getCountryFlag(country);
+  return `${name} ${flag}`;
+}

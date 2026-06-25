@@ -27,7 +27,7 @@ export function GastosDetailRow({
     <tr>
       <td
         colSpan={colSpan}
-        style={{ padding: 0, background: "#fffdf9", borderBottom: "2px solid #f4d4b6" }}
+        style={{ padding: 0, background: "var(--color-primary-05)", borderBottom: "1px solid var(--color-primary-10)" }}
       >
         <div
           style={{
@@ -49,7 +49,7 @@ export function GastosDetailRow({
               {items.map((e) => {
                 const { value, tooltip } = convertToBase(numberish(e.amount), e.currency, baseCurrency, fxConfigs);
                 return (
-                  <tr key={e.id} style={{ borderBottom: "1px solid #f4d4b6" }}>
+                  <tr key={e.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
                     <td style={tdStyle}>{e.category}</td>
                     <td style={tdStyle}>{fmtMoney(numberish(e.amount), e.currency)}</td>
                     <td
@@ -107,9 +107,9 @@ const thStyle: React.CSSProperties = {
   textAlign: "left",
   padding: "0.3rem 0.5rem",
   fontSize: "0.68rem",
-  color: "#9a4f0f",
+  color: "var(--color-accent)",
   fontWeight: 700,
-  borderBottom: "1px solid #f4d4b6",
+  borderBottom: "1px solid var(--border-color)",
   background: "#fff4ea",
 };
 

@@ -334,7 +334,7 @@ export function ForecastsTab({
               ))}
             </div>
 
-            <form onSubmit={(e) => void handleCreate(e)} className="form-grid" style={{ background: "#ffffff", padding: "1.25rem", borderRadius: "10px", border: "1px solid #f4d4b6" }}>
+            <form onSubmit={(e) => void handleCreate(e)} className="form-grid" style={{ background: "#ffffff", padding: "1.25rem", borderRadius: "10px", border: "1px solid var(--border-color)" }}>
               {createError && <ValidationErrorBox message={createError} />}
               
               {/* Linea 1: Proyecto y Consultor */}
@@ -366,22 +366,22 @@ export function ForecastsTab({
               {/* Linea 2: Fechas y Horas */}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.7rem", alignItems: "start" }}>
                 <div style={{ display: "flex", flexDirection: "column" }}>
-                  <label htmlFor="form-date-from" style={{ fontSize: "0.75rem", color: "#9a4f0f", fontWeight: 700, marginBottom: "0.2rem" }}>Fecha inicio *</label>
+                  <label htmlFor="form-date-from" style={{ fontSize: "0.75rem", color: "var(--color-accent)", fontWeight: 700, marginBottom: "0.2rem" }}>Fecha inicio *</label>
                   <input id="form-date-from" type="date" value={form.dateFrom} onChange={(e) => setDateFrom(e.target.value)} required />
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column" }}>
-                  <label htmlFor="form-date-to" style={{ fontSize: "0.75rem", color: "#9a4f0f", fontWeight: 700, marginBottom: "0.2rem" }}>Fecha fin *</label>
+                  <label htmlFor="form-date-to" style={{ fontSize: "0.75rem", color: "var(--color-accent)", fontWeight: 700, marginBottom: "0.2rem" }}>Fecha fin *</label>
                   <input id="form-date-to" type="date" value={form.dateTo} min={form.dateFrom} onChange={(e) => setForm((p) => ({ ...p, dateTo: e.target.value }))} required />
                   {durationLabel && !rangeError && (
-                    <span style={{ fontSize: "0.72rem", color: "#9a4f0f", fontWeight: 500, marginTop: "0.25rem" }}>
+                    <span style={{ fontSize: "0.72rem", color: "var(--color-accent)", fontWeight: 500, marginTop: "0.25rem" }}>
                       📅 Duración: {durationLabel}
                     </span>
                   )}
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column" }}>
-                  <label htmlFor="form-hours" style={{ fontSize: "0.75rem", color: "#9a4f0f", fontWeight: 700, marginBottom: "0.2rem" }}>Horas proyectadas *</label>
+                  <label htmlFor="form-hours" style={{ fontSize: "0.75rem", color: "var(--color-accent)", fontWeight: 700, marginBottom: "0.2rem" }}>Horas proyectadas *</label>
                   <input
                     id="form-hours"
                     type="number"
@@ -442,7 +442,7 @@ export function ForecastsTab({
               </div>
 
               {/* Submit Line */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid #f5ddc9", paddingTop: "0.75rem", marginTop: "0.25rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--color-primary-10)", paddingTop: "0.75rem", marginTop: "0.25rem" }}>
                 <div style={{ flex: 1 }}>
                   {rangeError && (
                     <p style={{ margin: 0, color: "#dc2626", fontSize: "0.78rem", fontWeight: 600 }}>
