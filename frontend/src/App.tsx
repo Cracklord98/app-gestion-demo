@@ -234,8 +234,8 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           position: relative;
           min-height: 100vh;
           overflow-x: hidden;
-          background: ${darkMode ? "#0b0f19" : "radial-gradient(circle at 10% 20%, rgb(255, 252, 243) 0%, rgb(255, 240, 220) 90%)"};
-          color: ${darkMode ? "#f1f5f9" : "#1e293b"};
+          background: ${darkMode ? "#121228" : "radial-gradient(circle at 10% 20%, #ffffff 0%, #f4f6fa 100%)"};
+          color: ${darkMode ? "#ffffff" : "#121228"};
           font-family: 'Outfit', 'Inter', sans-serif;
           transition: background-color 0.5s ease;
           display: flex;
@@ -305,7 +305,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           justify-content: space-between;
           align-items: center;
           padding: 1.25rem 2.5rem;
-          background: ${darkMode ? "rgba(11, 15, 25, 0.65)" : "rgba(255, 255, 255, 0.6)"};
+          background: ${darkMode ? "rgba(18, 18, 40, 0.65)" : "rgba(255, 255, 255, 0.6)"};
           backdrop-filter: blur(12px);
           border-bottom: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(244, 212, 182, 0.4)"};
           z-index: 10;
@@ -370,7 +370,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           line-height: 1.15;
           letter-spacing: -0.04em;
           margin: 0 0 1.5rem 0;
-          color: ${darkMode ? "#f8fafc" : "#1e293b"};
+          color: ${darkMode ? "#ffffff" : "#121228"};
         }
 
         .landing-title span {
@@ -382,7 +382,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         .landing-description {
           font-size: 1.15rem;
           line-height: 1.6;
-          color: ${darkMode ? "#94a3b8" : "#475569"};
+          color: ${darkMode ? "rgba(255, 255, 255, 0.7)" : "rgba(18, 18, 40, 0.7)"};
           margin-bottom: 2.5rem;
           max-width: 540px;
         }
@@ -426,7 +426,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         }
 
         .glass-mockup {
-          background: ${darkMode ? "rgba(30, 41, 59, 0.45)" : "rgba(255, 255, 255, 0.45)"};
+          background: ${darkMode ? "rgba(18, 18, 40, 0.45)" : "rgba(255, 255, 255, 0.45)"};
           backdrop-filter: blur(20px);
           border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.08)" : "var(--color-accent-15)"};
           border-radius: 24px;
@@ -439,7 +439,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
 
         .floating-widget {
           position: absolute;
-          background: ${darkMode ? "rgba(15, 23, 42, 0.85)" : "rgba(255, 255, 255, 0.85)"};
+          background: ${darkMode ? "rgba(18, 18, 40, 0.85)" : "rgba(255, 255, 255, 0.85)"};
           backdrop-filter: blur(15px);
           border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.1)" : "var(--color-accent-15)"};
           border-radius: 16px;
@@ -480,7 +480,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         }
 
         .feature-card {
-          background: ${darkMode ? "rgba(30, 41, 59, 0.35)" : "rgba(255, 255, 255, 0.55)"};
+          background: ${darkMode ? "rgba(18, 18, 40, 0.35)" : "rgba(255, 255, 255, 0.55)"};
           backdrop-filter: blur(15px);
           border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.06)" : "var(--color-accent-15)"};
           border-radius: 20px;
@@ -493,7 +493,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
 
         .feature-card:hover {
           transform: translateY(-6px);
-          background: ${darkMode ? "rgba(30, 41, 59, 0.5)" : "rgba(255, 255, 255, 0.85)"};
+          background: ${darkMode ? "rgba(18, 18, 40, 0.5)" : "rgba(255, 255, 255, 0.85)"};
           border-color: #f1a323;
           box-shadow: 0 15px 35px ${darkMode ? "rgba(241, 163, 35, 0.12)" : "rgba(241, 163, 35, 0.1)"};
         }
@@ -520,14 +520,14 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           margin: 0 0 0.5rem 0;
           font-size: 1.2rem;
           font-weight: 700;
-          color: ${darkMode ? "#f1f5f9" : "var(--color-primary)"};
+          color: ${darkMode ? "#ffffff" : "var(--color-primary)"};
         }
 
         .feature-card p {
           margin: 0;
           font-size: 0.9rem;
           line-height: 1.5;
-          color: ${darkMode ? "#94a3b8" : "#64748b"};
+          color: ${darkMode ? "rgba(255, 255, 255, 0.7)" : "rgba(18, 18, 40, 0.7)"};
         }
 
         .svg-chart-line {
@@ -545,10 +545,11 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         {/* Flotante Header */}
         <header className="landing-header">
           <div className="landing-logo">
-            <div className="logo-slot" style={{ height: "64px", transform: "scale(1.4)", transformOrigin: "left center", marginRight: "1.5rem" }}>
+            <div className="logo-slot" style={{ height: "44px", display: "flex", alignItems: "center" }}>
               <img 
                 src={darkMode ? "/Logos/logo_Synaptica-02.png" : "/Logos/logo_Synaptica-01.png"} 
                 alt="Synaptica Logo" 
+                style={{ height: "100%", width: "auto", objectFit: "contain", transform: "none" }}
               />
             </div>
             <span className="landing-badge">v1.1.0 (Demo)</span>

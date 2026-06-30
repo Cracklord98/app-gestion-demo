@@ -44,12 +44,6 @@ export function AppFooter({
         {/* Column 1: Brand & Socials */}
         <div className="app-footer__column app-footer__column--brand">
           <div className="app-footer__logo-section">
-            <div className="app-footer__logo">
-              <img 
-                src={darkMode ? "/Logos/logo_Synaptica-02.png" : "/Logos/logo_Synaptica-02.png"} 
-                alt="Synaptica Logo" 
-              />
-            </div>
             <p className="app-footer__app-name">SynaTrack</p>
           </div>
           <p className="app-footer__tagline">
@@ -113,6 +107,14 @@ export function AppFooter({
           </div>
         </div>
 
+      </div>
+
+      {/* ── Centered Logo ── */}
+      <div className="app-footer__centered-logo">
+        <img 
+          src={darkMode ? "/Logos/logo_Synaptica-02.png" : "/Logos/logo_Synaptica-02.png"} 
+          alt="Synaptica Logo" 
+        />
       </div>
 
       {/* ── Bottom status bar ─────────────────────────────────────────── */}
