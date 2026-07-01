@@ -31,6 +31,7 @@ import {
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { downloadCsv } from "../../utils/csv";
 import { displayCountryWithFlag } from "../../utils/statusLabels";
+import { CountryFlag } from "../../components/CountryFlag";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -401,7 +402,7 @@ function OverviewPanel({
                     <tr>
                       <td>{row.fullName}</td>
                       <td>{row.role}</td>
-                      <td>{row.country ? displayCountryWithFlag(row.country) : "—"}</td>
+                      <td>{row.country ? <CountryFlag country={row.country} /> : "—"}</td>
                       <td><span className={`pill ${STATUS_CLASS[row.availabilityStatus]}`}>{STATUS_LABELS[row.availabilityStatus]}</span></td>
                       <td>{row.capacityHours.toFixed(1)}h</td>
                       <td>{row.committedHours.toFixed(1)}h</td>
@@ -449,7 +450,7 @@ function OverviewPanel({
                       <tr key={c.consultantId}>
                         <td>{c.fullName}</td>
                         <td>{c.role}</td>
-                        <td>{c.country ? displayCountryWithFlag(c.country) : "—"}</td>
+                        <td>{c.country ? <CountryFlag country={c.country} /> : "—"}</td>
                         <td style={{ color: "#16a34a", fontWeight: 600 }}>{c.capacityHours.toFixed(1)}h</td>
                         <td>
                           <div className="tag-list">

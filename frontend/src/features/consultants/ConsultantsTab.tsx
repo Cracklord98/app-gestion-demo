@@ -16,6 +16,7 @@ import { ValidationErrorBox } from "../../components/ValidationErrorBox";
 import { isValidationError } from "../../utils/validation";
 import { CurrencyInput } from "../../components/CurrencyInput";
 import { displayCountryWithFlag } from "../../utils/statusLabels";
+import { CountryFlag } from "../../components/CountryFlag";
 
 const currencyOptions = ["COP", "USD", "EUR", "MXN", "PEN", "CLP", "ARS"];
 const roleOptions = ["Analista", "Desarrollador", "QA", "Arquitecto", "PM", "Data Engineer"];
@@ -428,7 +429,7 @@ export function ConsultantsTab({
                         <td>{c.fullName}</td>
                         <td>{c.role}</td>
                         <td><span className="pill neutral" style={{ fontSize: "0.75rem", fontWeight: 600 }}>{c.seniority || "—"}</span></td>
-                        <td>{c.country ? displayCountryWithFlag(c.country) : "—"}</td>
+                        <td>{c.country ? <CountryFlag country={c.country} /> : "—"}</td>
                         <td>{c.company || "—"}</td>
                         <td>
                           <span className={`pill ${c.isInternal !== false ? "ok" : "warn"}`} style={{ fontSize: "0.7rem" }}>

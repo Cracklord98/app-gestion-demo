@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { PageHeader } from "../../components/PageHeader";
 import { createAdminUser, updateAdminUser, listSupportedCountries, type AdminUser, type AppRole } from "../../services/api";
 import { displayCountryWithFlag } from "../../utils/statusLabels";
+import { CountryFlag } from "../../components/CountryFlag";
 
 const roleOptions: AppRole[] = ["ADMIN", "PM", "CONSULTANT", "FINANCE", "VIEWER"];
 
@@ -168,7 +169,7 @@ export function AdminTab({
                             })}
                           </div>
                         </td>
-                        <td>{displayCountryWithFlag(user.country)}</td>
+                        <td><CountryFlag country={user.country} /></td>
                         <td>
                           <span className={`pill ${user.active ? "ok" : "neutral"}`}>{user.active ? "Activo" : "Inactivo"}</span>
                         </td>

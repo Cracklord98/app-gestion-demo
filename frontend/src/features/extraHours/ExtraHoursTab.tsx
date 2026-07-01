@@ -31,6 +31,7 @@ import {
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { displayCountryWithFlag } from "../../utils/statusLabels";
+import { CountryFlag } from "../../components/CountryFlag";
 
 
 
@@ -1179,7 +1180,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                 <tbody>
                   {pmPendingEntries.map((entry) => (
                     <tr key={entry.id}>
-                      <td><strong>{entry.consultant?.fullName}</strong> ({displayCountryWithFlag(entry.consultant?.country || "Default")})</td>
+                      <td><strong>{entry.consultant?.fullName}</strong> (<CountryFlag country={entry.consultant?.country || "Default"} />)</td>
                       <td>{entry.project?.name}</td>
                       <td>{entry.date.slice(0, 10)}</td>
                       <td>{entry.startTime.slice(0, 5)} - {entry.endTime.slice(0, 5)}</td>
@@ -1259,7 +1260,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     <tr key={entry.id}>
                       <td><strong>{entry.consultant?.fullName}</strong></td>
                       <td>{entry.consultant?.identification || "No asignado"}</td>
-                      <td>{displayCountryWithFlag(entry.consultant?.country || "Default")}</td>
+                      <td><CountryFlag country={entry.consultant?.country || "Default"} /></td>
                       <td>{entry.project?.name}</td>
                       <td>{entry.date.slice(0, 10)}</td>
                       <td>{entry.startTime.slice(0, 5)} - {entry.endTime.slice(0, 5)}</td>
@@ -1365,7 +1366,7 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
                     <tr key={idx}>
                       <td><strong>{row.consultantName}</strong></td>
                       <td>{row.identification}</td>
-                      <td>{displayCountryWithFlag(row.country || "Default")}</td>
+                      <td><CountryFlag country={row.country || "Default"} /></td>
                       <td>{row.currency}</td>
                       <td><strong>{row.totalHours}</strong></td>
                       <td>{row.diurnal}</td>

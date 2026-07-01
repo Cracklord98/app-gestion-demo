@@ -100,6 +100,26 @@ export function label(map: Record<string, string>, code: string | null | undefin
   return map[code] ?? code;
 }
 
+export function getCountryISOCode(country: string | null | undefined): string {
+  if (!country) return "us";
+  const name = country.trim().toLowerCase();
+  if (name === "colombia") return "co";
+  if (name === "peru" || name === "perú") return "pe";
+  if (name === "chile") return "cl";
+  if (name === "mexico" || name === "méxico") return "mx";
+  if (name === "ecuador") return "ec";
+  if (name === "argentina") return "ar";
+  if (name === "espana" || name === "españa" || name === "spain") return "es";
+  if (name === "default" || name === "usa" || name === "us" || name === "estados unidos") return "us";
+  return "";
+}
+
+export function getCountryFlagUrl(country: string | null | undefined): string {
+  const iso = getCountryISOCode(country);
+  if (!iso) return "";
+  return `https://flagcdn.com/24x18/${iso}.png`;
+}
+
 export function getCountryFlag(country: string | null | undefined): string {
   if (!country) return "🌐";
   const name = country.trim().toLowerCase();
@@ -127,5 +147,6 @@ export function displayCountry(country: string | null | undefined): string {
 export function displayCountryWithFlag(country: string | null | undefined): string {
   const name = displayCountry(country);
   const flag = getCountryFlag(country);
-  return `${name} ${flag}`;
+  return `${flag} ${name}`;
 }
+

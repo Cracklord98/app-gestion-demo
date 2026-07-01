@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { PageHeader } from "../../components/PageHeader";
-import { CHANGE_REQUEST_STATUS_LABELS, CHANGE_REQUEST_TYPE_LABELS, RISK_STATUS_LABELS, ASSIGNMENT_STATUS_LABELS, ISSUE_SEVERITY_LABELS, ISSUE_STATUS_LABELS, label, displayCountryWithFlag } from "../../utils/statusLabels";
+import { CHANGE_REQUEST_STATUS_LABELS, CHANGE_REQUEST_TYPE_LABELS, RISK_STATUS_LABELS, ASSIGNMENT_STATUS_LABELS, ISSUE_SEVERITY_LABELS, ISSUE_STATUS_LABELS, label } from "../../utils/statusLabels";
+import { CountryFlag } from "../../components/CountryFlag";
 import {
   getProjectDetail,
   getProjectTimeline,
@@ -566,7 +567,7 @@ function RecursosTab({ assignments }: { assignments: ProjectDetail["assignments"
             <tr key={a.id}>
               <td style={{ fontWeight: 600 }}>{a.consultant?.fullName ?? "—"}</td>
               <td>{a.consultant?.role ?? a.role ?? "—"}</td>
-              <td>{a.consultant?.country ? displayCountryWithFlag(a.consultant.country) : "—"}</td>
+              <td>{a.consultant?.country ? <CountryFlag country={a.consultant.country} /> : "—"}</td>
               <td>
                 <span style={{
                   fontWeight: 600, fontSize: "0.75rem",
