@@ -2961,6 +2961,18 @@ body.dark .country-tab-btn.ghost:hover {
   border-color: #475569 !important;
 }
 
+/* ── 5-Day Weekday Layout Override ── */
+@media (min-width: 769px) {
+  .week-grid.five-days {
+    grid-template-columns: repeat(5, 1fr) !important;
+  }
+  .month-grid-header.five-days,
+  .month-grid-body.five-days {
+    grid-template-columns: repeat(5, 1fr) !important;
+  }
+}
+
+
 
 
 

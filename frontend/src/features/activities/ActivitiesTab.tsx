@@ -113,6 +113,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
   const [filterConsultantId, setFilterConsultantId] = useState(myConsultant?.id || "");
   const [filterProjectId, setFilterProjectId] = useState("");
   const [filterType, setFilterType] = useState<string>("");
+  const [showWeekends, setShowWeekends] = useState(false);
 
   // Navigation states
   const [selectedDate, setSelectedDate] = useState(() => new Date());
@@ -320,10 +321,14 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
   // Set initial sync consultant ID
   useEffect(() => {
     if (teamsModalOpen) {
-      const initialConsId = filterConsultantId || myConsultant?.id || consultants[0]?.id || "";
-      setSyncConsultantId(initialConsId);
+      if (accounts.length > 0 && myConsultant) {
+        setSyncConsultantId(myConsultant.id);
+      } else {
+        const initialConsId = filterConsultantId || myConsultant?.id || consultants[0]?.id || "";
+        setSyncConsultantId(initialConsId);
+      }
     }
-  }, [teamsModalOpen, filterConsultantId, myConsultant, consultants]);
+  }, [teamsModalOpen, filterConsultantId, myConsultant, consultants, accounts]);
 
   // Load events when modal opens OR selected consultant changes
   useEffect(() => {
@@ -569,6 +574,18 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
     if (!formConsultantId) {
       onError("Por favor selecciona un consultor.");
       return;
+    }
+
+    // Past date check for extra hours automatic request
+    if (applyForExtraHours && formProjectId) {
+      const isManager = authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM");
+      if (!isManager) {
+        const todayStr = new Date().toLocaleDateString("en-CA");
+        if (formDate < todayStr) {
+          onError("No se pueden solicitar horas extra para días anteriores al actual.");
+          return;
+        }
+      }
     }
 
     // Weekend and Holiday validation
@@ -1045,16 +1062,28 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
               <button type="button" className="ghost" onClick={() => setSelectedDate(new Date())} style={{ padding: "0.3rem 0.6rem", fontWeight: 700 }}>📅 Hoy</button>
             </div>
             <strong style={{ fontSize: "1rem", color: "var(--text-strong)" }}>
-              Semana del {weekDays[0].toLocaleDateString("es-CO", { day: "numeric", month: "short" })} al {weekDays[6].toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}
+              Semana del {weekDays[0].toLocaleDateString("es-CO", { day: "numeric", month: "short" })} al {(showWeekends ? weekDays[6] : weekDays[4]).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" })}
             </strong>
-            <button type="button" className="ghost" onClick={() => navigateWeek(1)} style={{ padding: "0.3rem 0.6rem" }}>Semana siguiente ▶</button>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                type="button"
+                className={`ghost ${showWeekends ? "active" : ""}`}
+                onClick={() => setShowWeekends(!showWeekends)}
+                style={{ padding: "0.3rem 0.6rem", display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem" }}
+              >
+                {showWeekends ? "👁️ Ocultar Finde" : "👁️ Mostrar Finde"}
+              </button>
+              <button type="button" className="ghost" onClick={() => navigateWeek(1)} style={{ padding: "0.3rem 0.6rem" }}>Semana siguiente ▶</button>
+            </div>
           </div>
 
           {loading ? (
             <p className="loading">Cargando actividades...</p>
           ) : (
-            <div className="week-grid">
-              {weekDays.map((day) => {
+            <div className={`week-grid ${showWeekends ? "" : "five-days"}`}>
+              {weekDays
+                .filter((_, idx) => showWeekends || (idx !== 5 && idx !== 6))
+                .map((day) => {
                 const dateKey = day.toISOString().slice(0, 10);
                 const dayCheck = checkIsWeekendOrHoliday(dateKey);
                 const isWeekendOrHoli = dayCheck.isWeekendOrHoliday;
@@ -1178,7 +1207,17 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
             <strong style={{ fontSize: "1rem", color: "var(--text-strong)", textTransform: "capitalize" }}>
               {monthLabel}
             </strong>
-            <button type="button" className="ghost" onClick={() => navigateMonth(1)} style={{ padding: "0.3rem 0.6rem" }}>Mes siguiente ▶</button>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
+              <button
+                type="button"
+                className={`ghost ${showWeekends ? "active" : ""}`}
+                onClick={() => setShowWeekends(!showWeekends)}
+                style={{ padding: "0.3rem 0.6rem", display: "flex", alignItems: "center", gap: "0.35rem", fontSize: "0.82rem" }}
+              >
+                {showWeekends ? "👁️ Ocultar Finde" : "👁️ Mostrar Finde"}
+              </button>
+              <button type="button" className="ghost" onClick={() => navigateMonth(1)} style={{ padding: "0.3rem 0.6rem" }}>Mes siguiente ▶</button>
+            </div>
           </div>
 
           {loading ? (
@@ -1186,18 +1225,22 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
           ) : (
             <div className="month-grid-wrapper">
               {/* Day header names */}
-              <div className="month-grid-header">
-                {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"].map((dayName, index) => (
-                  <span key={dayName} style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)" }}>
-                    <span className="hide-mobile">{dayName}</span>
-                    <span className="show-mobile-only">{dayName.slice(0, index === 2 ? 3 : 2)}</span>
-                  </span>
-                ))}
+              <div className={`month-grid-header ${showWeekends ? "" : "five-days"}`}>
+                {["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"]
+                  .filter((_, idx) => showWeekends || (idx !== 5 && idx !== 6))
+                  .map((dayName) => (
+                    <span key={dayName} style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-soft)" }}>
+                      <span className="hide-mobile">{dayName}</span>
+                      <span className="show-mobile-only">{dayName.slice(0, dayName.startsWith("Mié") ? 3 : 2)}</span>
+                    </span>
+                  ))}
               </div>
 
               {/* Grid of days */}
-              <div className="month-grid-body">
-                {monthDays.map(({ date, currentMonth }, idx) => {
+              <div className={`month-grid-body ${showWeekends ? "" : "five-days"}`}>
+                {monthDays
+                  .filter(({ date }) => showWeekends || (date.getDay() !== 0 && date.getDay() !== 6))
+                  .map(({ date, currentMonth }, idx) => {
                   const dateKey = date.toISOString().slice(0, 10);
                   const dayCheck = checkIsWeekendOrHoliday(dateKey);
                   const activeConsultantId = filterConsultantId || myConsultant?.id || "";
@@ -1898,6 +1941,7 @@ export function ActivitiesTab({ projects, consultants, authUser, onError, onDril
                     onChange={(val) => setSyncConsultantId(val)}
                     placeholder="Buscar consultor..."
                     emptyLabel=""
+                    disabled={accounts.length > 0}
                   />
                 </div>
 

@@ -290,18 +290,8 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       await ensureDefaultConfigs();
       const payload = extraHourPayloadSchema.parse(request.body);
 
-      // 24-hour limit check for standard consultants (non-Admin/non-PM)
       const roles = request.authUser!.roles;
       const isManager = roles.includes(AppRole.ADMIN) || roles.includes(AppRole.PM);
-      if (!isManager) {
-        const limitTime = Date.now() - 24 * 60 * 60 * 1000;
-        const entryTime = new Date(payload.date).getTime();
-        if (entryTime < limitTime) {
-          return reply.status(400).send({
-            message: "Las solicitudes de horas extra solo se pueden registrar con hasta 24 horas de antigüedad en el pasado, a menos que sea un caso autorizado por el Administrador o PM."
-          });
-        }
-      }
 
       const entryYear = payload.date.getUTCFullYear();
       const entryMonth = payload.date.getUTCMonth() + 1;
@@ -340,6 +330,35 @@ export async function extraHoursRoutes(app: FastifyInstance) {
       }
 
       const country = consultant.country || "Default";
+
+      // Check date limit for standard consultants (non-Admin/non-PM)
+      if (!isManager) {
+        const COUNTRY_TIMEZONES: Record<string, string> = {
+          Colombia: "America/Bogota",
+          Peru: "America/Lima",
+          Chile: "America/Santiago",
+          Mexico: "America/Mexico_City",
+          Ecuador: "America/Guayaquil",
+          Argentina: "America/Argentina/Buenos_Aires",
+          España: "Europe/Madrid",
+          Default: "America/Bogota",
+        };
+        const timezone = COUNTRY_TIMEZONES[country] || "America/Bogota";
+        const todayStr = new Intl.DateTimeFormat("en-CA", {
+          timeZone: timezone,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }).format(new Date()); // Formato YYYY-MM-DD
+        
+        const entryStr = payload.date.toISOString().split("T")[0]; // YYYY-MM-DD
+        
+        if (entryStr < todayStr) {
+          return reply.status(400).send({
+            message: "No se pueden solicitar horas extra para días anteriores al actual."
+          });
+        }
+      }
       let configRow = await prisma.extraHoursConfig.findUnique({
         where: { country },
       });

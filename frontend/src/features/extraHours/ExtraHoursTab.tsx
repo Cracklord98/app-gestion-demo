@@ -481,6 +481,15 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
       return;
     }
 
+    const isManager = authUser?.roles.includes("ADMIN") || authUser?.roles.includes("PM");
+    if (!isManager) {
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      if (reportDate < todayStr) {
+        onError("No se pueden solicitar horas extra para días anteriores al actual.");
+        return;
+      }
+    }
+
     setReporting(true);
     try {
       const res = await createExtraHour({
