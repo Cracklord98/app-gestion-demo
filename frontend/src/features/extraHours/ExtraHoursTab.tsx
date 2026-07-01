@@ -27,7 +27,10 @@ import {
   type ExtraHoursCalculationResult,
   type PayrollConsolidationRow,
   type ApprovalDelegation,
-  listSupportedCountries
+  listSupportedCountries,
+  listDelegations,
+  createDelegation,
+  deleteDelegation
 } from "../../services/api";
 import { ConfirmDialog } from "../../components/ConfirmDialog";
 import { displayCountryWithFlag } from "../../utils/statusLabels";
@@ -260,7 +263,6 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
     if (!can("extrahours:review") && !authUser?.roles.includes("ADMIN")) return;
     setLoadingDelegations(true);
     try {
-      const { listDelegations } = await import("../../services/api");
       const data = await listDelegations();
       setDelegations(data);
     } catch (err) {
@@ -278,7 +280,6 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
     }
     setSavingDelegation(true);
     try {
-      const { createDelegation } = await import("../../services/api");
       await createDelegation({
         projectId: delegateProjectId,
         toUserEmail: delegateToEmail,
@@ -301,7 +302,6 @@ export function ExtraHoursTab({ projects, consultants, authUser, can, onError, c
       return;
     }
     try {
-      const { deleteDelegation } = await import("../../services/api");
       await deleteDelegation(id);
       triggerSuccess("Delegación eliminada con éxito.");
       await loadDelegationsList();

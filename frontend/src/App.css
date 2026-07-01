@@ -1708,7 +1708,7 @@ th.sortable:hover { background: var(--color-primary-10); }
   position: fixed;
   bottom: 24px;
   right: 25px; /* Moved 1px to the left */
-  background: var(--gradient-accent);
+  background: linear-gradient(135deg, #234175 0%, #3b82f6 100%); /* Corporate Blue Gradient */
   color: #fff;
   border: none;
   border-radius: 50%;
@@ -1719,7 +1719,7 @@ th.sortable:hover { background: var(--color-primary-10); }
   justify-content: center;
   font-size: 0.88rem;
   font-weight: 700;
-  box-shadow: 0 6px 20px rgba(241, 163, 35, 0.4);
+  box-shadow: 0 6px 20px rgba(35, 65, 117, 0.4); /* Blue corporate glow */
   cursor: pointer;
   z-index: 999;
   overflow: hidden;
@@ -1761,13 +1761,13 @@ th.sortable:hover { background: var(--color-primary-10); }
 
 .rag-chat-fab:hover {
   transform: scale(1.06) translateY(-2px);
-  box-shadow: 0 8px 24px rgba(241, 163, 35, 0.5);
+  box-shadow: 0 8px 24px rgba(35, 65, 117, 0.5); /* Blue corporate glow */
   filter: brightness(1.08);
 }
 
 .rag-chat-fab:active {
   transform: scale(0.95) translateY(0);
-  box-shadow: 0 4px 12px rgba(241, 163, 35, 0.25);
+  box-shadow: 0 4px 12px rgba(35, 65, 117, 0.25); /* Blue corporate glow */
 }
 
 @media (max-width: 600px) {

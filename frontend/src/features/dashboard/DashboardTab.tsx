@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   getStatsOverview,
+  listExtraHours,
   type Expense, type FxConfig, type Forecast,
   type Project, type StatsOverview, type TimeEntry, type ExtraHourEntry,
 } from "../../services/api";
@@ -432,11 +433,9 @@ export function DashboardTab({
   const [extraHours, setExtraHours] = useState<ExtraHourEntry[]>([]);
   useEffect(() => {
     let active = true;
-    import("../../services/api").then(({ listExtraHours }) => {
-      listExtraHours().then((data) => {
-        if (active) setExtraHours(data);
-      }).catch(() => {});
-    });
+    listExtraHours().then((data) => {
+      if (active) setExtraHours(data);
+    }).catch(() => {});
     return () => {
       active = false;
     };
