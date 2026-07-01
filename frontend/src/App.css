@@ -602,7 +602,7 @@
   right: -22rem;
   width: min(21rem, 100vw);
   height: 100dvh;
-  background: var(--color-primary-05);
+  background: #ffffff; /* Solid opaque white in light mode */
   border-left: 1px solid var(--border-color);
   box-shadow: -6px 0 24px rgba(15,23,42,0.12);
   z-index: 301;

@@ -133,7 +133,7 @@ export function AlertsPanel({
         style={{
           position: "fixed", top: 0, right: open ? 0 : "-26rem",
           width: "min(25rem, 100vw)", height: "100dvh",
-          background: "var(--color-primary-05)", borderLeft: "1px solid var(--border-color)",
+          background: "#ffffff", borderLeft: "1px solid var(--border-color)",
           boxShadow: "-6px 0 28px rgba(15,23,42,0.14)",
           zIndex: 301, display: "flex", flexDirection: "column",
           transition: "right 0.25s ease",
