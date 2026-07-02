@@ -301,8 +301,8 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         .landing-header {
           position: sticky;
           top: 0;
-          display: flex;
-          justify-content: space-between;
+          display: grid;
+          grid-template-columns: 1fr auto 1fr;
           align-items: center;
           padding: 1.25rem 2.5rem;
           background: ${darkMode ? "rgba(18, 18, 40, 0.75)" : "rgba(255, 255, 255, 0.8)"};
@@ -315,11 +315,20 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           display: flex;
           align-items: center;
           gap: 0.75rem;
+          justify-self: center;
+        }
+
+        .landing-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 1rem;
+          justify-self: end;
         }
 
         .landing-logo h2 {
           margin: 0;
-          font-size: 1.35rem;
+          font-size: 1.5rem;
           font-weight: 800;
           background: var(--gradient-primary);
           -webkit-background-clip: text;
@@ -357,6 +366,14 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           }
           .landing-hero-right {
             justify-content: center;
+          }
+          .landing-header {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+            justify-items: center;
+          }
+          .landing-actions {
+            justify-self: center;
           }
         }
 
@@ -546,8 +563,9 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
 
         {/* Flotante Header */}
         <header className="landing-header">
+          <div aria-hidden="true" />
           <div className="landing-logo">
-            <div className="logo-slot" style={{ height: "clamp(44px, 6vw, 60px)", display: "flex", alignItems: "center" }}>
+            <div className="logo-slot" style={{ height: "clamp(56px, 7vw, 80px)", display: "flex", alignItems: "center" }}>
               <img 
                 src={darkMode ? "/Logos/logo_Synaptica-02.png" : "/Logos/logo_Synaptica-01.png"} 
                 alt="Synaptica Logo" 
@@ -557,7 +575,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
             <span className="landing-badge">v1.1.0 (Demo)</span>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+          <div className="landing-actions">
             <button
               type="button"
               onClick={toggleDarkMode}
