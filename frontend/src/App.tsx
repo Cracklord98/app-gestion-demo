@@ -305,9 +305,9 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           justify-content: space-between;
           align-items: center;
           padding: 1.25rem 2.5rem;
-          background: ${darkMode ? "rgba(18, 18, 40, 0.65)" : "rgba(255, 255, 255, 0.6)"};
+          background: ${darkMode ? "rgba(18, 18, 40, 0.75)" : "rgba(255, 255, 255, 0.8)"};
           backdrop-filter: blur(12px);
-          border-bottom: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.05)" : "rgba(244, 212, 182, 0.4)"};
+          border-bottom: 1px solid ${darkMode ? "rgba(107, 180, 45, 0.14)" : "rgba(35, 65, 117, 0.16)"};
           z-index: 10;
         }
 
@@ -321,7 +321,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           margin: 0;
           font-size: 1.35rem;
           font-weight: 800;
-          background: var(--gradient-accent);
+          background: var(--gradient-primary);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
@@ -331,9 +331,9 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           padding: 0.2rem 0.6rem;
           border-radius: 20px;
           font-weight: 700;
-          background: ${darkMode ? "var(--color-accent-15)" : "var(--color-accent-05)"};
-          color: var(--color-accent);
-          border: 1px solid ${darkMode ? "var(--color-accent-30)" : "var(--color-accent-15)"};
+          background: ${darkMode ? "rgba(35, 65, 117, 0.22)" : "var(--color-blue-10)"};
+          color: var(--color-sec-blue);
+          border: 1px solid ${darkMode ? "rgba(35, 65, 117, 0.35)" : "var(--color-sec-blue)"};
         }
 
         .landing-hero {
@@ -374,7 +374,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         }
 
         .landing-title span {
-          background: var(--gradient-accent);
+          background: var(--gradient-primary);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
@@ -382,7 +382,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         .landing-description {
           font-size: 1.15rem;
           line-height: 1.6;
-          color: ${darkMode ? "rgba(255, 255, 255, 0.7)" : "rgba(18, 18, 40, 0.7)"};
+          color: ${darkMode ? "rgba(255, 255, 255, 0.74)" : "rgba(35, 65, 117, 0.86)"};
           margin-bottom: 2.5rem;
           max-width: 540px;
         }
@@ -398,7 +398,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           display: inline-flex;
           align-items: center;
           gap: 0.75rem;
-          background: var(--gradient-accent);
+          background: ${darkMode ? "var(--gradient-accent)" : "var(--gradient-primary)"};
           color: #fff;
           border: none;
           border-radius: 50px;
@@ -406,13 +406,13 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           font-size: 1.05rem;
           font-weight: 700;
           cursor: pointer;
-          box-shadow: 0 10px 25px ${darkMode ? "rgba(241, 163, 35, 0.4)" : "rgba(241, 163, 35, 0.2)"};
+          box-shadow: 0 10px 25px ${darkMode ? "rgba(241, 163, 35, 0.4)" : "rgba(35, 65, 117, 0.24)"};
           transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .landing-btn:hover {
           transform: translateY(-3px);
-          box-shadow: 0 15px 35px ${darkMode ? "rgba(241, 163, 35, 0.5)" : "rgba(241, 163, 35, 0.35)"};
+          box-shadow: 0 15px 35px ${darkMode ? "rgba(241, 163, 35, 0.5)" : "rgba(35, 65, 117, 0.34)"};
         }
 
         .landing-btn:active {
@@ -426,9 +426,9 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         }
 
         .glass-mockup {
-          background: ${darkMode ? "rgba(18, 18, 40, 0.45)" : "rgba(255, 255, 255, 0.45)"};
+          background: ${darkMode ? "rgba(18, 18, 40, 0.45)" : "rgba(255, 255, 255, 0.5)"};
           backdrop-filter: blur(20px);
-          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.08)" : "var(--color-accent-15)"};
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.08)" : "var(--color-primary-15)"};
           border-radius: 24px;
           width: 100%;
           max-width: 440px;
@@ -441,7 +441,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           position: absolute;
           background: ${darkMode ? "rgba(18, 18, 40, 0.85)" : "rgba(255, 255, 255, 0.85)"};
           backdrop-filter: blur(15px);
-          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.1)" : "var(--color-accent-15)"};
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.1)" : "var(--color-primary-15)"};
           border-radius: 16px;
           padding: 0.75rem 1rem;
           box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
@@ -482,7 +482,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         .feature-card {
           background: ${darkMode ? "rgba(18, 18, 40, 0.35)" : "rgba(255, 255, 255, 0.55)"};
           backdrop-filter: blur(15px);
-          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.06)" : "var(--color-accent-15)"};
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.06)" : "var(--color-primary-15)"};
           border-radius: 20px;
           padding: 2rem;
           box-shadow: 0 10px 30px rgba(0,0,0,0.02);
@@ -494,8 +494,8 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         .feature-card:hover {
           transform: translateY(-6px);
           background: ${darkMode ? "rgba(18, 18, 40, 0.5)" : "rgba(255, 255, 255, 0.85)"};
-          border-color: #f1a323;
-          box-shadow: 0 15px 35px ${darkMode ? "rgba(241, 163, 35, 0.12)" : "rgba(241, 163, 35, 0.1)"};
+          border-color: var(--color-sec-blue);
+          box-shadow: 0 15px 35px ${darkMode ? "rgba(35, 65, 117, 0.14)" : "rgba(35, 65, 117, 0.12)"};
         }
 
         .feature-icon-wrapper {
@@ -504,14 +504,14 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           border-radius: 12px;
           display: grid;
           place-items: center;
-          background: ${darkMode ? "var(--color-accent-15)" : "var(--color-accent-05)"};
-          color: #f1a323;
+          background: ${darkMode ? "rgba(35, 65, 117, 0.2)" : "var(--color-blue-10)"};
+          color: var(--color-sec-blue);
           margin-bottom: 1.25rem;
           transition: all 0.3s ease;
         }
 
         .feature-card:hover .feature-icon-wrapper {
-          background: var(--gradient-accent);
+          background: var(--gradient-primary);
           color: #fff;
           transform: scale(1.1) rotate(5deg);
         }
@@ -561,10 +561,10 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
               onClick={toggleDarkMode}
               style={{
                 background: darkMode ? "rgba(255,255,255,0.08)" : "#fff",
-                border: "1px solid " + (darkMode ? "rgba(255,255,255,0.15)" : "#e2e8f0"),
+                border: "1px solid " + (darkMode ? "rgba(255,255,255,0.15)" : "rgba(35, 65, 117, 0.18)"),
                 borderRadius: "30px",
                 padding: "0.5rem 1rem",
-                color: darkMode ? "#f1f5f9" : "#475569",
+                color: darkMode ? "#f1f5f9" : "var(--color-sec-blue)",
                 fontSize: "0.82rem",
                 fontWeight: 600,
                 cursor: "pointer",
