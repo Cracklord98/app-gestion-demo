@@ -610,6 +610,9 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         }
 
         .landing-footer__link {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.45rem;
           color: ${darkMode ? "#e2e8f0" : "var(--color-sec-blue)"};
           text-decoration: none;
           font-size: 0.84rem;
@@ -871,9 +874,27 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           </div>
 
           <div className="landing-footer__links" aria-label="Enlaces corporativos">
-            <a className="landing-footer__link" href="https://synaptica.co" target="_blank" rel="noopener noreferrer">Sitio web</a>
-            <a className="landing-footer__link" href="https://co.linkedin.com/company/synaptica-s-a-s" target="_blank" rel="noopener noreferrer">LinkedIn</a>
-            <a className="landing-footer__link" href="mailto:soporte@synaptica.co">Soporte</a>
+            <a className="landing-footer__link" href="https://synaptica.co" target="_blank" rel="noopener noreferrer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" />
+                <line x1="2" y1="12" x2="22" y2="12" />
+                <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+              </svg>
+              <span>Sitio web</span>
+            </a>
+            <a className="landing-footer__link" href="https://co.linkedin.com/company/synaptica-s-a-s" target="_blank" rel="noopener noreferrer">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M6.94 6.5a1.94 1.94 0 1 1-3.88 0 1.94 1.94 0 0 1 3.88 0ZM3.5 8.75H7V20H3.5V8.75Zm6.06 0h3.36v1.55h.05c.47-.9 1.62-1.85 3.34-1.85 3.57 0 4.23 2.35 4.23 5.4V20h-3.5v-5.08c0-1.21-.02-2.77-1.69-2.77-1.69 0-1.95 1.32-1.95 2.68V20H9.56V8.75Z" />
+              </svg>
+              <span>LinkedIn</span>
+            </a>
+            <a className="landing-footer__link" href="mailto:soporte@synaptica.co">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <path d="m3 7 9 6 9-6" />
+              </svg>
+              <span>Soporte</span>
+            </a>
           </div>
 
           <div className="landing-footer__meta">
