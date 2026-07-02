@@ -545,7 +545,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         {/* Flotante Header */}
         <header className="landing-header">
           <div className="landing-logo">
-            <div className="logo-slot" style={{ height: "44px", display: "flex", alignItems: "center" }}>
+            <div className="logo-slot" style={{ height: "clamp(44px, 6vw, 60px)", display: "flex", alignItems: "center" }}>
               <img 
                 src={darkMode ? "/Logos/logo_Synaptica-02.png" : "/Logos/logo_Synaptica-01.png"} 
                 alt="Synaptica Logo" 
