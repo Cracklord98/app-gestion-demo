@@ -564,6 +564,114 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           stroke-dashoffset: 400;
           animation: drawLine 2.5s forwards cubic-bezier(0.4, 0, 0.2, 1);
         }
+
+        .landing-footer {
+          max-width: 1200px;
+          margin: 1rem auto 0;
+          padding: 1.25rem 2rem 2rem;
+          border-top: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.08)" : "var(--color-primary-10)"};
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1.5rem;
+          color: ${darkMode ? "rgba(226, 232, 240, 0.86)" : "var(--color-sec-blue)"};
+        }
+
+        .landing-footer__brand {
+          display: flex;
+          flex-direction: column;
+          gap: 0.45rem;
+          max-width: 360px;
+        }
+
+        .landing-footer__name {
+          margin: 0;
+          font-family: var(--display);
+          font-size: 1rem;
+          font-weight: 800;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: ${darkMode ? "#ffffff" : "var(--color-primary)"};
+        }
+
+        .landing-footer__tagline {
+          margin: 0;
+          font-size: 0.84rem;
+          line-height: 1.5;
+          color: ${darkMode ? "rgba(226, 232, 240, 0.72)" : "rgba(35, 65, 117, 0.8)"};
+        }
+
+        .landing-footer__links {
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          flex-wrap: wrap;
+          justify-content: center;
+        }
+
+        .landing-footer__link {
+          color: ${darkMode ? "#e2e8f0" : "var(--color-sec-blue)"};
+          text-decoration: none;
+          font-size: 0.84rem;
+          font-weight: 700;
+          padding: 0.35rem 0.65rem;
+          border-radius: 9999px;
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.08)" : "rgba(35, 65, 117, 0.14)"};
+          background: ${darkMode ? "rgba(255, 255, 255, 0.04)" : "rgba(255, 255, 255, 0.72)"};
+          transition: all 0.2s ease;
+        }
+
+        .landing-footer__link:hover {
+          transform: translateY(-1px);
+          border-color: ${darkMode ? "rgba(107, 180, 45, 0.4)" : "var(--color-sec-blue)"};
+          box-shadow: 0 8px 20px ${darkMode ? "rgba(0, 0, 0, 0.18)" : "rgba(35, 65, 117, 0.08)"};
+        }
+
+        .landing-footer__meta {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 0.5rem;
+          min-width: 180px;
+          text-align: right;
+        }
+
+        .landing-footer__badge {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+          padding: 0.35rem 0.7rem;
+          border-radius: 9999px;
+          font-size: 0.78rem;
+          font-weight: 700;
+          background: ${darkMode ? "rgba(35, 65, 117, 0.22)" : "var(--color-blue-10)"};
+          color: ${darkMode ? "#e2e8f0" : "var(--color-sec-blue)"};
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.08)" : "rgba(35, 65, 117, 0.16)"};
+        }
+
+        .landing-footer__small {
+          margin: 0;
+          font-size: 0.78rem;
+          color: ${darkMode ? "rgba(226, 232, 240, 0.62)" : "rgba(35, 65, 117, 0.72)"};
+        }
+
+        @media (max-width: 900px) {
+          .landing-footer {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 1.25rem 1rem 1.75rem;
+          }
+
+          .landing-footer__meta {
+            align-items: flex-start;
+            text-align: left;
+            min-width: 0;
+          }
+
+          .landing-footer__links {
+            justify-content: flex-start;
+          }
+        }
       `}</style>
 
       <div className="landing-container">
@@ -753,6 +861,26 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
             <p>Control exacto de staff disponible, vacaciones, bench interno y proyecciones automáticas de costos mensuales.</p>
           </div>
         </section>
+
+        <footer className="landing-footer" role="contentinfo">
+          <div className="landing-footer__brand">
+            <p className="landing-footer__name">Synaptica · SynaTrack</p>
+            <p className="landing-footer__tagline">
+              Plataforma ejecutiva para control de recursos, operaciones y finanzas con foco en claridad, trazabilidad y toma de decisiones.
+            </p>
+          </div>
+
+          <div className="landing-footer__links" aria-label="Enlaces corporativos">
+            <a className="landing-footer__link" href="https://synaptica.co" target="_blank" rel="noopener noreferrer">Sitio web</a>
+            <a className="landing-footer__link" href="https://co.linkedin.com/company/synaptica-s-a-s" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            <a className="landing-footer__link" href="mailto:soporte@synaptica.co">Soporte</a>
+          </div>
+
+          <div className="landing-footer__meta">
+            <span className="landing-footer__badge">v1.1.0 Demo</span>
+            <p className="landing-footer__small">Bogotá, Colombia · Synaptica 2026</p>
+          </div>
+        </footer>
       </div>
     </>
   );
