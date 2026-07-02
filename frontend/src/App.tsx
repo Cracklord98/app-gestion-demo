@@ -302,13 +302,19 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           position: sticky;
           top: 0;
           display: grid;
-          grid-template-columns: 1fr auto 1fr;
+          grid-template-columns: auto 1fr auto;
           align-items: center;
-          padding: 1.25rem 2.5rem;
+          padding: 0.85rem 1.75rem;
           background: ${darkMode ? "rgba(18, 18, 40, 0.75)" : "rgba(255, 255, 255, 0.8)"};
           backdrop-filter: blur(12px);
           border-bottom: 1px solid ${darkMode ? "rgba(107, 180, 45, 0.14)" : "rgba(35, 65, 117, 0.16)"};
           z-index: 10;
+        }
+
+        .landing-version {
+          justify-self: start;
+          display: flex;
+          align-items: center;
         }
 
         .landing-logo {
@@ -369,8 +375,12 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           }
           .landing-header {
             grid-template-columns: 1fr;
-            gap: 0.75rem;
+            gap: 0.55rem;
             justify-items: center;
+            padding: 0.75rem 1rem;
+          }
+          .landing-version {
+            justify-self: center;
           }
           .landing-actions {
             justify-self: center;
@@ -563,16 +573,17 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
 
         {/* Flotante Header */}
         <header className="landing-header">
-          <div aria-hidden="true" />
+          <div className="landing-version">
+            <span className="landing-badge">v1.1.0 (Demo)</span>
+          </div>
           <div className="landing-logo">
-            <div className="logo-slot" style={{ height: "clamp(56px, 7vw, 80px)", display: "flex", alignItems: "center" }}>
+            <div className="logo-slot" style={{ height: "clamp(62px, 8vw, 92px)", display: "flex", alignItems: "center" }}>
               <img 
                 src={darkMode ? "/Logos/logo_Synaptica-02.png" : "/Logos/logo_Synaptica-01.png"} 
                 alt="Synaptica Logo" 
                 style={{ height: "100%", width: "auto", objectFit: "contain", transform: "none" }}
               />
             </div>
-            <span className="landing-badge">v1.1.0 (Demo)</span>
           </div>
 
           <div className="landing-actions">
