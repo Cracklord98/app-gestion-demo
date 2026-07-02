@@ -331,9 +331,9 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
           padding: 0.2rem 0.6rem;
           border-radius: 20px;
           font-weight: 700;
-          background: ${darkMode ? "rgba(35, 65, 117, 0.22)" : "var(--color-blue-10)"};
-          color: var(--color-sec-blue);
-          border: 1px solid ${darkMode ? "rgba(35, 65, 117, 0.35)" : "var(--color-sec-blue)"};
+          background: ${darkMode ? "rgba(255, 255, 255, 0.06)" : "var(--color-blue-10)"};
+          color: ${darkMode ? "#e2e8f0" : "var(--color-sec-blue)"};
+          border: 1px solid ${darkMode ? "rgba(255, 255, 255, 0.12)" : "var(--color-sec-blue)"};
         }
 
         .landing-hero {
@@ -374,7 +374,9 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         }
 
         .landing-title span {
-          background: var(--gradient-primary);
+          background: ${darkMode
+            ? "linear-gradient(135deg, #ffffff 0%, rgba(226, 232, 240, 0.72) 100%)"
+            : "var(--gradient-primary)"};
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
         }
@@ -382,7 +384,7 @@ function LandingPage({ darkMode, toggleDarkMode, onLoginClick }: { darkMode: boo
         .landing-description {
           font-size: 1.15rem;
           line-height: 1.6;
-          color: ${darkMode ? "rgba(255, 255, 255, 0.74)" : "rgba(35, 65, 117, 0.86)"};
+          color: ${darkMode ? "rgba(226, 232, 240, 0.9)" : "rgba(35, 65, 117, 0.86)"};
           margin-bottom: 2.5rem;
           max-width: 540px;
         }
